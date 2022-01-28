@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "frame/block-reward",
+    "frame/custom-signatures",
+    "frame/dapps-staking",
+    "precompiles/staking",
+]
+
+exclude = [
+    "vendor"
+]
