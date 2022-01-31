@@ -25,7 +25,15 @@ This repository only contains custom frame modules, for runtimes and node code p
 For contributing to this project, please read our [Contribution Guideline](./CONTRIBUTING.md).
 
 ## Versioning Schema
-**TODO**
+
+Repository doesn't have a dedicated master branch, instead the main branch is assigned to the branch of active polkadot version, e.g. `polkadot-v0.9.13`.
+All deliveries should be made to the default branch unless they are intended for another temporary branch.
+
+When a pallet has been modified (version in .toml is updated), a new release tag must be created.
+Naming format for the tag is:
+*pallet-name*-**toml-version**/polkadot-**version**
+
+E.g. `pallet-dapps-staking-1.1.2/polkadot-0.9.13`.
 
 ## Further Reading
 
