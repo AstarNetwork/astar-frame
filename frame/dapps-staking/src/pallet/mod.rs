@@ -163,6 +163,11 @@ pub mod pallet {
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
+    /// Stores the block number of when the next era starts
+    #[pallet::storage]
+    #[pallet::getter(fn next_era_starting_block)]
+    pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
     /// Registered developer accounts points to coresponding contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
@@ -322,16 +327,16 @@ pub mod pallet {
             }
 
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
-            let blocks_per_era = T::BlockPerEra::get();
             let previous_era = Self::current_era();
+            let next_era_starting_block = Self::next_era_starting_block();
 
             // Value is compared to 1 since genesis block is ignored
-            if now % blocks_per_era == BlockNumberFor::<T>::from(1u32)
-                || force_new_era
-                || previous_era.is_zero()
-            {
+            if now >= next_era_starting_block || force_new_era || previous_era.is_zero() {
+                let blocks_per_era = T::BlockPerEra::get();
                 let next_era = previous_era + 1;
                 CurrentEra::<T>::put(next_era);
+
+                NextEraStartingBlock::<T>::put(now + blocks_per_era);
 
                 let reward = BlockRewardAccumulator::<T>::take();
                 Self::reward_balance_snapshoot(previous_era, reward);
