@@ -222,11 +222,10 @@ where
 impl<R> Precompile for DappsStakingWrapper<R>
 where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
-    <R as frame_system::Config>::Call: From<pallet_dapps_staking::Call<R>>
+    R::Call: From<pallet_dapps_staking::Call<R>>
         + Dispatchable<PostInfo = PostDispatchInfo>
         + GetDispatchInfo,
-    <<R as frame_system::Config>::Call as Dispatchable>::Origin:
-        From<Option<<R as frame_system::Config>::AccountId>>,
+    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
 {
     fn execute(
         input: &[u8],
