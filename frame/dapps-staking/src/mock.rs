@@ -11,7 +11,7 @@ use codec::{Decode, Encode};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
 
@@ -30,9 +30,9 @@ pub(crate) const MAX_NUMBER_OF_STAKERS: u32 = 4;
 pub(crate) const MINIMUM_STAKING_AMOUNT: Balance = 10;
 pub(crate) const DEVELOPER_REWARD_PERCENTAGE: u32 = 80;
 pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
-pub(crate) const HISTORY_DEPTH: u32 = 30;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
+pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 10;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -122,13 +122,12 @@ parameter_types! {
     pub const BlockPerEra: BlockNumber = BLOCKS_PER_ERA;
     pub const MaxNumberOfStakersPerContract: u32 = MAX_NUMBER_OF_STAKERS;
     pub const MinimumStakingAmount: Balance = MINIMUM_STAKING_AMOUNT;
-    pub const HistoryDepth: u32 = HISTORY_DEPTH;
     pub const DeveloperRewardPercentage: Perbill = Perbill::from_percent(DEVELOPER_REWARD_PERCENTAGE);
     pub const DappsStakingPalletId: PalletId = PalletId(*b"mokdpstk");
     pub const MinimumRemainingAmount: Balance = MINIMUM_REMAINING_AMOUNT;
-    pub const BonusEraDuration: u32 = 3;
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
     pub const UnbondingPeriod: EraIndex = UNBONDING_PERIOD;
+    pub const MaxEraStakeValues: u32 = MAX_ERA_STAKE_VALUES;
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
@@ -140,13 +139,12 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type SmartContract = MockSmartContract<AccountId>;
     type WeightInfo = weights::SubstrateWeight<TestRuntime>;
     type MaxNumberOfStakersPerContract = MaxNumberOfStakersPerContract;
-    type HistoryDepth = HistoryDepth;
-    type BonusEraDuration = BonusEraDuration;
     type MinimumStakingAmount = MinimumStakingAmount;
     type PalletId = DappsStakingPalletId;
     type MinimumRemainingAmount = MinimumRemainingAmount;
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
+    type MaxEraStakeValues = MaxEraStakeValues;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
@@ -236,36 +234,8 @@ pub fn initialize_first_block() {
     // This assert prevents method misuse
     assert_eq!(System::block_number(), 1 as BlockNumber);
 
-    // We need to beef up the pallet account balance in case of bonus rewards
-    let starting_balance =
-        BLOCK_REWARD * BLOCKS_PER_ERA as Balance * crate::pallet::REWARD_SCALING as Balance;
-    let _ = Balances::deposit_creating(
-        &<TestRuntime as crate::pallet::pallet::Config>::PalletId::get().into_account(),
-        starting_balance,
-    );
-
     // This is performed outside of dapps staking but we expect it before on_initialize
     DappsStaking::on_unbalanced(Balances::issue(BLOCK_REWARD));
     DappsStaking::on_initialize(System::block_number());
     run_to_block(2);
-}
-
-// Clears all events
-pub fn clear_all_events() {
-    System::reset_events();
-}
-
-// Used to get a vec of all dapps staking events
-pub fn dapps_staking_events() -> Vec<crate::Event<TestRuntime>> {
-    System::events()
-        .into_iter()
-        .map(|r| r.event)
-        .filter_map(|e| {
-            if let Event::DappsStaking(inner) = e {
-                Some(inner)
-            } else {
-                None
-            }
-        })
-        .collect()
 }
