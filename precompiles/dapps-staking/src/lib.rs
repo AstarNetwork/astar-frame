@@ -221,7 +221,7 @@ where
 
 impl<R> Precompile for DappsStakingWrapper<R>
 where
-    R: pallet_evm::Config + pallet_dapps_staking::Config + frame_system::Config,
+    R: pallet_evm::Config + pallet_dapps_staking::Config,
     <R as frame_system::Config>::Call: From<pallet_dapps_staking::Call<R>>
         + Dispatchable<PostInfo = PostDispatchInfo>
         + GetDispatchInfo,
