@@ -7,8 +7,11 @@ use codec::{Decode, Encode, HasCompact};
 use frame_support::traits::Currency;
 use frame_system::{self as system};
 use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
-use sp_std::{collections::btree_map::BTreeMap, ops::Add, prelude::*};
+use sp_runtime::{
+    traits::{AtLeast32BitUnsigned, Zero},
+    RuntimeDebug,
+};
+use sp_std::{ops::Add, prelude::*};
 
 pub mod pallet;
 pub mod traits;
@@ -24,9 +27,10 @@ mod mock;
 mod testing_utils;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_lib;
 
 pub use pallet::pallet::*;
-pub use sp_staking::SessionIndex;
 pub use weights::WeightInfo;
 
 pub type BalanceOf<T> =
@@ -34,6 +38,34 @@ pub type BalanceOf<T> =
 
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
+
+/// DApp State descriptor
+#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
+enum DAppState {
+    /// Contract is registered and active.
+    Registered,
+    /// Contract has been unregistered and is inactive.
+    /// Claim for past eras and unbonding is still possible but no additional staking can be done.
+    Unregistered(EraIndex),
+}
+
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct DAppInfo<AccountId> {
+    /// Developer (owner) account
+    developer: AccountId,
+    /// Current DApp State
+    state: DAppState,
+}
+
+impl<AccountId> DAppInfo<AccountId> {
+    /// Create new `DAppInfo` struct instance with the given developer and state `Registered`
+    fn new(developer: AccountId) -> Self {
+        Self {
+            developer: developer,
+            state: DAppState::Registered,
+        }
+    }
+}
 
 /// Mode of era-forcing.
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -45,10 +77,6 @@ pub enum Forcing {
     /// Note that this will force to trigger an election until a new era is triggered, if the
     /// election failed, the next session end will trigger a new election again, until success.
     ForceNew,
-    /// Avoid a new era indefinitely.
-    ForceNone,
-    /// Force a new era at the end of all sessions indefinitely.
-    ForceAlways,
 }
 
 impl Default for Forcing {
@@ -59,40 +87,31 @@ impl Default for Forcing {
 
 /// A record for total rewards and total amount staked for an era
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct EraRewardAndStake<Balance: HasCompact> {
+pub struct EraInfo<Balance: HasCompact> {
     /// Total amount of rewards for an era
     #[codec(compact)]
     pub rewards: Balance,
-    /// Total staked amount for an era
+    /// Total staked amount in an era
     #[codec(compact)]
     pub staked: Balance,
+    /// Total locked amount in an era
+    #[codec(compact)]
+    pub locked: Balance,
 }
 
 /// Used to split total EraPayout among contracts.
 /// Each tuple (contract, era) has this structure.
 /// This will be used to reward contracts developer and his stakers.
-#[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct EraStakingPoints<AccountId: Ord, Balance: HasCompact> {
+#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+pub struct EraStakingPoints<Balance: HasCompact> {
     /// Total staked amount.
     #[codec(compact)]
     pub total: Balance,
-    /// The map of stakers and the amount they staked.
-    pub stakers: BTreeMap<AccountId, Balance>,
-    /// Accrued and claimed rewards on this contract both for stakers and the developer
+    /// Total number of active stakers
     #[codec(compact)]
-    pub claimed_rewards: Balance,
-}
-
-impl<AccountId: Ord, Balance: HasCompact + Default> Default
-    for EraStakingPoints<AccountId, Balance>
-{
-    fn default() -> Self {
-        Self {
-            total: Default::default(),
-            stakers: BTreeMap::new(),
-            claimed_rewards: Default::default(),
-        }
-    }
+    number_of_stakers: u32,
+    /// Indicates whether rewards were claimed for this era or not
+    contract_reward_claimed: bool,
 }
 
 /// Storage value representing the current Dapps staking pallet storage version.
@@ -101,11 +120,154 @@ impl<AccountId: Ord, Balance: HasCompact + Default> Default
 pub enum Version {
     V1_0_0,
     V2_0_0,
+    V3_0_0,
 }
 
 impl Default for Version {
     fn default() -> Self {
-        Version::V1_0_0
+        Version::V2_0_0
+    }
+}
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct EraStake<Balance: AtLeast32BitUnsigned + Copy> {
+    /// Staked amount in era
+    #[codec(compact)]
+    staked: Balance,
+    /// Staked era
+    #[codec(compact)]
+    era: EraIndex,
+}
+
+impl<Balance: AtLeast32BitUnsigned + Copy> EraStake<Balance> {
+    fn new(staked: Balance, era: EraIndex) -> Self {
+        Self { staked, era }
+    }
+}
+
+/// Contains information about how much was staked in each era
+#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy> {
+    // Size of this list would be limited by a configurable constant
+    stakes: Vec<EraStake<Balance>>,
+}
+
+impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
+    /// true if no stakes exist, false otherwise
+    fn is_empty(&self) -> bool {
+        self.stakes.is_empty()
+    }
+
+    /// number of `EraStake` chunks
+    fn len(&self) -> u32 {
+        self.stakes.len() as u32
+    }
+
+    /// Stakes some value in the specified era.
+    /// User should ensure that given era is either equal or greater than the
+    /// latest available era in the staking info.
+    fn stake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
+        if self.stakes.is_empty() {
+            self.stakes.push(EraStake::new(value, current_era))
+        } else {
+            let era_stake = self.stakes.last().unwrap(); // exists if vec not empty
+            if era_stake.era > current_era {
+                return Err("Unexpected era".into());
+            }
+
+            let new_stake_value = era_stake.staked.saturating_add(value);
+
+            if current_era == era_stake.era {
+                *self.stakes.last_mut().unwrap() = EraStake::new(new_stake_value, current_era)
+            } else {
+                self.stakes
+                    .push(EraStake::new(new_stake_value, current_era))
+            }
+        }
+        Ok(())
+    }
+
+    /// Unstakes some value in the specified era.
+    /// User should ensure that given era is either equal or greater than the
+    /// latest available era in the staking info.
+    fn unstake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
+        if self.stakes.is_empty() {
+            return Ok(());
+        }
+
+        let era_stake = self.stakes.last().unwrap(); // not empty so it exists
+        if era_stake.era > current_era {
+            return Err("Unexpected era".into());
+        }
+
+        let new_stake_value = era_stake.staked.saturating_sub(value);
+
+        if current_era == era_stake.era {
+            *self.stakes.last_mut().unwrap() = EraStake::new(new_stake_value, current_era)
+        } else {
+            self.stakes
+                .push(EraStake::new(new_stake_value, current_era))
+        }
+
+        self.clean_unstaked();
+        Ok(())
+    }
+
+    /// `Claims` the oldest era available for claiming.
+    /// In case valid era exists, returns (claim era, staked amount) tuple.
+    /// If no valid era exists, returns (0, 0) tuple.
+    fn claim(&mut self) -> (EraIndex, Balance) {
+        if self.is_empty() {
+            (0, Zero::zero())
+        } else {
+            let era_stake = self.stakes[0]; // not empty so it exists
+
+            if self.stakes.len() == 1 || self.stakes[1].era > era_stake.era + 1 {
+                *self.stakes.first_mut().unwrap() = EraStake {
+                    staked: era_stake.staked,
+                    era: era_stake.era.saturating_add(1),
+                }
+            } else {
+                // in case: self.stakes[1].era == era_stake.era + 1
+                self.stakes.remove(0);
+            }
+
+            self.clean_unstaked();
+
+            (era_stake.era, era_stake.staked)
+        }
+    }
+
+    /// Latest staked value.
+    /// E.g. if staker is fully unstaked, this will return `Zero`.
+    /// Othwerise returns a non-zero balance.
+    pub fn latest_staked_value(&self) -> Balance {
+        self.stakes.last().map_or(Zero::zero(), |x| x.staked)
+    }
+
+    /// Removes unstaked values if they're no longer valid for comprehension
+    fn clean_unstaked(&mut self) {
+        if !self.stakes.is_empty() && self.stakes[0].staked.is_zero() {
+            self.stakes.remove(0);
+        }
+    }
+
+    /// Adjust era stakes information to the unregistered era.
+    /// All information that exists from `unregistered_era` onwards will be cleared.
+    /// This should only be used after fetching the claim era and stake value.
+    fn unregistered_era_adjust(&mut self, unregistered_era: EraIndex) {
+        if self.stakes.is_empty() {
+            return;
+        }
+
+        if self.stakes[0].era >= unregistered_era {
+            // In this scenario, all eras prior to unregistered era have already been claimed
+            self.stakes.clear();
+        } else {
+            self.stakes.retain(|x| x.era < unregistered_era);
+            self.stakes
+                .push(EraStake::new(Zero::zero(), unregistered_era));
+        }
     }
 }
 
@@ -134,14 +296,14 @@ where
 /// Contains unlocking chunks.
 /// This is a convenience struct that provides various utility methods to help with unbonding handling.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct UnbondingInfo<Balance> {
+pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy> {
     // Vector of unlocking chunks. Sorted in ascending order in respect to unlock_era.
     unlocking_chunks: Vec<UnlockingChunk<Balance>>,
 }
 
 impl<Balance> UnbondingInfo<Balance>
 where
-    Balance: Add<Output = Balance> + Default + Copy,
+    Balance: AtLeast32BitUnsigned + Default + Copy,
 {
     /// Returns total number of unlocking chunks.
     fn len(&self) -> u32 {
@@ -208,12 +370,39 @@ where
     }
 }
 
+/// Instruction on how to handle reward payout for stakers.
+/// In order to make staking more competitive, majority of stakers will want to
+/// automatically restake anything they earn.
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub enum RewardHandling {
+    /// Rewards are transfered to stakers balance without any further action.
+    OnlyPayout,
+    /// Rewards are transfered to stakers balance and are immediately re-staked
+    /// on the contract from which the reward was received.
+    PayoutAndStake,
+}
+
+impl Default for RewardHandling {
+    fn default() -> Self {
+        RewardHandling::PayoutAndStake
+    }
+}
+
 /// Contains information about account's locked & unbonding balances.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct AccountLedger<Balance: HasCompact> {
+pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
     /// Total balance locked.
     #[codec(compact)]
     pub locked: Balance,
     /// Information about unbonding chunks.
     unbonding_info: UnbondingInfo<Balance>,
+    /// Instruction on how to handle reward payout
+    reward_handling: RewardHandling,
+}
+
+impl<Balance: AtLeast32BitUnsigned + Default + Copy> AccountLedger<Balance> {
+    /// `true` if ledger is empty (no locked funds, no unbonding chunks), `false` otherwise.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.locked.is_zero() && self.unbonding_info.is_empty()
+    }
 }
