@@ -4,7 +4,7 @@ use crate::mock::{
     TestAccount, AST, BLOCK_REWARD, UNBONDING_PERIOD, *,
 };
 use codec::Encode;
-use fp_evm::PrecompileOutput;
+use evm::{executor::PrecompileOutput};
 use frame_support::{assert_ok, dispatch::Dispatchable};
 use pallet_evm::{ExitSucceed, PrecompileSet};
 use sha3::{Digest, Keccak256};

@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use fp_evm::{Context, ExitError, ExitSucceed, PrecompileOutput};
+use evm::{executor::PrecompileOutput, Context, ExitError, ExitSucceed};
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Get,

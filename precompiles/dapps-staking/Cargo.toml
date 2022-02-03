@@ -20,7 +20,6 @@ pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = 
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13",  default-features = false }
 
 # Frontier
-fp-evm = { git = "https://github.com/PlasmNetwork/frontier", branch = "polkadot-v0.9.13", default-features = false }
 pallet-evm = { git = "https://github.com/PlasmNetwork/frontier", branch = "polkadot-v0.9.13", default-features = false }
 
 [dev-dependencies]
@@ -39,7 +38,6 @@ std = [
 	"codec/std",
     "scale-info/std",
     "evm/std",
-    "fp-evm/std",
     "sp-std/std",
     "sp-core/std",
     "sp-runtime/std",
