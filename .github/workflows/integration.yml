@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest]
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
@@ -31,7 +31,7 @@ jobs:
     - name: Cleanup after tests
       run: cargo clean
 
-    - name: Build optimized binary
+    - name: Check if code compiles
       run: cargo check --release --verbose
 
   runtime-benchmarks:
@@ -50,7 +50,7 @@ jobs:
     - name: Check targets are installed correctly
       run: rustup target list --installed
 
-    - name: Build optimized binary for benchmarking
+    - name: Check benchmarking code compilation
       run: cargo check --release --features runtime-benchmarks
 
   try-runtime:
