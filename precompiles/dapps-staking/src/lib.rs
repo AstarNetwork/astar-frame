@@ -3,7 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use evm::{executor::PrecompileOutput, Context, ExitError, ExitSucceed};
+use fp_evm::{Context, ExitSucceed, PrecompileOutput, PrecompileFailure, ExitError};
+
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Get,
@@ -29,7 +30,7 @@ where
     R::Call: From<pallet_dapps_staking::Call<R>>,
 {
     /// Fetch current era from CurrentEra storage map
-    fn read_current_era() -> Result<PrecompileOutput, ExitError> {
+    fn read_current_era() -> Result<PrecompileOutput, PrecompileFailure> {
         let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
 
@@ -43,7 +44,7 @@ where
         })
     }
     /// Fetch unbonding period
-    fn read_unbonding_period() -> Result<PrecompileOutput, ExitError> {
+    fn read_unbonding_period() -> Result<PrecompileOutput, PrecompileFailure> {
         let unbonding_period = R::UnbondingPeriod::get();
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
 
@@ -58,7 +59,7 @@ where
     }
 
     /// Fetch reward from EraRewardsAndStakes storage map
-    fn read_era_reward(input: EvmInArg) -> Result<PrecompileOutput, ExitError> {
+    fn read_era_reward(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
         let era = input.to_u256(1).low_u32();
         let read_reward = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
@@ -76,7 +77,7 @@ where
         })
     }
     /// Fetch total staked amount from EraRewardsAndStakes storage map
-    fn read_era_staked(input: EvmInArg) -> Result<PrecompileOutput, ExitError> {
+    fn read_era_staked(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
         let era = input.to_u256(1).low_u32();
         let reward_and_stake = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
@@ -95,7 +96,7 @@ where
     }
 
     /// Fetch Ledger storage map
-    fn read_staked_amount(input: EvmInArg) -> Result<PrecompileOutput, ExitError> {
+    fn read_staked_amount(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
         let staker_h160 = input.to_h160(1);
         let staker = R::AddressMapping::into_account_id(staker_h160);
@@ -117,7 +118,7 @@ where
     }
 
     /// Read the amount staked on contract in the given era
-    fn read_contract_era_stake(input: EvmInArg) -> Result<PrecompileOutput, ExitError> {
+    fn read_contract_era_stake(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(2).map_err(|e| exit_error(e))?;
 
         // parse input parameters for pallet-dapps-staking call
@@ -141,7 +142,7 @@ where
     }
 
     /// Register contract with the dapp-staking pallet
-    fn register(input: EvmInArg) -> Result<R::Call, ExitError> {
+    fn register(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
 
         // parse contract's address
@@ -153,7 +154,7 @@ where
     }
 
     /// Lock up and stake balance of the origin account.
-    fn bond_and_stake(input: EvmInArg) -> Result<R::Call, ExitError> {
+    fn bond_and_stake(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
         input.expecting_arguments(2).map_err(|e| exit_error(e))?;
 
         // parse contract's address
@@ -167,7 +168,7 @@ where
     }
 
     /// Start unbonding process and unstake balance from the contract.
-    fn unbond_and_unstake(input: EvmInArg) -> Result<R::Call, ExitError> {
+    fn unbond_and_unstake(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
         input.expecting_arguments(2).map_err(|e| exit_error(e))?;
 
         // parse contract's address
@@ -181,12 +182,12 @@ where
     }
 
     /// Start unbonding process and unstake balance from the contract.
-    fn withdraw_unbonded() -> Result<R::Call, ExitError> {
+    fn withdraw_unbonded() -> Result<R::Call, PrecompileFailure> {
         Ok(pallet_dapps_staking::Call::<R>::withdraw_unbonded {}.into())
     }
 
     /// Claim rewards for the contract in the dapp-staking pallet
-    fn claim(input: EvmInArg) -> Result<R::Call, ExitError> {
+    fn claim(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
         input.expecting_arguments(2).map_err(|e| exit_error(e))?;
 
         // parse contract's address
@@ -202,7 +203,7 @@ where
     /// Helper method to decode type SmartContract enum
     pub fn decode_smart_contract(
         contract_h160: H160,
-    ) -> Result<<R as pallet_dapps_staking::Config>::SmartContract, ExitError> {
+    ) -> Result<<R as pallet_dapps_staking::Config>::SmartContract, PrecompileFailure> {
         // Encode contract address to fit SmartContract enum.
         // Since the SmartContract enum type can't be accessed from this pecompile,
         // use locally defined enum clone (see Contract enum)
@@ -231,7 +232,8 @@ where
         input: &[u8],
         target_gas: Option<u64>,
         context: &Context,
-    ) -> Result<PrecompileOutput, ExitError> {
+		is_static: bool,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         let input = EvmInArg::new(&input);
         let selector = input.selector().map_err(|e| exit_error(e))?;
         let call = match selector {
@@ -252,7 +254,9 @@ where
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
             [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim(input)?,
             _ => {
-                return Err(ExitError::Other("No method at given selector".into()));
+                return Err(	PrecompileFailure::Error {
+                    exit_status: ExitError::Other("no method at given selector".into()),
+                });
             }
         };
 
@@ -261,7 +265,10 @@ where
             let required_gas = R::GasWeightMapping::weight_to_gas(info.weight);
 
             if required_gas > gas_limit {
-                return Err(ExitError::OutOfGas);
+                return Err(
+                PrecompileFailure::Error {
+                    exit_status: ExitError::OutOfGas,
+                });
             }
         }
 
