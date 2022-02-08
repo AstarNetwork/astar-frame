@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use fp_evm::{Context, ExitSucceed, PrecompileOutput, PrecompileFailure, ExitError};
+use fp_evm::{Context, ExitError, ExitSucceed, PrecompileFailure, PrecompileOutput};
 
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
@@ -232,7 +232,7 @@ where
         input: &[u8],
         target_gas: Option<u64>,
         context: &Context,
-		is_static: bool,
+        _is_static: bool,
     ) -> Result<PrecompileOutput, PrecompileFailure> {
         let input = EvmInArg::new(&input);
         let selector = input.selector().map_err(|e| exit_error(e))?;
@@ -254,8 +254,8 @@ where
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
             [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim(input)?,
             _ => {
-                return Err(	PrecompileFailure::Error {
-                    exit_status: ExitError::Other("no method at given selector".into()),
+                return Err(PrecompileFailure::Error {
+                    exit_status: ExitError::Other("No method at given selector".into()),
                 });
             }
         };
@@ -265,8 +265,7 @@ where
             let required_gas = R::GasWeightMapping::weight_to_gas(info.weight);
 
             if required_gas > gas_limit {
-                return Err(
-                PrecompileFailure::Error {
+                return Err(PrecompileFailure::Error {
                     exit_status: ExitError::OutOfGas,
                 });
             }

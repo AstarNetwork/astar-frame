@@ -7,7 +7,10 @@ use frame_support::{
     PalletId,
 };
 use pallet_dapps_staking::weights;
-use pallet_evm::{AddressMapping, EnsureAddressNever, EnsureAddressRoot, ExitError, PrecompileSet};
+use pallet_evm::{
+    AddressMapping, EnsureAddressNever, EnsureAddressRoot, ExitError, PrecompileResult,
+    PrecompileSet,
+};
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
 use sp_io::TestExternalities;
@@ -178,21 +181,29 @@ where
     R::Call: From<pallet_dapps_staking::Call<R>>,
 {
     fn execute(
+        &self,
         address: H160,
         input: &[u8],
         target_gas: Option<u64>,
         context: &Context,
-    ) -> Option<Result<PrecompileOutput, ExitError>> {
+        is_static: bool,
+    ) -> Option<PrecompileResult> {
         match address {
             a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(
-                input, target_gas, context,
+                input, target_gas, context, is_static,
             )),
             _ => None,
         }
     }
+
+    fn is_precompile(&self, _: sp_core::H160) -> bool {
+        todo!()
+    }
 }
 
-pub type Precompiles = DappPrecompile<TestRuntime>;
+parameter_types! {
+    pub PrecompilesValue: DappPrecompile<TestRuntime> = DappPrecompile(Default::default());
+}
 
 impl pallet_evm::Config for TestRuntime {
     type FeeCalculator = ();
@@ -203,7 +214,8 @@ impl pallet_evm::Config for TestRuntime {
     type Currency = Balances;
     type Event = Event;
     type Runner = pallet_evm::runner::stack::Runner<Self>;
-    type Precompiles = DappPrecompile<TestRuntime>;
+    type PrecompilesType = DappPrecompile<TestRuntime>;
+    type PrecompilesValue = PrecompilesValue;
     type ChainId = ();
     type OnChargeTransaction = ();
     type BlockGasLimit = ();
@@ -366,8 +378,8 @@ pub fn initialize_first_block() {
 }
 
 /// default evm context
-pub fn default_context() -> evm::Context {
-    evm::Context {
+pub fn default_context() -> fp_evm::Context {
+    fp_evm::Context {
         address: Default::default(),
         caller: Default::default(),
         apparent_value: U256::zero(),
@@ -387,7 +399,9 @@ pub fn evm_call(source: AccountId, input: Vec<u8>) -> pallet_evm::Call<TestRunti
         input,
         value: U256::zero(),
         gas_limit: u64::max_value(),
-        gas_price: U256::zero().into(),
+        max_fee_per_gas: 0.into(),
+        max_priority_fee_per_gas: Some(U256::zero()),
         nonce: None,
+        access_list: Vec::new(),
     }
 }

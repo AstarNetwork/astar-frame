@@ -110,7 +110,7 @@ pub fn argument_from_h160_array(value: [u8; 20]) -> Vec<u8> {
 
 /// Returns an evm error with provided (static) text.
 pub fn exit_error<T: Into<alloc::borrow::Cow<'static, str>>>(text: T) -> PrecompileFailure {
-	PrecompileFailure::Error {
-		exit_status: ExitError::Other(text.into()),
-	}
+    PrecompileFailure::Error {
+        exit_status: ExitError::Other(text.into()),
+    }
 }

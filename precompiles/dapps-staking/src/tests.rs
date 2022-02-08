@@ -1,10 +1,10 @@
 use crate::mock::{
     advance_to_era, default_context, evm_call, exit_error, initialize_first_block,
-    precompile_address, Call, DappsStaking, EraIndex, ExternalityBuilder, Origin, Precompiles,
-    TestAccount, AST, BLOCK_REWARD, UNBONDING_PERIOD, *,
+    precompile_address, Call, DappsStaking, EraIndex, ExternalityBuilder, Origin, TestAccount, AST,
+    BLOCK_REWARD, UNBONDING_PERIOD, *,
 };
 use codec::Encode;
-use evm::{executor::PrecompileOutput};
+use fp_evm::{ExitError, PrecompileFailure, PrecompileOutput};
 use frame_support::{assert_ok, dispatch::Dispatchable};
 use pallet_evm::{ExitSucceed, PrecompileSet};
 use sha3::{Digest, Keccak256};
@@ -14,6 +14,10 @@ use std::collections::BTreeMap;
 use crate::utils;
 use codec::Decode;
 
+fn precompiles() -> DappPrecompile<TestRuntime> {
+    PrecompilesValue::get()
+}
+
 #[test]
 fn selector_out_of_bounds_nok() {
     ExternalityBuilder::default().build().execute_with(|| {
@@ -22,14 +26,17 @@ fn selector_out_of_bounds_nok() {
         // Use 3 bytes selector. 4 bytes are needed
         let selector_nok = vec![0x01, 0x02, 0x03];
 
-        let expected = Some(Err(exit_error("Selector too short")));
+        let expected = Some(Err(PrecompileFailure::Error {
+            exit_status: ExitError::Other("Selector too short".into()),
+        }));
 
         assert_eq!(
-            Precompiles::execute(
+            precompiles().execute(
                 precompile_address(),
                 &selector_nok,
                 None,
                 &default_context(),
+                false,
             ),
             expected
         );
@@ -43,14 +50,17 @@ fn selector_unknown_nok() {
         // We use 3 bytes selector. 4 byts are needed
         let selector_nok = vec![0x01, 0x02, 0x03, 0x04];
 
-        let expected = Some(Err(exit_error("No method at given selector")));
+        let expected = Some(Err(PrecompileFailure::Error {
+            exit_status: exit_error("No method at given selector"),
+        }));
 
         assert_eq!(
-            Precompiles::execute(
+            precompiles().execute(
                 precompile_address(),
                 &selector_nok,
                 None,
                 &default_context(),
+                false,
             ),
             expected
         );
@@ -74,7 +84,13 @@ fn current_era_is_ok() {
         }));
 
         assert_eq!(
-            Precompiles::execute(precompile_address(), &selector, None, &default_context()),
+            precompiles().execute(
+                precompile_address(),
+                &selector,
+                None,
+                &default_context(),
+                false
+            ),
             expected
         );
 
@@ -88,7 +104,13 @@ fn current_era_is_ok() {
             logs: Default::default(),
         }));
         assert_eq!(
-            Precompiles::execute(precompile_address(), &selector, None, &default_context()),
+            precompiles().execute(
+                precompile_address(),
+                &selector,
+                None,
+                &default_context(),
+                false
+            ),
             expected
         );
     });
@@ -110,7 +132,13 @@ fn read_unbonding_period_is_ok() {
             logs: Default::default(),
         }));
         assert_eq!(
-            Precompiles::execute(precompile_address(), &selector, None, &default_context()),
+            precompiles().execute(
+                precompile_address(),
+                &selector,
+                None,
+                &default_context(),
+                false
+            ),
             expected
         );
     });
@@ -140,13 +168,27 @@ fn read_era_reward_is_ok() {
 
         // verify that argument check is done in read_era_reward()
         assert_eq!(
-            Precompiles::execute(precompile_address(), &selector, None, &default_context()),
-            Some(Err(exit_error("Too few arguments")))
+            precompiles().execute(
+                precompile_address(),
+                &selector,
+                None,
+                &default_context(),
+                false
+            ),
+            Some(Err(PrecompileFailure::Error {
+                exit_status: exit_error("Too few arguments"),
+            }))
         );
 
         // execute and verify read_era_reward() query
         assert_eq!(
-            Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
+            precompiles().execute(
+                precompile_address(),
+                &input_data,
+                None,
+                &default_context(),
+                false
+            ),
             expected
         );
     });
@@ -176,13 +218,27 @@ fn read_era_staked_is_ok() {
 
         // verify that argument check is done in read_era_staked()
         assert_eq!(
-            Precompiles::execute(precompile_address(), &selector, None, &default_context()),
-            Some(Err(exit_error("Too few arguments")))
+            precompiles().execute(
+                precompile_address(),
+                &selector,
+                None,
+                &default_context(),
+                false
+            ),
+            Some(Err(PrecompileFailure::Error {
+                exit_status: exit_error("Too few arguments"),
+            }))
         );
 
         // execute and verify read_era_staked() query
         assert_eq!(
-            Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
+            precompiles().execute(
+                precompile_address(),
+                &input_data,
+                None,
+                &default_context(),
+                false
+            ),
             expected
         );
     });
@@ -201,8 +257,16 @@ fn read_era_reward_too_many_arguments_nok() {
         input_data[4..37].copy_from_slice(&era);
 
         assert_eq!(
-            Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
-            Some(Err(exit_error("Too many arguments")))
+            precompiles().execute(
+                precompile_address(),
+                &input_data,
+                None,
+                &default_context(),
+                false
+            ),
+            Some(Err(PrecompileFailure::Error {
+                exit_status: exit_error("Too many arguments"),
+            }))
         )
     });
 }
@@ -222,10 +286,18 @@ fn error_mapping_is_ok() {
             let mut input_data = Vec::<u8>::from([0u8; 36]);
             input_data[0..4].copy_from_slice(&selector);
             input_data[16..36].copy_from_slice(&TEST_CONTRACT);
-            let expected = Some(Err(exit_error("AlreadyRegisteredContract")));
+            let expected = Some(Err(PrecompileFailure::Error {
+                exit_status: exit_error("AlreadyRegisteredContract"),
+            }));
 
             assert_eq!(
-                Precompiles::execute(precompile_address(), &input_data, None, &default_context(),),
+                precompiles().execute(
+                    precompile_address(),
+                    &input_data,
+                    None,
+                    &default_context(),
+                    false
+                ),
                 expected
             );
         });
@@ -426,12 +498,26 @@ fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
 
     // verify that argument check is done in registered_contract
     assert_eq!(
-        Precompiles::execute(precompile_address(), &selector, None, &default_context()),
-        Some(Err(exit_error("Too few arguments")))
+        precompiles().execute(
+            precompile_address(),
+            &selector,
+            None,
+            &default_context(),
+            false
+        ),
+        Some(Err(PrecompileFailure::Error {
+            exit_status: ExitError::Other("Too few arguments".into()),
+        }))
     );
 
     assert_eq!(
-        Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
+        precompiles().execute(
+            precompile_address(),
+            &input_data,
+            None,
+            &default_context(),
+            false
+        ),
         expected
     );
 }
@@ -531,13 +617,27 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128, era: EraInd
 
     // verify that argument check is done in read_contract_era_stake
     assert_eq!(
-        Precompiles::execute(precompile_address(), &selector, None, &default_context()),
-        Some(Err(exit_error("Too few arguments")))
+        precompiles().execute(
+            precompile_address(),
+            &selector,
+            None,
+            &default_context(),
+            false
+        ),
+        Some(Err(PrecompileFailure::Error {
+            exit_status: ExitError::Other("Too few arguments".into()),
+        }))
     );
 
     // execute and verify read_contract_era_stake() query
     assert_eq!(
-        Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
+        precompiles().execute(
+            precompile_address(),
+            &input_data,
+            None,
+            &default_context(),
+            false
+        ),
         expected
     );
 }
@@ -591,12 +691,26 @@ fn is_in_astarbase_is_ok(staker: TestAccount, amount: u128) {
 
     // verify that argument check is done
     assert_eq!(
-        Precompiles::execute(precompile_address(), &selector, None, &default_context()),
-        Some(Err(exit_error("Too few arguments")))
+        precompiles().execute(
+            precompile_address(),
+            &selector,
+            None,
+            &default_context(),
+            false
+        ),
+        Some(Err(PrecompileFailure::Error {
+            exit_status: ExitError::Other("Too few arguments".into()),
+        }))
     );
 
     assert_eq!(
-        Precompiles::execute(precompile_address(), &input_data, None, &default_context()),
+        precompiles().execute(
+            precompile_address(),
+            &input_data,
+            None,
+            &default_context(),
+            false
+        ),
         expected
     );
 }
