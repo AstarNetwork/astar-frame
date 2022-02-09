@@ -538,7 +538,6 @@ fn bond_stake_and_verify(staker: TestAccount, contract_array: [u8; 20], amount: 
     assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
 
     read_staked_amount_verify(staker.clone(), amount.clone());
-    is_in_astarbase_is_ok(staker, amount);
 }
 
 /// helper function to unbond, unstake and verify if resulet is OK
@@ -557,7 +556,6 @@ fn unbond_unstake_and_verify(staker: TestAccount, contract_array: [u8; 20], amou
     assert_ok!(Call::Evm(evm_call(staker.clone(), input_data.clone())).dispatch(Origin::root()));
 
     read_staked_amount_verify(staker.clone(), amount.clone());
-    is_in_astarbase_is_ok(staker, amount);
 }
 
 /// helper function to withdraw unstaked funds and verify if resulet is OK
@@ -670,47 +668,4 @@ fn decode_smart_contract_from_array(
     .map_err(|_| "Error while decoding SmartContract")?;
 
     Ok(smart_contract)
-}
-
-/// test for Astarbase.sol
-fn is_in_astarbase_is_ok(staker: TestAccount, amount: u128) {
-    let selector = &Keccak256::digest(b"is_in_astarbase(address)")[0..4];
-    let mut input_data = Vec::<u8>::from([0u8; 36]);
-    input_data[0..4].copy_from_slice(&selector);
-
-    let staker_arg = utils::argument_from_h160(staker.to_h160());
-
-    input_data[4..36].copy_from_slice(&staker_arg);
-
-    let expected = Some(Ok(PrecompileOutput {
-        exit_status: ExitSucceed::Returned,
-        output: utils::argument_from_u128(amount),
-        cost: Default::default(),
-        logs: Default::default(),
-    }));
-
-    // verify that argument check is done
-    assert_eq!(
-        precompiles().execute(
-            precompile_address(),
-            &selector,
-            None,
-            &default_context(),
-            false
-        ),
-        Some(Err(PrecompileFailure::Error {
-            exit_status: ExitError::Other("Too few arguments".into()),
-        }))
-    );
-
-    assert_eq!(
-        precompiles().execute(
-            precompile_address(),
-            &input_data,
-            None,
-            &default_context(),
-            false
-        ),
-        expected
-    );
 }

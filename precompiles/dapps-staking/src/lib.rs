@@ -242,9 +242,7 @@ where
             [0xdb, 0x62, 0xb2, 0x01] => return Self::read_unbonding_period(),
             [0xd9, 0x42, 0x4b, 0x16] => return Self::read_era_reward(input),
             [0x18, 0x38, 0x66, 0x93] => return Self::read_era_staked(input),
-            [0x32, 0xbc, 0x5c, 0xa2] | [0xbd, 0x2b, 0x1d, 0x4c] => {
-                return Self::read_staked_amount(input)
-            }
+            [0x32, 0xbc, 0x5c, 0xa2] => return Self::read_staked_amount(input),
             [0x2e, 0x7e, 0x8f, 0x15] => return Self::read_contract_era_stake(input),
 
             // extrinsic calls
