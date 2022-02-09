@@ -25,14 +25,41 @@ jobs:
     - name: Check targets are installed correctly
       run: rustup target list --installed
 
+    - name: Check if code compiles
+      run: cargo check --release --verbose
+
+  test-and-coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ env.RUST_VERSION }}
+        targets: 'wasm32-unknown-unknown'
+
+    - name: Checkout the source code
+      uses: actions/checkout@master
+      with:
+        submodules: true
+
+    - name: Check targets are installed correctly
+      run: rustup target list --installed
+
     - name: Run all tests
       run: cargo test --all
 
     - name: Cleanup after tests
       run: cargo clean
 
-    - name: Check if code compiles
-      run: cargo check --release --verbose
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+
+    - name: Generate code coverage report
+      run: cargo tarpaulin --verbose -o=Html
+
+    - uses: actions/upload-artifact@master
+      with:
+        name: coverage-report.html
+        path: tarpaulin-report.html
 
   runtime-benchmarks:
     runs-on: ubuntu-latest
