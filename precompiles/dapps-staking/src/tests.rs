@@ -342,7 +342,7 @@ fn bond_and_stake_is_ok() {
             stakers_map.insert(TestAccount::Dino, amount_staked_dino);
 
             let era = 1;
-            contract_era_stake_verify(TEST_CONTRACT, amount_staked_bobo + amount_staked_dino, era);
+            contract_era_stake_verify(TEST_CONTRACT, amount_staked_bobo + amount_staked_dino);
             contract_era_stakers_verify(TEST_CONTRACT, era, stakers_map);
         });
 }
@@ -376,7 +376,7 @@ fn unbond_and_unstake_is_ok() {
             let mut stakers_map = BTreeMap::new();
             stakers_map.insert(TestAccount::Dino, amount_staked_dino);
             // staking_info_verify(contract_array, amount_staked_dino, era, stakers_map);
-            contract_era_stake_verify(TEST_CONTRACT, amount_staked_dino, era);
+            contract_era_stake_verify(TEST_CONTRACT, amount_staked_dino);
             contract_era_stakers_verify(TEST_CONTRACT, era, stakers_map);
 
             // withdraw unbonded funds
@@ -593,19 +593,15 @@ fn claim_and_verify(contract_array: [u8; 20], era: EraIndex) {
     assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
 }
 
-fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128, era: EraIndex) {
+fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
     // prepare input to read staked amount on the contract
-    let selector = &Keccak256::digest(b"read_contract_era_stake(address,uint32)")[0..4];
-    let mut input_data = Vec::<u8>::from([0u8; 68]);
+    let selector = &Keccak256::digest(b"read_contract_era_stake(address)")[0..4];
+    let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
     input_data[16..36].copy_from_slice(&contract_array);
-    let mut era_vec = Vec::<u8>::from([0u8; 32]);
-    era_vec[31] = era as u8;
-    input_data[(68 - era_vec.len())..68].copy_from_slice(&era_vec);
 
     // Compose expected outcome: add total stake on contract
-    let total = amount;
-    let expected_output = utils::argument_from_u128(total);
+    let expected_output = utils::argument_from_u128(amount);
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
         output: expected_output,

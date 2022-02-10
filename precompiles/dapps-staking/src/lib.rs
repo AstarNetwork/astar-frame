@@ -119,15 +119,16 @@ where
 
     /// Read the amount staked on contract in the given era
     fn read_contract_era_stake(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
-        input.expecting_arguments(2).map_err(|e| exit_error(e))?;
+        input.expecting_arguments(1).map_err(|e| exit_error(e))?;
 
         // parse input parameters for pallet-dapps-staking call
         let contract_h160 = input.to_h160(1);
         let contract_id = Self::decode_smart_contract(contract_h160)?;
-        let era = input.to_u256(2).low_u32();
+        let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
 
         // call pallet-dapps-staking
-        let staking_info = pallet_dapps_staking::Pallet::<R>::staking_info(&contract_id, era);
+        let staking_info =
+            pallet_dapps_staking::Pallet::<R>::staking_info(&contract_id, current_era);
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
         // encode output with total
         let total = TryInto::<u128>::try_into(staking_info.total).unwrap_or(0);
@@ -243,7 +244,7 @@ where
             [0xd9, 0x42, 0x4b, 0x16] => return Self::read_era_reward(input),
             [0x18, 0x38, 0x66, 0x93] => return Self::read_era_staked(input),
             [0x32, 0xbc, 0x5c, 0xa2] => return Self::read_staked_amount(input),
-            [0x2e, 0x7e, 0x8f, 0x15] => return Self::read_contract_era_stake(input),
+            [0xfe, 0x93, 0x87, 0x9a] => return Self::read_contract_era_stake(input),
 
             // extrinsic calls
             [0x44, 0x20, 0xe4, 0x86] => Self::register(input)?,

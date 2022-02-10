@@ -13,7 +13,7 @@ interface DappsStaking {
     function read_current_era() external view returns (uint256);
 
     /// @dev Read unbonding period constant.
-    /// @return The unbonding period
+    /// @return The unbonding period in eras
     function read_unbonding_period() external view returns (uint256);
 
     /// @dev Read Total network reward for the given era
@@ -28,9 +28,9 @@ interface DappsStaking {
     /// @return Staked amount for the staker
     function read_staked_amount(address staker) external view returns (uint128);
 
-    /// @dev Read the amount staked on contract in the given era
-    /// @return The amount staked on contract in the given era
-    function read_contract_era_stake(address contract_id, uint32 era) external view returns (uint128);
+    /// @dev Read the staked amount from the era when the amount was last staked/unstaked
+    /// @return The most recent total staked amount on contract
+    function read_contract_era_stake(address contract_id) external view returns (uint128);
 
 
     // Extrinsic calls
@@ -48,5 +48,6 @@ interface DappsStaking {
     function withdraw_unbonded() external;
 
     /// @dev Claim contract's rewards.
+    /// @dev Please use only for testing. This call will be replaced with 2 new calls in PR#6
     function claim(address, uint128) external;
 }
