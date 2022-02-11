@@ -3,8 +3,9 @@
 
 use fp_evm::{Context, ExitSucceed, PrecompileOutput};
 use pallet_evm::Precompile;
-use sp_core::{crypto::UncheckedFrom, sr25519, Pair, H256};
+use sp_core::{crypto::UncheckedFrom, sr25519, H256};
 use sp_std::marker::PhantomData;
+use sp_std::prelude::*;
 
 use precompile_utils::{
     Bytes, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
@@ -81,7 +82,7 @@ impl<Runtime: pallet_evm::Config> Sr25519Precompile<Runtime> {
             signature, public, message,
         );
 
-        let is_confirmed = sr25519::Pair::verify(&signature, &message[..], &public);
+        let is_confirmed = sp_io::crypto::sr25519_verify(&signature, &message[..], &public);
 
         log::trace!(
             target: "sr25519-precompile",
