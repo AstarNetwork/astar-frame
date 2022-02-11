@@ -253,7 +253,6 @@ where
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
             [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim(input)?,
             _ => {
-                println!("selector{:x?}", selector);
                 return Err(PrecompileFailure::Error {
                     exit_status: ExitError::Other("No method at given selector".into()),
                 });
