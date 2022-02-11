@@ -30,7 +30,7 @@ interface DappsStaking {
 
     /// @dev Read the staked amount from the era when the amount was last staked/unstaked
     /// @return The most recent total staked amount on contract
-    function read_contract_era_stake(address contract_id) external view returns (uint128);
+    function read_contract_stake(address contract_id) external view returns (uint128);
 
 
     // Extrinsic calls

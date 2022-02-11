@@ -118,7 +118,7 @@ where
     }
 
     /// Read the amount staked on contract in the given era
-    fn read_contract_era_stake(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn read_contract_stake(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
 
         // parse input parameters for pallet-dapps-staking call
@@ -244,7 +244,7 @@ where
             [0xd9, 0x42, 0x4b, 0x16] => return Self::read_era_reward(input),
             [0x18, 0x38, 0x66, 0x93] => return Self::read_era_staked(input),
             [0x32, 0xbc, 0x5c, 0xa2] => return Self::read_staked_amount(input),
-            [0xfe, 0x93, 0x87, 0x9a] => return Self::read_contract_era_stake(input),
+            [0x53, 0x9d, 0x59, 0x57] => return Self::read_contract_stake(input),
 
             // extrinsic calls
             [0x44, 0x20, 0xe4, 0x86] => Self::register(input)?,
@@ -253,6 +253,7 @@ where
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
             [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim(input)?,
             _ => {
+                println!("selector{:x?}", selector);
                 return Err(PrecompileFailure::Error {
                     exit_status: ExitError::Other("No method at given selector".into()),
                 });

@@ -595,7 +595,7 @@ fn claim_and_verify(contract_array: [u8; 20], era: EraIndex) {
 
 fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
     // prepare input to read staked amount on the contract
-    let selector = &Keccak256::digest(b"read_contract_era_stake(address)")[0..4];
+    let selector = &Keccak256::digest(b"read_contract_stake(address)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
     input_data[16..36].copy_from_slice(&contract_array);
@@ -609,7 +609,7 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
         logs: Default::default(),
     }));
 
-    // verify that argument check is done in read_contract_era_stake
+    // verify that argument check is done in read_contract_stake
     assert_eq!(
         precompiles().execute(
             precompile_address(),
@@ -623,7 +623,7 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
         }))
     );
 
-    // execute and verify read_contract_era_stake() query
+    // execute and verify read_contract_stake() query
     assert_eq!(
         precompiles().execute(
             precompile_address(),
