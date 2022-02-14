@@ -142,3 +142,6 @@ Temporary Items
 .keys
 
 .vscode
+
+# Not needed for libraries
+Cargo.lock
