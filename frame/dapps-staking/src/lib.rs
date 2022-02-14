@@ -71,7 +71,7 @@ pub struct EraRewardAndStake<Balance: HasCompact> {
 /// Used to split total EraPayout among contracts.
 /// Each tuple (contract, era) has this structure.
 /// This will be used to reward contracts developer and his stakers.
-#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct EraStakingPoints<AccountId: Ord, Balance: HasCompact> {
     /// Total staked amount.
     #[codec(compact)]
@@ -81,6 +81,16 @@ pub struct EraStakingPoints<AccountId: Ord, Balance: HasCompact> {
     /// Accrued and claimed rewards on this contract both for stakers and the developer
     #[codec(compact)]
     pub claimed_rewards: Balance,
+}
+
+impl<AccountId: Ord, Balance: HasCompact + Default> Default for EraStakingPoints<AccountId, Balance> {
+    fn default() -> Self {
+        Self {
+            total: Default::default(),
+            stakers: BTreeMap::new(),
+            claimed_rewards: Default::default(),
+        }
+    }
 }
 
 /// Storage value representing the current Dapps staking pallet storage version.

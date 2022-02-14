@@ -3,15 +3,4 @@ members = [
     "frame/block-reward",
     "frame/custom-signatures",
     "frame/dapps-staking",
-    "precompiles/dapps-staking",
 ]
-
-exclude = [
-    "vendor"
-]
-
-[patch.crates-io]
-ethereum = { git = "https://github.com/AstarNetwork/ethereum", branch = "polkadot-v0.9.16" }
-evm = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.16" }
-evm-gasometer = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.16" }
-evm-runtime = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.16" }
