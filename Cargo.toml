@@ -5,7 +5,3 @@ members = [
     "frame/dapps-staking",
     "precompiles/sr25519",
 ]
-
-exclude = [
-    "vendor"
-]
