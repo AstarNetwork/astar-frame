@@ -390,6 +390,8 @@ pub mod v3 {
         StakersInfo(StakersInfoMigrationState),
         /// In the middle of `StakingInfo` migration.
         StakingInfo(Option<Vec<u8>>),
+        /// In the middle of `RegisteredDapps` migration
+        DAppInfo(Option<Vec<u8>>),
         Finished,
     }
 
@@ -659,7 +661,9 @@ pub mod v3 {
                             RegisteredDapps::<T>::storage_map_final_key(contract_id.clone()),
                         );
                         last_processed_info.processed_items = 0;
-                    } else if consumed_weight >= weight_limit {
+                    }
+
+                    if consumed_weight >= weight_limit {
                         log::info!(
                             ">>> StakersInfo migration stopped after consuming {:?} weight.",
                             consumed_weight
@@ -729,6 +733,50 @@ pub mod v3 {
             }
 
             log::info!(">>> EraStakingPoints migration finished.");
+            migration_state = MigrationState::DAppInfo(None);
+        }
+
+        //
+        // 5
+        //
+        if let MigrationState::DAppInfo(last_processed_key) = migration_state.clone() {
+            let key_iter = if let Some(previous_key) = last_processed_key {
+                RegisteredDapps::<T>::iter_keys_from(previous_key)
+            } else {
+                RegisteredDapps::<T>::iter_keys()
+            };
+
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+
+            for key in key_iter {
+                let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
+                translate(&key_as_vec, |value: T::AccountId| {
+                    Some(DAppInfo::<T::AccountId> {
+                        developer: value,
+                        state: DAppState::Registered,
+                    })
+                });
+
+                consumed_weight =
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+
+                if consumed_weight >= weight_limit {
+                    log::info!(
+                        ">>> DAppInfo migration stopped after consuming {:?} weight.",
+                        consumed_weight
+                    );
+                    MigrationStateV3::<T>::put(MigrationState::DAppInfo(Some(key_as_vec)));
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+
+                    if cfg!(feature = "try-runtime") {
+                        return stateful_migrate::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+
+            log::info!(">>> DAppInfo migration finished.");
         }
 
         MigrationStateV3::<T>::put(MigrationState::Finished);
