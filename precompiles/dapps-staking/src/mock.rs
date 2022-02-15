@@ -21,7 +21,7 @@ use sp_runtime::{
 };
 extern crate alloc;
 
-pub(crate) type AccountId = TestAccount;
+pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
@@ -53,19 +53,19 @@ pub(crate) const REGISTER_DEPOSIT: Balance = 10 * AST;
 pub(crate) const BLOCK_REWARD: Balance = 1000 * AST;
 
 #[derive(
-	Eq,
-	PartialEq,
-	Ord,
-	PartialOrd,
-	Clone,
-	Encode,
-	Decode,
-	Debug,
-	MaxEncodedLen,
-	Serialize,
-	Deserialize,
-	derive_more::Display,
-	scale_info::TypeInfo,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Encode,
+    Decode,
+    Debug,
+    MaxEncodedLen,
+    Serialize,
+    Deserialize,
+    derive_more::Display,
+    scale_info::TypeInfo,
 )]
 
 pub enum TestAccount {
@@ -81,13 +81,14 @@ impl Default for TestAccount {
     }
 }
 
-impl AddressMapping<TestAccount> for TestAccount {
-    fn into_account_id(h160_account: H160) -> TestAccount {
+// needed for associated type in pallet_evm
+impl AddressMapping<AccountId> for TestAccount {
+    fn into_account_id(h160_account: H160) -> AccountId {
         match h160_account {
-            a if a == H160::repeat_byte(0x11) => Self::Alex,
-            a if a == H160::repeat_byte(0x22) => Self::Bobo,
-            a if a == H160::repeat_byte(0x33) => Self::Dino,
-            _ => Self::Empty,
+            a if a == H160::repeat_byte(0x11) => TestAccount::Alex as u64,
+            a if a == H160::repeat_byte(0x22) => TestAccount::Bobo as u64,
+            a if a == H160::repeat_byte(0x33) => TestAccount::Dino as u64,
+            _ => TestAccount::Empty as u64,
         }
     }
 }
@@ -103,19 +104,30 @@ impl TestAccount {
     }
 }
 
-impl From<H160> for TestAccount {
-    fn from(h160_account: H160) -> TestAccount {
-        TestAccount::into_account_id(h160_account)
+// this trait is needed since AccountId is u64
+trait H160Conversion {
+    fn to_h160(&self) -> H160;
+}
+
+impl H160Conversion for AccountId {
+    fn to_h160(&self) -> H160 {
+        match self {
+            1 => H160::repeat_byte(0x11),
+            2 => H160::repeat_byte(0x22),
+            3 => H160::repeat_byte(0x33),
+            _ => Default::default(),
+        }
     }
 }
 
-impl TestAccount {
-    pub fn to_argument(&self) -> Vec<u8> {
-        let mut account_encoded = self.encode();
-        let encoded_len = account_encoded.len();
-        let mut buffer = vec![0; ARG_SIZE_BYTES - encoded_len];
-        buffer.append(&mut account_encoded);
-        buffer
+impl From<TestAccount> for AccountId {
+    fn from(x: TestAccount) -> Self {
+        match x {
+            TestAccount::Alex => 1,
+            TestAccount::Bobo => 2,
+            TestAccount::Dino => 3,
+            _ => 0,
+        }
     }
 }
 
@@ -176,10 +188,7 @@ pub struct DappPrecompile<R>(PhantomData<R>);
 
 impl<R> PrecompileSet for DappPrecompile<R>
 where
-    R::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
-    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    R: pallet_dapps_staking::Config + pallet_evm::Config,
-    R::Call: From<pallet_dapps_staking::Call<R>>,
+    DappsStakingWrapper<R>: Precompile,
 {
     fn execute(
         &self,
@@ -197,8 +206,8 @@ where
         }
     }
 
-    fn is_precompile(&self, _: sp_core::H160) -> bool {
-        todo!()
+    fn is_precompile(&self, address: sp_core::H160) -> bool {
+        address == precompile_address()
     }
 }
 
@@ -211,7 +220,7 @@ impl pallet_evm::Config for TestRuntime {
     type GasWeightMapping = ();
     type CallOrigin = EnsureAddressRoot<AccountId>;
     type WithdrawOrigin = EnsureAddressNever<AccountId>;
-    type AddressMapping = AccountId;
+    type AddressMapping = TestAccount;
     type Currency = Balances;
     type Event = Event;
     type Runner = pallet_evm::runner::stack::Runner<Self>;

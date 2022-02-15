@@ -274,12 +274,12 @@ fn read_era_reward_too_many_arguments_nok() {
 #[test]
 fn error_mapping_is_ok() {
     ExternalityBuilder::default()
-        .with_balances(vec![(TestAccount::Alex, 200 * AST)])
+        .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
         .build()
         .execute_with(|| {
             initialize_first_block();
             let developer = TestAccount::Alex;
-            register_and_verify(developer.clone(), TEST_CONTRACT);
+            register_and_verify(developer.clone().into(), TEST_CONTRACT);
 
             // attempt to register the same contract
             let selector = &Keccak256::digest(b"register(address)")[0..4];
@@ -306,11 +306,11 @@ fn error_mapping_is_ok() {
 #[test]
 fn register_is_ok() {
     ExternalityBuilder::default()
-        .with_balances(vec![(TestAccount::Alex, 200 * AST)])
+        .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
         .build()
         .execute_with(|| {
             initialize_first_block();
-            let developer = TestAccount::Alex;
+            let developer = TestAccount::Alex.into();
             register_and_verify(developer, TEST_CONTRACT);
         });
 }
@@ -319,16 +319,16 @@ fn register_is_ok() {
 fn bond_and_stake_is_ok() {
     ExternalityBuilder::default()
         .with_balances(vec![
-            (TestAccount::Alex, 200 * AST),
-            (TestAccount::Bobo, 200 * AST),
-            (TestAccount::Dino, 100 * AST),
+            (TestAccount::Alex.into(), 200 * AST),
+            (TestAccount::Bobo.into(), 200 * AST),
+            (TestAccount::Dino.into(), 100 * AST),
         ])
         .build()
         .execute_with(|| {
             initialize_first_block();
 
             // register new contract by Alex
-            let developer = TestAccount::Alex;
+            let developer = TestAccount::Alex.into();
             register_and_verify(developer, TEST_CONTRACT);
 
             let amount_staked_bobo = 100 * AST;
@@ -338,8 +338,8 @@ fn bond_and_stake_is_ok() {
             bond_stake_and_verify(TestAccount::Dino, TEST_CONTRACT, amount_staked_dino);
 
             let mut stakers_map = BTreeMap::new();
-            stakers_map.insert(TestAccount::Bobo, amount_staked_bobo);
-            stakers_map.insert(TestAccount::Dino, amount_staked_dino);
+            stakers_map.insert(TestAccount::Bobo.into(), amount_staked_bobo);
+            stakers_map.insert(TestAccount::Dino.into(), amount_staked_dino);
 
             let era = 1;
             contract_era_stake_verify(TEST_CONTRACT, amount_staked_bobo + amount_staked_dino);
@@ -351,16 +351,16 @@ fn bond_and_stake_is_ok() {
 fn unbond_and_unstake_is_ok() {
     ExternalityBuilder::default()
         .with_balances(vec![
-            (TestAccount::Alex, 200 * AST),
-            (TestAccount::Bobo, 200 * AST),
-            (TestAccount::Dino, 100 * AST),
+            (TestAccount::Alex.into(), 200 * AST),
+            (TestAccount::Bobo.into(), 200 * AST),
+            (TestAccount::Dino.into(), 100 * AST),
         ])
         .build()
         .execute_with(|| {
             initialize_first_block();
 
             // register new contract by Alex
-            let developer = TestAccount::Alex;
+            let developer = TestAccount::Alex.into();
             register_and_verify(developer, TEST_CONTRACT);
 
             let amount_staked_bobo = 100 * AST;
@@ -374,14 +374,14 @@ fn unbond_and_unstake_is_ok() {
             unbond_unstake_and_verify(TestAccount::Bobo, TEST_CONTRACT, amount_staked_bobo);
 
             let mut stakers_map = BTreeMap::new();
-            stakers_map.insert(TestAccount::Dino, amount_staked_dino);
+            stakers_map.insert(TestAccount::Dino.into(), amount_staked_dino);
             // staking_info_verify(contract_array, amount_staked_dino, era, stakers_map);
             contract_era_stake_verify(TEST_CONTRACT, amount_staked_dino);
             contract_era_stakers_verify(TEST_CONTRACT, era, stakers_map);
 
             // withdraw unbonded funds
             advance_to_era(era + UNBONDING_PERIOD + 1);
-            withdraw_unbonded_verify(TestAccount::Bobo);
+            withdraw_unbonded_verify(TestAccount::Bobo.into());
         });
 }
 
@@ -389,9 +389,9 @@ fn unbond_and_unstake_is_ok() {
 fn claim_is_ok() {
     ExternalityBuilder::default()
         .with_balances(vec![
-            (TestAccount::Alex, 200 * AST),
-            (TestAccount::Bobo, 200 * AST),
-            (TestAccount::Dino, 200 * AST),
+            (TestAccount::Alex.into(), 200 * AST),
+            (TestAccount::Bobo.into(), 200 * AST),
+            (TestAccount::Dino.into(), 200 * AST),
         ])
         .build()
         .execute_with(|| {
@@ -399,7 +399,7 @@ fn claim_is_ok() {
 
             // register new contract by Alex
             let developer = TestAccount::Alex;
-            register_and_verify(developer, TEST_CONTRACT);
+            register_and_verify(developer.into(), TEST_CONTRACT);
 
             let stake_amount_total = 300 * AST;
             let ratio_bobo = Perbill::from_rational(3u32, 5u32);
@@ -426,15 +426,21 @@ fn claim_is_ok() {
             let bobo_reward = ratio_bobo * stakers_reward;
             let dino_reward = ratio_dino * stakers_reward;
             assert_eq!(
-                <TestRuntime as pallet_evm::Config>::Currency::free_balance(TestAccount::Alex),
+                <TestRuntime as pallet_evm::Config>::Currency::free_balance(
+                    &TestAccount::Alex.into()
+                ),
                 (200 * AST) + developer_reward
             );
             assert_eq!(
-                <TestRuntime as pallet_evm::Config>::Currency::free_balance(TestAccount::Bobo),
+                <TestRuntime as pallet_evm::Config>::Currency::free_balance(
+                    &TestAccount::Bobo.into()
+                ),
                 (200 * AST) + bobo_reward
             );
             assert_eq!(
-                <TestRuntime as pallet_evm::Config>::Currency::free_balance(TestAccount::Dino),
+                <TestRuntime as pallet_evm::Config>::Currency::free_balance(
+                    &TestAccount::Dino.into()
+                ),
                 (200 * AST) + dino_reward
             );
         });
@@ -445,7 +451,7 @@ fn claim_is_ok() {
 // ****************************************************************************************************
 
 /// helper function to register and verify if registration is valid
-fn register_and_verify(developer: TestAccount, contract_array: [u8; 20]) {
+fn register_and_verify(developer: AccountId, contract_array: [u8; 20]) {
     let selector = &Keccak256::digest(b"register(address)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
@@ -532,10 +538,12 @@ fn bond_stake_and_verify(staker: TestAccount, contract_array: [u8; 20], amount: 
     input_data[(68 - staking_amount.len())..68].copy_from_slice(&staking_amount);
 
     // verify that argument check is done in bond_and_stake()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), selector.to_vec())).dispatch(Origin::root()));
+    assert_ok!(
+        Call::Evm(evm_call(staker.clone().into(), selector.to_vec())).dispatch(Origin::root())
+    );
 
     // call bond_and_stake()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
+    assert_ok!(Call::Evm(evm_call(staker.clone().into(), input_data)).dispatch(Origin::root()));
 
     read_staked_amount_verify(staker.clone(), amount.clone());
 }
@@ -550,29 +558,33 @@ fn unbond_unstake_and_verify(staker: TestAccount, contract_array: [u8; 20], amou
     input_data[(68 - staking_amount.len())..68].copy_from_slice(&staking_amount);
 
     // verify that argument check is done in unbond_unstake()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), selector.to_vec())).dispatch(Origin::root()));
+    assert_ok!(
+        Call::Evm(evm_call(staker.clone().into(), selector.to_vec())).dispatch(Origin::root())
+    );
 
     // call unbond_and_unstake()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), input_data.clone())).dispatch(Origin::root()));
+    assert_ok!(
+        Call::Evm(evm_call(staker.clone().into(), input_data.clone())).dispatch(Origin::root())
+    );
 
     read_staked_amount_verify(staker.clone(), amount.clone());
 }
 
 /// helper function to withdraw unstaked funds and verify if resulet is OK
-fn withdraw_unbonded_verify(staker: TestAccount) {
+fn withdraw_unbonded_verify(staker: AccountId) {
     let selector = &Keccak256::digest(b"withdraw_unbonded()")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 4]);
     input_data[0..4].copy_from_slice(&selector);
 
     // call unbond_and_unstake(). Check usable_balance before and after the call
     assert_ne!(
-        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker),
+        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker.into()),
         <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker)
     );
-    assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
+    assert_ok!(Call::Evm(evm_call(staker.clone().into(), input_data)).dispatch(Origin::root()));
     assert_eq!(
-        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker),
-        <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker)
+        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker.into()),
+        <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker.into())
     );
 }
 
@@ -587,10 +599,12 @@ fn claim_and_verify(contract_array: [u8; 20], era: EraIndex) {
     input_data[(68 - era_array.len())..68].copy_from_slice(&era_array);
 
     // verify that argument check is done in claim()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), selector.to_vec())).dispatch(Origin::root()));
+    assert_ok!(
+        Call::Evm(evm_call(staker.clone().into(), selector.to_vec())).dispatch(Origin::root())
+    );
 
     // call bond_and_stake()
-    assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
+    assert_ok!(Call::Evm(evm_call(staker.clone().into(), input_data)).dispatch(Origin::root()));
 }
 
 fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
@@ -640,7 +654,7 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
 fn contract_era_stakers_verify(
     contract_array: [u8; 20],
     era: EraIndex,
-    expected_stakers_map: BTreeMap<TestAccount, u128>,
+    expected_stakers_map: BTreeMap<AccountId, u128>,
 ) {
     // check the storage
     let smart_contract = decode_smart_contract_from_array(contract_array).unwrap();
