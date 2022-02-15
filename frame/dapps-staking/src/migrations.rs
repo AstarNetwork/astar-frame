@@ -614,7 +614,7 @@ pub mod v3 {
 
             log::info!(">>> GeneralEraInfo migration finished.");
 
-            migration_state = MigrationState::StakersInfo(None);
+            migration_state = MigrationState::StakersInfo(Default::default());
         }
 
         //
