@@ -85,10 +85,10 @@ impl Default for TestAccount {
 impl AddressMapping<AccountId> for TestAccount {
     fn into_account_id(h160_account: H160) -> AccountId {
         match h160_account {
-            a if a == H160::repeat_byte(0x11) => TestAccount::Alex as u64,
-            a if a == H160::repeat_byte(0x22) => TestAccount::Bobo as u64,
-            a if a == H160::repeat_byte(0x33) => TestAccount::Dino as u64,
-            _ => TestAccount::Empty as u64,
+            a if a == H160::repeat_byte(0x11) => TestAccount::Alex.into(),
+            a if a == H160::repeat_byte(0x22) => TestAccount::Bobo.into(),
+            a if a == H160::repeat_byte(0x33) => TestAccount::Dino.into(),
+            _ => TestAccount::Empty.into(),
         }
     }
 }
