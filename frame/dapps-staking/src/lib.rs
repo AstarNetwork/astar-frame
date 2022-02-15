@@ -114,18 +114,6 @@ pub struct EraStakingPoints<Balance: HasCompact> {
     contract_reward_claimed: bool,
 }
 
-impl<AccountId: Ord, Balance: HasCompact + Default> Default
-    for EraStakingPoints<AccountId, Balance>
-{
-    fn default() -> Self {
-        Self {
-            total: Default::default(),
-            stakers: BTreeMap::new(),
-            claimed_rewards: Default::default(),
-        }
-    }
-}
-
 /// Storage value representing the current Dapps staking pallet storage version.
 /// Used by `on_runtime_upgrade` to determine whether a storage migration is needed or not.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]

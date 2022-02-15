@@ -117,10 +117,7 @@ pub(crate) fn assert_unregister(developer: AccountId, contract_id: &MockSmartCon
         init_reserved_balance - <TestRuntime as Config>::RegisterDeposit::get()
     );
 
-    assert_eq!(
-        final_state.era_info.staked,
-        init_state.era_info.staked
-    );
+    assert_eq!(final_state.era_info.staked, init_state.era_info.staked);
 
     assert_eq!(
         final_state.contract_info.total,
@@ -356,10 +353,7 @@ pub(crate) fn assert_unbond_and_unstake(
         final_state.era_info.staked
     );
     // Ensure that locked amount is the same since this will only start the unbonding period
-    assert_eq!(
-        init_state.era_info.locked,
-        final_state.era_info.locked
-    );
+    assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
 }
 
 /// Used to perform start_unbonding with sucess and storage assertions.
