@@ -350,7 +350,7 @@ pub mod pallet {
                 Error::<T>::UpgradeTooHeavy
             );
 
-            let consumed_weight = migrations::v2::stateful_migrate::<T>(weight_limit);
+            let consumed_weight = migrations::v3::stateful_migrate::<T>(weight_limit);
 
             Ok(Some(consumed_weight).into())
         }
