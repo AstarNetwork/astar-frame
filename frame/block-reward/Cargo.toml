@@ -5,7 +5,7 @@ authors = ["Stake  Technologies <devops@stake.co.jp>"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://astar.network"
-repository = "https://github.com/PlasmNetwork/Astar"
+repository = "https://github.com/AstarNetwork/astar-frame/"
 description = "FRAME pallet for manage block rewards"
 
 [package.metadata.docs.rs]

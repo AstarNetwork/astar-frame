@@ -4,7 +4,7 @@ version = "2.1.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2018"
 homepage = "https://astar.network/"
-repository = "https://github.com/PlasmNetwork/Astar/tree/development/dapp-staking"
+repository = "https://github.com/AstarNetwork/astar-frame/"
 description = "FRAME pallet to staking for dapps"
 license = "PolyForm-Noncommercial-1.0.0"
 

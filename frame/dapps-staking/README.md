@@ -244,7 +244,7 @@ Error:
 
 ---
 ## Referent API implementation
-https://github.com/PlasmNetwork/astar-apps
+https://github.com/AstarNetwork/astar-apps
 
 ---
 ## FAQ
