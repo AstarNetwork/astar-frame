@@ -239,7 +239,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     /// Latest staked value.
     /// E.g. if staker is fully unstaked, this will return `Zero`.
     /// Othwerise returns a non-zero balance.
-    fn latest_staked_value(&self) -> Balance {
+    pub fn latest_staked_value(&self) -> Balance {
         self.stakes.last().map_or(Zero::zero(), |x| x.staked)
     }
 
