@@ -22,9 +22,6 @@ function create_tags {
         exit 1
     fi
 
-    PKG_NAME=$(cat $CARGO_TOML_PATH | grep name | awk '{print $3}' | sed 's/"//g')
-    PKG_VERSION=$(cat $CARGO_TOML_PATH | grep version | awk '{print $3}' | sed 's/"//g')
-
     local line key value entry_regex
     entry_regex="^[[:blank:]]*([[:alnum:]_-]+)[[:blank:]]*=[[:blank:]]*('[^']+'|\"[^\"]+\"|[^#]+)"
     while read -r line; do
