@@ -4,4 +4,5 @@ members = [
     "frame/custom-signatures",
     "frame/dapps-staking",
     "precompiles/dapps-staking",
+    "precompiles/sr25519",
 ]
