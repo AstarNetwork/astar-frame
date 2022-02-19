@@ -504,15 +504,10 @@ pub mod pallet {
             );
 
             // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
-            let stake_result = Self::stake(
-                &staker,
-                &contract_id,
-                &mut ledger,
-                value_to_stake,
-                &mut staking_info,
-                &mut staker_info,
-            );
-            ensure!(stake_result.is_ok(), stake_result.err());
+            Self::stake(value_to_stake, &mut staker_info);
+            Self::add_ledger_locked(&staker, &mut ledger, value_to_stake);
+            Self::update_contract_era_stake(&mut staking_info, &contract_id, value_to_stake);
+            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
 
             Self::deposit_event(Event::<T>::BondAndStake(
                 staker,
@@ -672,7 +667,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let mut staking_info = Self::staking_info(&contract_id, era);
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -690,7 +685,6 @@ pub mod pallet {
             )?;
 
             T::Currency::resolve_creating(&staker, reward_imbalance);
-            Self::update_staker_info(&staker, &contract_id, staker_info);
 
             Self::deposit_event(Event::<T>::Reward(
                 staker.clone(),
@@ -701,16 +695,11 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
             if let RewardHandling::PayoutAndStake = ledger.reward_handling {
-                let stake_result = Self::stake(
-                    &staker,
-                    &contract_id,
-                    &mut ledger,
-                    staker_reward,
-                    &mut staking_info,
-                    &mut staker_info,
-                );
-                ensure!(stake_result.is_ok(), stake_result.err());
+                Self::stake(staker_reward, &mut staker_info);
+                Self::add_ledger_locked(&staker, &mut ledger, staker_reward);
+                Self::update_contract_era_stake(&mut staking_info, &contract_id, staker_reward);
             }
+            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
             Ok(().into())
         }
 
@@ -864,26 +853,13 @@ pub mod pallet {
         }
 
         fn stake(
-            staker: &<T as frame_system::Config>::AccountId,
-            contract_id: &T::SmartContract,
-            ledger: &mut AccountLedger<BalanceOf<T>>,
             value_to_stake: BalanceOf<T>,
-            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
             staker_info: &mut StakerInfo<BalanceOf<T>>,
         ) -> DispatchResultWithPostInfo {
             let current_era = Self::current_era();
             staker_info
                 .stake(current_era, value_to_stake)
                 .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
-
-            ledger.locked = ledger
-                .locked
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-            staking_info.total = staking_info
-                .total
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
 
             // Update storage
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
@@ -893,12 +869,40 @@ pub mod pallet {
                 }
             });
 
+            Ok(().into())
+        }
+
+        fn add_ledger_locked(
+            staker: &<T as frame_system::Config>::AccountId,
+            ledger: &mut AccountLedger<BalanceOf<T>>,
+            value_to_add: BalanceOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            ledger.locked = ledger
+                .locked
+                .checked_add(&value_to_add)
+                .ok_or(ArithmeticError::Overflow)?;
+
             Self::update_ledger(&staker, ledger.clone());
-            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
+
+            Ok(().into())
+        }
+
+        fn update_contract_era_stake(
+            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
+            contract_id: &T::SmartContract,
+            value_to_stake: BalanceOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let current_era = Self::current_era();
+            staking_info.total = staking_info
+                .total
+                .checked_add(&value_to_stake)
+                .ok_or(ArithmeticError::Overflow)?;
+
             ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
             Ok(().into())
         }
+
         /// Update the ledger for a staker. This will also update the stash lock.
         /// This lock will lock the entire funds except paying for further transactions.
         fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
