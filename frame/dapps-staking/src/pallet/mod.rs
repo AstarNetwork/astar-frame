@@ -493,9 +493,6 @@ pub mod pallet {
                 staking_info.number_of_stakers = staking_info.number_of_stakers.saturating_add(1);
             }
 
-            staker_info
-                .stake(current_era, value_to_stake)
-                .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
             ensure!(
                 // One spot should remain for compounding reward claim call
                 staker_info.len() < T::MaxEraStakeValues::get(),
@@ -507,26 +504,15 @@ pub mod pallet {
             );
 
             // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
-            ledger.locked = ledger
-                .locked
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-            staking_info.total = staking_info
-                .total
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-
-            // Update storage
-            GeneralEraInfo::<T>::mutate(&current_era, |value| {
-                if let Some(x) = value {
-                    x.staked = x.staked.saturating_add(value_to_stake);
-                    x.locked = x.locked.saturating_add(value_to_stake);
-                }
-            });
-
-            Self::update_ledger(&staker, ledger);
-            Self::update_staker_info(&staker, &contract_id, staker_info);
-            ContractEraStake::<T>::insert(&contract_id, current_era, staking_info);
+            let stake_result = Self::stake(
+                &staker,
+                &contract_id,
+                &mut ledger,
+                value_to_stake,
+                &mut staking_info,
+                &mut staker_info,
+            );
+            ensure!(stake_result.is_ok(), stake_result.err());
 
             Self::deposit_event(Event::<T>::BondAndStake(
                 staker,
@@ -713,6 +699,18 @@ pub mod pallet {
                 staker_reward,
             ));
 
+            let mut ledger = Self::ledger(&staker);
+            if let RewardHandling::PayoutAndStake = ledger.reward_handling {
+                let stake_result = Self::stake(
+                    &staker,
+                    &contract_id,
+                    &mut ledger,
+                    staker_reward,
+                    &mut staking_info,
+                    &mut staker_info,
+                );
+                ensure!(stake_result.is_ok(), stake_result.err());
+            }
             Ok(().into())
         }
 
@@ -865,6 +863,42 @@ pub mod pallet {
             }
         }
 
+        fn stake(
+            staker: &<T as frame_system::Config>::AccountId,
+            contract_id: &T::SmartContract,
+            ledger: &mut AccountLedger<BalanceOf<T>>,
+            value_to_stake: BalanceOf<T>,
+            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
+            staker_info: &mut StakerInfo<BalanceOf<T>>,
+        ) -> DispatchResultWithPostInfo {
+            let current_era = Self::current_era();
+            staker_info
+                .stake(current_era, value_to_stake)
+                .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
+
+            ledger.locked = ledger
+                .locked
+                .checked_add(&value_to_stake)
+                .ok_or(ArithmeticError::Overflow)?;
+            staking_info.total = staking_info
+                .total
+                .checked_add(&value_to_stake)
+                .ok_or(ArithmeticError::Overflow)?;
+
+            // Update storage
+            GeneralEraInfo::<T>::mutate(&current_era, |value| {
+                if let Some(x) = value {
+                    x.staked = x.staked.saturating_add(value_to_stake);
+                    x.locked = x.locked.saturating_add(value_to_stake);
+                }
+            });
+
+            Self::update_ledger(&staker, ledger.clone());
+            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
+            ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+
+            Ok(().into())
+        }
         /// Update the ledger for a staker. This will also update the stash lock.
         /// This lock will lock the entire funds except paying for further transactions.
         fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
