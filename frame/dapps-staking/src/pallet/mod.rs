@@ -130,12 +130,7 @@ pub mod pallet {
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
-    /// Stores the block number of when the next era starts
-    #[pallet::storage]
-    #[pallet::getter(fn next_era_starting_block)]
-    pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
-
-    /// Registered developer accounts points to coresponding contract
+    /// Registered developer accounts points to corresponding contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
     pub(crate) type RegisteredDevelopers<T: Config> =
@@ -147,7 +142,13 @@ pub mod pallet {
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
 
-    /// Total staked, locked & rewarded for a paticular era
+    /// Legacy, don't use.
+    /// TODO: remove in future upgrades
+    #[pallet::storage]
+    pub type EraRewardsAndStakes<T: Config> =
+        StorageMap<_, Twox64Concat, EraIndex, migrations::v3::OldEraRewardAndStake<BalanceOf<T>>>;
+
+    /// Total staked, locked & rewarded for a particular era
     #[pallet::storage]
     #[pallet::getter(fn general_era_info)]
     pub type GeneralEraInfo<T: Config> =
@@ -306,8 +307,7 @@ pub mod pallet {
                 NextEraStartingBlock::<T>::put(now + blocks_per_era);
 
                 let reward = BlockRewardAccumulator::<T>::take();
-                Self::reward_balance_snapshoot(previous_era, reward);
-                let consumed_weight = Self::rotate_staking_info(previous_era);
+                Self::reward_balance_snapshot(previous_era, reward);
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
@@ -975,7 +975,7 @@ pub mod pallet {
         /// and stores it for future distribution
         ///
         /// This is called just at the beginning of an era.
-        fn reward_balance_snapshoot(era: EraIndex, rewards: RewardInfo<BalanceOf<T>>) {
+        fn reward_balance_snapshot(era: EraIndex, reward: BalanceOf<T>) {
             // Get the reward and stake information for previous era
             let mut era_info = Self::general_era_info(era).unwrap_or_default();
 
