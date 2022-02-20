@@ -706,7 +706,10 @@ pub mod pallet {
             ));
 
             let mut ledger = Self::ledger(&staker);
-            if let RewardHandling::PayoutAndStake = ledger.reward_handling {
+            if let (RewardHandling::PayoutAndStake, false) = (
+                ledger.reward_handling,
+                staker_info.latest_staked_value().is_zero(),
+            ) {
                 ensure!(
                     Self::stake(staker_reward, &mut staker_info).is_ok(),
                     Error::<T>::UnexpectedStakeInfoEra
