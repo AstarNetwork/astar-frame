@@ -219,6 +219,8 @@ pub mod pallet {
         Reward(T::AccountId, T::SmartContract, EraIndex, BalanceOf<T>),
         /// Maintenance mode has been enabled or disabled
         MaintenanceMode(bool),
+        /// Claimed staker reward restaked
+        RewardRestaked(T::AccountId, T::SmartContract, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -718,6 +720,11 @@ pub mod pallet {
                         .is_ok(),
                     ArithmeticError::Overflow
                 );
+                Self::deposit_event(Event::<T>::RewardRestaked(
+                    staker.clone(),
+                    contract_id.clone(),
+                    staker_reward,
+                ));
             }
             Self::update_staker_info(&staker, &contract_id, staker_info.clone());
             Ok(().into())
