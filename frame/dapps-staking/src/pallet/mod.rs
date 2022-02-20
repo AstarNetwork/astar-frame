@@ -275,6 +275,10 @@ pub mod pallet {
         RequiredContractPreApproval,
         /// Developer's account is already part of pre-approved list
         AlreadyPreApprovedDeveloper,
+        /// No ledger info for account
+        NothingStakedForAccount,
+        /// Reward handling already set to the requested value
+        RestakingAlreadySet,
     }
 
     #[pallet::hooks]
@@ -863,6 +867,30 @@ pub mod pallet {
 
             Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
 
+        #[pallet::weight(T::WeightInfo::enable_compound_staking())]
+        pub fn enable_compound_staking(
+            origin: OriginFor<T>,
+            enabled: bool,
+        ) -> DispatchResultWithPostInfo {
+            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            let staker = ensure_signed(origin)?;
+            let mut ledger = Self::ledger(&staker);
+
+            ensure!(!ledger.is_empty(), Error::<T>::NothingStakedForAccount);
+
+            let requested_reward_handling = if enabled {
+                RewardHandling::PayoutAndStake
+            } else {
+                RewardHandling::OnlyPayout
+            };
+            ensure!(
+                requested_reward_handling != ledger.reward_handling,
+                Error::<T>::RestakingAlreadySet
+            );
+
+            ledger.reward_handling = requested_reward_handling;
+
+            Self::update_ledger(&staker, ledger);
             Ok(().into())
         }
     }
