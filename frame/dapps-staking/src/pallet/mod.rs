@@ -499,6 +499,9 @@ pub mod pallet {
                 staking_info.number_of_stakers = staking_info.number_of_stakers.saturating_add(1);
             }
 
+            staker_info
+                .stake(current_era, value_to_stake)
+                .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
             ensure!(
                 // One spot should remain for compounding reward claim call
                 staker_info.len() < T::MaxEraStakeValues::get(),
@@ -511,24 +514,18 @@ pub mod pallet {
 
             // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
             ensure!(
-                Self::stake(value_to_stake, &mut staker_info, current_era).is_ok(),
-                Error::<T>::UnexpectedStakeInfoEra
-            );
-            ensure!(
-                Self::add_ledger_locked(&staker, &mut ledger, value_to_stake).is_ok(),
-                ArithmeticError::Overflow
-            );
-            ensure!(
-                Self::update_contract_era_stake(
-                    &mut staking_info,
-                    &contract_id,
+                Self::update_staking_values(
                     value_to_stake,
-                    current_era
+                    &mut ledger,
+                    &mut staking_info,
+                    current_era,
                 )
                 .is_ok(),
                 ArithmeticError::Overflow
             );
-            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
+            Self::update_ledger(&staker, ledger);
+            Self::update_staker_info(&staker, &contract_id, staker_info);
+            ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
             Self::deposit_event(Event::<T>::BondAndStake(
                 staker,
@@ -719,31 +716,31 @@ pub mod pallet {
                 ledger.reward_handling,
                 staker_info.latest_staked_value().is_zero(),
             ) {
+                staker_info
+                    .stake(current_era, staker_reward)
+                    .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
+
                 ensure!(
-                    Self::stake(staker_reward, &mut staker_info, current_era).is_ok(),
-                    Error::<T>::UnexpectedStakeInfoEra
-                );
-                ensure!(
-                    Self::add_ledger_locked(&staker, &mut ledger, staker_reward).is_ok(),
-                    ArithmeticError::Overflow
-                );
-                ensure!(
-                    Self::update_contract_era_stake(
-                        &mut staking_info,
-                        &contract_id,
+                    Self::update_staking_values(
                         staker_reward,
-                        current_era
+                        &mut ledger,
+                        &mut staking_info,
+                        current_era,
                     )
                     .is_ok(),
                     ArithmeticError::Overflow
                 );
+                Self::update_ledger(&staker, ledger);
+
+                ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+
                 Self::deposit_event(Event::<T>::RewardRestaked(
                     staker.clone(),
                     contract_id.clone(),
                     staker_reward,
                 ));
             }
-            Self::update_staker_info(&staker, &contract_id, staker_info.clone());
+            Self::update_staker_info(&staker, &contract_id, staker_info);
             Ok(().into())
         }
 
@@ -921,13 +918,20 @@ pub mod pallet {
         }
 
         fn stake(
+        fn update_staking_values(
             value_to_stake: BalanceOf<T>,
-            staker_info: &mut StakerInfo<BalanceOf<T>>,
+            ledger: &mut AccountLedger<BalanceOf<T>>,
+            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
             current_era: u32,
         ) -> DispatchResultWithPostInfo {
-            staker_info
-                .stake(current_era, value_to_stake)
-                .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
+            ledger.locked = ledger
+                .locked
+                .checked_add(&value_to_stake)
+                .ok_or(ArithmeticError::Overflow)?;
+            staking_info.total = staking_info
+                .total
+                .checked_add(&value_to_stake)
+                .ok_or(ArithmeticError::Overflow)?;
 
             // Update storage
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
@@ -936,37 +940,6 @@ pub mod pallet {
                     x.locked = x.locked.saturating_add(value_to_stake);
                 }
             });
-
-            Ok(().into())
-        }
-
-        fn add_ledger_locked(
-            staker: &<T as frame_system::Config>::AccountId,
-            ledger: &mut AccountLedger<BalanceOf<T>>,
-            value_to_add: BalanceOf<T>,
-        ) -> DispatchResultWithPostInfo {
-            ledger.locked = ledger
-                .locked
-                .checked_add(&value_to_add)
-                .ok_or(ArithmeticError::Overflow)?;
-
-            Self::update_ledger(&staker, ledger.clone());
-
-            Ok(().into())
-        }
-
-        fn update_contract_era_stake(
-            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
-            contract_id: &T::SmartContract,
-            value_to_stake: BalanceOf<T>,
-            current_era: u32,
-        ) -> DispatchResultWithPostInfo {
-            staking_info.total = staking_info
-                .total
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-
-            ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
             Ok(().into())
         }
