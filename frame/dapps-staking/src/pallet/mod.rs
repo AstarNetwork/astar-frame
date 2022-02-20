@@ -504,9 +504,19 @@ pub mod pallet {
             );
 
             // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
-            Self::stake(value_to_stake, &mut staker_info);
-            Self::add_ledger_locked(&staker, &mut ledger, value_to_stake);
-            Self::update_contract_era_stake(&mut staking_info, &contract_id, value_to_stake);
+            ensure!(
+                Self::stake(value_to_stake, &mut staker_info).is_ok(),
+                Error::<T>::UnexpectedStakeInfoEra
+            );
+            ensure!(
+                Self::add_ledger_locked(&staker, &mut ledger, value_to_stake).is_ok(),
+                ArithmeticError::Overflow
+            );
+            ensure!(
+                Self::update_contract_era_stake(&mut staking_info, &contract_id, value_to_stake)
+                    .is_ok(),
+                ArithmeticError::Overflow
+            );
             Self::update_staker_info(&staker, &contract_id, staker_info.clone());
 
             Self::deposit_event(Event::<T>::BondAndStake(
@@ -695,9 +705,19 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
             if let RewardHandling::PayoutAndStake = ledger.reward_handling {
-                Self::stake(staker_reward, &mut staker_info);
-                Self::add_ledger_locked(&staker, &mut ledger, staker_reward);
-                Self::update_contract_era_stake(&mut staking_info, &contract_id, staker_reward);
+                ensure!(
+                    Self::stake(staker_reward, &mut staker_info).is_ok(),
+                    Error::<T>::UnexpectedStakeInfoEra
+                );
+                ensure!(
+                    Self::add_ledger_locked(&staker, &mut ledger, staker_reward).is_ok(),
+                    ArithmeticError::Overflow
+                );
+                ensure!(
+                    Self::update_contract_era_stake(&mut staking_info, &contract_id, staker_reward)
+                        .is_ok(),
+                    ArithmeticError::Overflow
+                );
             }
             Self::update_staker_info(&staker, &contract_id, staker_info.clone());
             Ok(().into())
