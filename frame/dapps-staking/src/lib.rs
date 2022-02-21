@@ -132,8 +132,10 @@ impl Default for Version {
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct EraStake<Balance: AtLeast32BitUnsigned + Copy> {
     /// Staked amount in era
+    #[codec(compact)]
     staked: Balance,
     /// Staked era
+    #[codec(compact)]
     era: EraIndex,
 }
 

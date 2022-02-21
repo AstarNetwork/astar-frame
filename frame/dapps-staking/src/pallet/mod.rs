@@ -417,27 +417,11 @@ pub mod pallet {
             );
             let developer = dapp_info.developer.clone();
 
-            // TODO: Is this really needed? Why shouldn't same account be eligible to register multiple contracts?
-            let registered_contract =
-                RegisteredDevelopers::<T>::get(&developer).ok_or(Error::<T>::NotOwnedContract)?;
-
-            // This is a sanity check for the unregistration since it requires the caller
-            // to input the correct contract address.
-            // TODO: this error should be impossible with the introduction of root as caller
-            ensure!(
-                registered_contract == contract_id,
-                Error::<T>::NotOwnedContract,
-            );
-
             let current_era = Self::current_era();
             dapp_info.state = DAppState::Unregistered(current_era);
             RegisteredDapps::<T>::insert(&contract_id, dapp_info);
 
-            // Developer account released.
             T::Currency::unreserve(&developer, T::RegisterDeposit::get());
-
-            // TODO: Imo this should be removed
-            RegisteredDevelopers::<T>::remove(&developer);
 
             Self::deposit_event(Event::<T>::ContractRemoved(developer, contract_id));
 
