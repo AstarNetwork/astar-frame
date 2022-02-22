@@ -170,7 +170,7 @@ pub(crate) fn assert_withdraw_from_unregistered(
     // Verify that all final states are as expected
     assert_eq!(
         init_state.era_info.staked,
-        final_state.era_info.staked - staked_value
+        final_state.era_info.staked + staked_value
     );
     assert_eq!(
         init_state.era_info.locked,
@@ -178,8 +178,8 @@ pub(crate) fn assert_withdraw_from_unregistered(
     );
     assert_eq!(init_state.dapp_info, final_state.dapp_info);
     assert_eq!(
-        final_state.ledger.locked,
-        init_state.ledger.locked + staked_value
+        init_state.ledger.locked,
+        final_state.ledger.locked + staked_value
     );
     assert_eq!(
         init_state.ledger.unbonding_info,
