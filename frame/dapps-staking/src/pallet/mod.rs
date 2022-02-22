@@ -466,8 +466,8 @@ pub mod pallet {
             Self::update_staker_info(&staker, &contract_id, staker_info);
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
                 if let Some(x) = value {
-                    x.staked = x.staked.saturating_add(staked_value);
-                    x.locked = x.locked.saturating_add(staked_value);
+                    x.staked = x.staked.saturating_sub(staked_value);
+                    x.locked = x.locked.saturating_sub(staked_value);
                 }
             });
 

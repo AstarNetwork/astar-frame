@@ -174,12 +174,12 @@ pub(crate) fn assert_withdraw_from_unregistered(
     );
     assert_eq!(
         init_state.era_info.locked,
-        final_state.era_info.locked - staked_value
+        final_state.era_info.locked + staked_value
     );
     assert_eq!(init_state.dapp_info, final_state.dapp_info);
     assert_eq!(
         final_state.ledger.locked,
-        init_state.ledger.locked - staked_value
+        init_state.ledger.locked + staked_value
     );
     assert_eq!(
         init_state.ledger.unbonding_info,
@@ -389,8 +389,8 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
         init_era_info.locked - expected_unbond_amount
     );
     assert_eq!(
-        final_ledger.locked ,
-        init_ledger.locked- expected_unbond_amount
+        final_ledger.locked,
+        init_ledger.locked - expected_unbond_amount
     );
 }
 
