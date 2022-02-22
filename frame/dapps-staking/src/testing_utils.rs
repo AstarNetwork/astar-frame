@@ -385,12 +385,12 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let final_rewards_and_stakes = GeneralEraInfo::<TestRuntime>::get(current_era).unwrap();
     assert_eq!(final_rewards_and_stakes.staked, init_era_info.staked);
     assert_eq!(
-        final_rewards_and_stakes.locked - expected_unbond_amount,
-        init_era_info.locked
+        final_rewards_and_stakes.locked,
+        init_era_info.locked - expected_unbond_amount
     );
     assert_eq!(
-        final_ledger.locked,
-        init_ledger.locked - expected_unbond_amount
+        final_ledger.locked ,
+        init_ledger.locked- expected_unbond_amount
     );
 }
 

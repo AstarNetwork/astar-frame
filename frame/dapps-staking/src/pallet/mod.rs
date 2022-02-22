@@ -682,7 +682,7 @@ pub mod pallet {
             Self::update_ledger(&staker, ledger);
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
                 if let Some(x) = value {
-                    x.locked = x.locked.saturating_add(withdraw_amount)
+                    x.locked = x.locked.saturating_sub(withdraw_amount)
                 }
             });
 
