@@ -9,6 +9,7 @@ pub(crate) struct MemorySnapshot {
     dapp_info: DAppInfo<AccountId>,
     staker_info: StakerInfo<Balance>,
     contract_info: EraStakingPoints<Balance>,
+    last_claimed_era: EraIndex,
     free_balance: Balance,
     ledger: AccountLedger<Balance>,
 }
@@ -25,8 +26,9 @@ impl MemorySnapshot {
             dapp_info: RegisteredDapps::<TestRuntime>::get(contract_id).unwrap(),
             staker_info: StakersInfo::<TestRuntime>::get(&account, contract_id),
             contract_info: DappsStaking::staking_info(contract_id, era),
-            ledger: DappsStaking::ledger(&account),
+            last_claimed_era: DappsStaking::last_claimed_era(contract_id),
             free_balance: <TestRuntime as Config>::Currency::free_balance(&account),
+            ledger: DappsStaking::ledger(&account),
         }
     }
 
@@ -38,8 +40,9 @@ impl MemorySnapshot {
             dapp_info: RegisteredDapps::<TestRuntime>::get(contract_id).unwrap(),
             staker_info: Default::default(),
             contract_info: DappsStaking::staking_info(contract_id, era),
-            ledger: Default::default(),
+            last_claimed_era: DappsStaking::last_claimed_era(contract_id),
             free_balance: Default::default(),
+            ledger: Default::default(),
         }
     }
 }
@@ -453,13 +456,13 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 }
 
 /// Used to perform claim for dApp reward with success assertion
-pub(crate) fn assert_claim_dapp(
-    claimer: AccountId,
-    contract_id: &MockSmartContract<AccountId>,
-    claim_era: EraIndex,
-) {
-    let init_state = MemorySnapshot::all(claim_era, contract_id, claimer);
-    assert!(!init_state.contract_info.contract_reward_claimed);
+pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>) {
+    let claim_era = get_claim_era_for_contract(contract_id);
+    assert!(!claim_era.is_zero());
+    let developer = RegisteredDapps::<TestRuntime>::get(contract_id)
+        .unwrap()
+        .developer;
+    let init_state = MemorySnapshot::all(claim_era, contract_id, developer);
 
     // Cannot claim rewards post unregister era
     if let DAppState::Unregistered(unregistered_era) = init_state.dapp_info.state {
@@ -474,26 +477,45 @@ pub(crate) fn assert_claim_dapp(
     );
 
     assert_ok!(DappsStaking::claim_dapp(
-        Origin::signed(claimer),
+        Origin::signed(developer),
         contract_id.clone(),
-        claim_era,
     ));
     System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-        claimer,
+        developer,
         contract_id.clone(),
         claim_era,
         calculated_reward,
     )));
 
-    let final_state = MemorySnapshot::all(claim_era, &contract_id, claimer);
+    let final_state = MemorySnapshot::all(claim_era, &contract_id, developer);
     assert_eq!(
         init_state.free_balance + calculated_reward,
         final_state.free_balance
     );
 
-    assert!(final_state.contract_info.contract_reward_claimed);
+    // New last claimed era should be updated
+    assert_eq!(final_state.last_claimed_era, claim_era);
 
     // Just in case dev is also a staker - this shouldn't cause any change in StakerInfo or Ledger
     assert_eq!(init_state.staker_info, final_state.staker_info);
     assert_eq!(init_state.ledger, final_state.ledger);
+}
+
+/// Used to get next claimable era for contract.
+/// This is the next first era after `LastClaimedEra` which has a staked amount greater than 0.
+/// In case no such era exists, `zero` is returned.
+fn get_claim_era_for_contract(contract_id: &MockSmartContract<AccountId>) -> EraIndex {
+    let last_claimed_era = DappsStaking::last_claimed_era(contract_id);
+
+    let potential_next_claim_era = last_claimed_era + 1;
+    let staking_info = DappsStaking::staking_info(contract_id, potential_next_claim_era);
+
+    if staking_info.total > Zero::zero() {
+        potential_next_claim_era
+    } else {
+        ContractEraStake::<TestRuntime>::iter_key_prefix(contract_id)
+            .filter(|x| *x > potential_next_claim_era)
+            .min()
+            .unwrap_or_default()
+    }
 }

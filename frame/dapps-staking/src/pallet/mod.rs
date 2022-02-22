@@ -191,6 +191,12 @@ pub mod pallet {
         EraStakingPoints<BalanceOf<T>>,
     >;
 
+    /// Era in which dapp reward was last claimed.
+    #[pallet::storage]
+    #[pallet::getter(fn last_claimed_era)]
+    pub type LastClaimedEra<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::SmartContract, EraIndex, ValueQuery>;
+
     #[pallet::storage]
     #[pallet::getter(fn staker_info)]
     pub(crate) type StakersInfo<T: Config> = StorageDoubleMap<
@@ -282,8 +288,6 @@ pub mod pallet {
         /// Contract has too many unlocking chunks. Withdraw the existing chunks if possible
         /// or wait for current chunks to complete unlocking process to withdraw them.
         TooManyUnlockingChunks,
-        /// Contract already claimed in this era and reward is distributed
-        AlreadyClaimedInThisEra,
         /// Era parameter is out of bounds
         EraOutOfBounds,
         /// Too many active `EraStake` values for (staker, contract) pairing.
@@ -755,7 +759,6 @@ pub mod pallet {
         pub fn claim_dapp(
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
-            #[pallet::compact] era: EraIndex,
         ) -> DispatchResultWithPostInfo {
             ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
             let _ = ensure_signed(origin)?;
@@ -763,25 +766,23 @@ pub mod pallet {
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
 
-            let current_era = Self::current_era();
+            let (contract_stake_info, claim_era) =
+                Self::next_available_claim_era_and_staking_info(&contract_id);
+
             if let DAppState::Unregistered(unregister_era) = dapp_info.state {
-                ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
+                ensure!(claim_era < unregister_era, Error::<T>::NotOperatedContract);
             }
 
-            ensure!(era < current_era, Error::<T>::EraOutOfBounds);
+            let current_era = Self::current_era();
+            ensure!(claim_era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut contract_stake_info = Self::staking_info(&contract_id, era);
-            ensure!(
-                !contract_stake_info.contract_reward_claimed,
-                Error::<T>::AlreadyClaimedInThisEra,
-            );
             ensure!(
                 contract_stake_info.total > Zero::zero(),
                 Error::<T>::NotStakedContract,
             );
 
             let reward_and_stake =
-                Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
+                Self::general_era_info(claim_era).ok_or(Error::<T>::UnknownEraReward)?;
 
             // Calculate the contract reward for this era.
             let (dapp_reward, _) = Self::dev_stakers_split(
@@ -799,16 +800,14 @@ pub mod pallet {
             )?;
 
             T::Currency::resolve_creating(&dapp_info.developer, reward_imbalance);
+            LastClaimedEra::<T>::insert(&contract_id, claim_era);
+
             Self::deposit_event(Event::<T>::Reward(
                 dapp_info.developer.clone(),
                 contract_id.clone(),
-                era,
+                claim_era,
                 dapp_reward,
             ));
-
-            // updated counter for total rewards paid to the contract
-            contract_stake_info.contract_reward_claimed = true;
-            ContractEraStake::<T>::insert(&contract_id, era, contract_stake_info);
 
             Ok(().into())
         }
@@ -936,21 +935,40 @@ pub mod pallet {
             if ContractEraStake::<T>::contains_key(contract_id, era) {
                 ContractEraStake::<T>::get(contract_id, era).unwrap()
             } else if ContractEraStake::<T>::contains_key(contract_id, era.saturating_sub(1)) {
-                let mut staking_points =
-                    ContractEraStake::<T>::get(contract_id, era.saturating_sub(1)).unwrap();
-                staking_points.contract_reward_claimed = false;
-                staking_points
+                ContractEraStake::<T>::get(contract_id, era.saturating_sub(1)).unwrap()
             } else {
-                let avail_era = ContractEraStake::<T>::iter_key_prefix(&contract_id)
+                let avail_era = ContractEraStake::<T>::iter_key_prefix(contract_id)
                     .filter(|x| *x <= era)
                     .max()
                     .unwrap_or(Zero::zero());
 
-                let mut staking_points =
-                    ContractEraStake::<T>::get(contract_id, avail_era).unwrap_or_default();
-                // Needs to be reset since otherwise it might seem as if rewards were already claimed for this era.
-                staking_points.contract_reward_claimed = false;
-                staking_points
+                ContractEraStake::<T>::get(contract_id, avail_era).unwrap_or_default()
+            }
+        }
+
+        /// Used to acquire the next avilable claim era for contract, together with staking info for that era.
+        /// In case no such era exists, `zero` is returned together with empty staking info.
+        fn next_available_claim_era_and_staking_info(
+            contract_id: &T::SmartContract,
+        ) -> (EraStakingPoints<BalanceOf<T>>, EraIndex) {
+            let era = LastClaimedEra::<T>::get(&contract_id) + 1;
+            let contract_stake_info = Self::staking_info(&contract_id, era);
+
+            // First check if info for consecutive claim era has something staked
+            if contract_stake_info.total > Zero::zero() {
+                (contract_stake_info, era)
+            } else {
+                // If not, find the first next claim era candidate
+                let next_era = ContractEraStake::<T>::iter_key_prefix(&contract_id)
+                    .filter(|x| *x > era)
+                    .min()
+                    .unwrap_or(Zero::zero());
+
+                // It's possible nothing exists so we return zero and empty staking info
+                let staking_points =
+                    ContractEraStake::<T>::get(contract_id, next_era).unwrap_or_default();
+
+                (staking_points, next_era)
             }
         }
 

@@ -392,6 +392,8 @@ pub mod v3 {
         StakingInfo(Option<Vec<u8>>),
         /// In the middle of `RegisteredDapps` migration
         DAppInfo(Option<Vec<u8>>),
+        /// In the middle of `LastClaimedEra` migration
+        LastClaimedEra(Option<Vec<u8>>),
         Finished,
     }
 
@@ -697,8 +699,6 @@ pub mod v3 {
                 ContractEraStake::<T>::iter_keys()
             };
 
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-
             for (contract_id, era) in key_iter {
                 let key_as_vec =
                     ContractEraStake::<T>::storage_double_map_final_key(contract_id, era);
@@ -708,7 +708,6 @@ pub mod v3 {
                         Some(EraStakingPoints {
                             total: value.total,
                             number_of_stakers: value.stakers.len() as u32,
-                            contract_reward_claimed: value.claimed_rewards > Zero::zero(),
                         })
                     },
                 );
@@ -746,8 +745,6 @@ pub mod v3 {
                 RegisteredDapps::<T>::iter_keys()
             };
 
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-
             for key in key_iter {
                 let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
                 translate(&key_as_vec, |value: T::AccountId| {
@@ -777,6 +774,45 @@ pub mod v3 {
             }
 
             log::info!(">>> DAppInfo migration finished.");
+            migration_state = MigrationState::LastClaimedEra(None);
+        }
+
+        //
+        // 6
+        //
+        if let MigrationState::LastClaimedEra(last_processed_key) = migration_state.clone() {
+            let key_iter = if let Some(previous_key) = last_processed_key {
+                RegisteredDapps::<T>::iter_keys_from(previous_key)
+            } else {
+                RegisteredDapps::<T>::iter_keys()
+            };
+
+            let current_era = Pallet::<T>::current_era();
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+
+            for key in key_iter {
+                LastClaimedEra::<T>::insert(&key, current_era - 1);
+                let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
+
+                consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+
+                if consumed_weight >= weight_limit {
+                    log::info!(
+                        ">>> LastClaimedEra migration stopped after consuming {:?} weight.",
+                        consumed_weight
+                    );
+                    MigrationStateV3::<T>::put(MigrationState::LastClaimedEra(Some(key_as_vec)));
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+
+                    if cfg!(feature = "try-runtime") {
+                        return stateful_migrate::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+
+            log::info!(">>> LastClaimedEra migration finished.");
         }
 
         MigrationStateV3::<T>::put(MigrationState::Finished);
@@ -807,17 +843,15 @@ pub mod v3 {
             general_era_info.staked + total_unlocking
         );
 
+        // Should be cleaned up
         assert!(EraRewardsAndStakes::<T>::iter_keys().count().is_zero());
 
+        // Expect that last claimed era is set to one era behind current one
+        LastClaimedEra::<T>::iter_values().for_each(|era| assert_eq!(era, current_era - 1));
+
         let ledger_count = Ledger::<T>::iter_keys().count() as u64;
-        U::set_temp_storage::<u64>(ledger_count, "ledger_count");
-
         let staking_info_count = ContractEraStake::<T>::iter_keys().count() as u64;
-        U::set_temp_storage(staking_info_count, "staking_info_count");
-
         let rewards_and_stakes_count = GeneralEraInfo::<T>::iter_keys().count() as u64;
-        U::set_temp_storage(rewards_and_stakes_count, "rewards_and_stakes_count");
-
         let stakers_info_count = StakersInfo::<T>::iter_keys().count() as u64;
 
         log::info!(

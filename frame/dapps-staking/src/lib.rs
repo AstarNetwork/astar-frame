@@ -110,8 +110,6 @@ pub struct EraStakingPoints<Balance: HasCompact> {
     /// Total number of active stakers
     #[codec(compact)]
     number_of_stakers: u32,
-    /// Indicates whether rewards were claimed for this era or not
-    contract_reward_claimed: bool,
 }
 
 /// Storage value representing the current Dapps staking pallet storage version.

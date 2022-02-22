@@ -221,10 +221,10 @@ benchmarks! {
         prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
         advance_to_era::<T>(claim_era + 1u32);
 
-    }: _(RawOrigin::Signed(developer.clone()), contract_id.clone(), claim_era)
+    }: _(RawOrigin::Signed(developer.clone()), contract_id.clone())
     verify {
         let staking_info = DappsStaking::<T>::contract_era_stake(&contract_id, claim_era).unwrap();
-        assert!(staking_info.contract_reward_claimed);
+        assert_eq!(LastClaimedEra::<T>::get(&contract_id), claim_era);
     }
 
     force_new_era {
