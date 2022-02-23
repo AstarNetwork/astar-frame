@@ -14,8 +14,8 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use sp_runtime::{
-    traits::{AccountIdConversion, CheckedAdd, Saturating, Zero},
-    ArithmeticError, Perbill,
+    traits::{AccountIdConversion, Saturating, Zero},
+    Perbill,
 };
 use sp_std::convert::From;
 
@@ -512,17 +512,14 @@ pub mod pallet {
                 Error::<T>::InsufficientValue,
             );
 
-            // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
-            ensure!(
-                Self::update_staking_values(
-                    value_to_stake,
-                    &mut ledger,
-                    &mut staking_info,
-                    current_era,
-                )
-                .is_ok(),
-                ArithmeticError::Overflow
-            );
+            // Increment ledger and total staker value for contract.
+            Self::update_staking_values(
+                value_to_stake,
+                &mut ledger,
+                &mut staking_info,
+                current_era,
+            )?;
+
             Self::update_ledger(&staker, ledger);
             Self::update_staker_info(&staker, &contract_id, staker_info);
             ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
@@ -704,39 +701,43 @@ pub mod pallet {
 
             T::Currency::resolve_creating(&staker, reward_imbalance);
 
-            Self::deposit_event(Event::<T>::Reward(
-                staker.clone(),
-                contract_id.clone(),
-                era,
-                staker_reward,
-            ));
-
             let mut ledger = Self::ledger(&staker);
-            if let (RewardHandling::PayoutAndStake, false) = (
-                ledger.reward_handling,
-                staker_info.latest_staked_value().is_zero(),
-            ) {
+
+            if ledger.reward_handling == RewardHandling::PayoutAndStake
+                && !staker_info.latest_staked_value().is_zero()
+            {
                 staker_info
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
 
-                ensure!(
-                    Self::update_staking_values(
-                        staker_reward,
-                        &mut ledger,
-                        &mut staking_info,
-                        current_era,
-                    )
-                    .is_ok(),
-                    ArithmeticError::Overflow
-                );
+                Self::update_staking_values(
+                    staker_reward,
+                    &mut ledger,
+                    &mut staking_info,
+                    current_era,
+                )?;
+
                 Self::update_ledger(&staker, ledger);
 
                 ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
-                Self::deposit_event(Event::<T>::RewardRestaked(
+                // Self::deposit_event(Event::<T>::RewardRestaked(
+                //     staker.clone(),
+                //     contract_id.clone(),
+                //     staker_reward,
+                // ));
+
+                Self::deposit_event(Event::<T>::Reward(
                     staker.clone(),
                     contract_id.clone(),
+                    era,
+                    staker_reward,
+                ));
+            } else {
+                Self::deposit_event(Event::<T>::Reward(
+                    staker.clone(),
+                    contract_id.clone(),
+                    era,
                     staker_reward,
                 ));
             }
@@ -877,12 +878,14 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::enable_compound_staking())]
         pub fn enable_compound_staking(
             origin: OriginFor<T>,
+            // take directly enum value
             enabled: bool,
         ) -> DispatchResultWithPostInfo {
             ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
             let staker = ensure_signed(origin)?;
             let mut ledger = Self::ledger(&staker);
 
+            // no need for err handling
             ensure!(!ledger.is_empty(), Error::<T>::NothingStakedForAccount);
 
             let requested_reward_handling = if enabled {
@@ -894,7 +897,7 @@ pub mod pallet {
                 requested_reward_handling != ledger.reward_handling,
                 Error::<T>::RestakingAlreadySet
             );
-
+            // opt. use ::mutate directly
             ledger.reward_handling = requested_reward_handling;
 
             Self::update_ledger(&staker, ledger);
@@ -924,15 +927,8 @@ pub mod pallet {
             staking_info: &mut EraStakingPoints<BalanceOf<T>>,
             current_era: u32,
         ) -> DispatchResultWithPostInfo {
-            ledger.locked = ledger
-                .locked
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-            staking_info.total = staking_info
-                .total
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-
+            ledger.locked = ledger.locked.saturating_add(value_to_stake);
+            staking_info.total = staking_info.total.saturating_add(value_to_stake);
             // Update storage
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
                 if let Some(x) = value {
