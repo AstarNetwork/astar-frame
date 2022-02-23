@@ -453,12 +453,9 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 }
 
 /// Used to perform claim for dApp reward with success assertion
-pub(crate) fn assert_claim_dapp(
-    claimer: AccountId,
-    contract_id: &MockSmartContract<AccountId>,
-    claim_era: EraIndex,
-) {
-    let init_state = MemorySnapshot::all(claim_era, contract_id, claimer);
+pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, claim_era: EraIndex) {
+    let developer = DappsStaking::dapp_info(contract_id).unwrap().developer;
+    let init_state = MemorySnapshot::all(claim_era, contract_id, developer);
     assert!(!init_state.contract_info.contract_reward_claimed);
 
     // Cannot claim rewards post unregister era
@@ -474,18 +471,18 @@ pub(crate) fn assert_claim_dapp(
     );
 
     assert_ok!(DappsStaking::claim_dapp(
-        Origin::signed(claimer),
+        Origin::signed(developer),
         contract_id.clone(),
         claim_era,
     ));
     System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-        claimer,
+        developer,
         contract_id.clone(),
         claim_era,
         calculated_reward,
     )));
 
-    let final_state = MemorySnapshot::all(claim_era, &contract_id, claimer);
+    let final_state = MemorySnapshot::all(claim_era, &contract_id, developer);
     assert_eq!(
         init_state.free_balance + calculated_reward,
         final_state.free_balance

@@ -164,7 +164,7 @@ pub mod pallet {
 
     /// Registered dapp points to the developer who registered it
     #[pallet::storage]
-    #[pallet::getter(fn registered_developer)]
+    #[pallet::getter(fn dapp_info)]
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
 

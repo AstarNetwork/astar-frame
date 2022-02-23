@@ -424,8 +424,26 @@ fn withdraw_from_unregistered_is_ok() {
         for era in 1..DappsStaking::current_era() {
             assert_claim_staker(staker_1, &contract_id);
             assert_claim_staker(staker_2, &contract_id);
-            assert_claim_dapp(developer, &contract_id, era);
+            assert_claim_dapp(&contract_id, era);
         }
+
+        // No additional claim ops should be possible
+        assert_noop!(
+            DappsStaking::claim_staker(Origin::signed(staker_1), contract_id.clone()),
+            Error::<TestRuntime>::NotStakedContract
+        );
+        assert_noop!(
+            DappsStaking::claim_staker(Origin::signed(staker_2), contract_id.clone()),
+            Error::<TestRuntime>::NotStakedContract
+        );
+        assert_noop!(
+            DappsStaking::claim_dapp(
+                Origin::signed(developer),
+                contract_id.clone(),
+                DappsStaking::current_era()
+            ),
+            Error::<TestRuntime>::NotOperatedContract
+        );
     })
 }
 
@@ -1067,7 +1085,7 @@ fn claim_not_operated_contract() {
             Error::<TestRuntime>::NotOperatedContract
         );
 
-        assert_claim_dapp(developer, &contract_id, 1);
+        assert_claim_dapp(&contract_id, 1);
         assert_noop!(
             DappsStaking::claim_dapp(Origin::signed(developer), contract_id, 2),
             Error::<TestRuntime>::NotOperatedContract
@@ -1091,7 +1109,7 @@ fn claim_invalid_era() {
 
         for era in start_era..DappsStaking::current_era() {
             assert_claim_staker(staker, &contract_id);
-            assert_claim_dapp(developer, &contract_id, era);
+            assert_claim_dapp(&contract_id, era);
         }
 
         assert_noop!(
@@ -1123,7 +1141,7 @@ fn claim_dapp_same_era_twice() {
         assert_bond_and_stake(staker, &contract_id, 100);
         advance_to_era(start_era + 1);
 
-        assert_claim_dapp(developer, &contract_id, start_era);
+        assert_claim_dapp(&contract_id, start_era);
         assert_noop!(
             DappsStaking::claim_dapp(Origin::signed(developer), contract_id, start_era),
             Error::<TestRuntime>::AlreadyClaimedInThisEra
@@ -1169,7 +1187,7 @@ fn claim_is_ok() {
         let current_era = DappsStaking::current_era();
         for era in start_era..current_era {
             assert_claim_staker(first_staker, &first_contract_id);
-            assert_claim_dapp(first_developer, &first_contract_id, era);
+            assert_claim_dapp(&first_contract_id, era);
             assert_claim_staker(second_staker, &first_contract_id);
         }
 
@@ -1240,9 +1258,74 @@ fn claim_after_unregister_is_ok() {
                     Error::<TestRuntime>::NotStakedContract
                 );
             } else {
-                assert_claim_dapp(developer, &contract_id, era);
+                assert_claim_dapp(&contract_id, era);
             }
         }
+    })
+}
+
+#[test]
+fn claim_dapp_with_zero_stake_periods_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        // Prepare scenario: <staked eras><not staked eras><staked eras><not staked eras>
+
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        advance_to_era(start_era + 5);
+        let first_full_unstake_era = DappsStaking::current_era();
+        assert_unbond_and_unstake(staker, &contract_id, stake_value);
+
+        advance_to_era(DappsStaking::current_era() + 7);
+        let restake_era = DappsStaking::current_era();
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        advance_to_era(DappsStaking::current_era() + 4);
+        let second_full_unstake_era = DappsStaking::current_era();
+        assert_unbond_and_unstake(staker, &contract_id, stake_value);
+        advance_to_era(DappsStaking::current_era() + 10);
+
+        // Ensure that first interval can be claimed
+        for era in start_era..first_full_unstake_era {
+            assert_claim_dapp(&contract_id, era);
+        }
+
+        // Ensure that the empty interval cannot be claimed
+        for era in first_full_unstake_era..restake_era {
+            assert_noop!(
+                DappsStaking::claim_dapp(Origin::signed(developer), contract_id.clone(), era),
+                Error::<TestRuntime>::NotStakedContract
+            );
+        }
+
+        // Ensure that second interval can be claimed
+        for era in restake_era..second_full_unstake_era {
+            assert_claim_dapp(&contract_id, era);
+        }
+
+        // Ensure no more claims are possible since contract was fully unstaked
+        assert_noop!(
+            DappsStaking::claim_dapp(
+                Origin::signed(developer),
+                contract_id.clone(),
+                second_full_unstake_era
+            ),
+            Error::<TestRuntime>::NotStakedContract
+        );
+
+        // Now stake again and ensure contract can once again be claimed
+        let last_claim_era = DappsStaking::current_era();
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+        advance_to_era(last_claim_era + 1);
+        assert_claim_dapp(&contract_id, last_claim_era);
     })
 }
 
