@@ -131,6 +131,9 @@ pub mod pallet {
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
+    #[pallet::storage]
+    pub type PalletDisabled<T> = StorageValue<_, ()>;
+
     /// Registered developer accounts points to coresponding contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
@@ -196,6 +199,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        /// Pallet has been disabled due to maintenance.
+        Disabled,
         /// Can not stake with zero value.
         StakingWithNoValue,
         /// Can not stake with value less than minimum staking value
@@ -233,6 +238,10 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            if PalletDisabled::<T>::exists() {
+                return Zero::zero();
+            }
+
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
             let blocks_per_era = T::BlockPerEra::get();
             let previous_era = Self::current_era();
@@ -271,6 +280,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             let developer = ensure_signed(origin)?;
 
             ensure!(
@@ -310,17 +320,11 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
-            let developer = ensure_signed(origin)?;
+            // we keep this one working regardless whether pallet is enabled or not so we can unregister contracts
+            ensure_root(origin)?;
 
-            let registered_contract =
-                RegisteredDevelopers::<T>::get(&developer).ok_or(Error::<T>::NotOwnedContract)?;
-
-            // This is a sanity check for the unregistration since it requires the caller
-            // to input the correct contract address.
-            ensure!(
-                registered_contract == contract_id,
-                Error::<T>::NotOwnedContract,
-            );
+            let developer =
+                RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
 
             // We need to unstake all funds that are currently staked
             let current_era = Self::current_era();
@@ -371,6 +375,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
             #[pallet::compact] value: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             // Check that contract is ready for staking.
@@ -460,6 +465,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
             #[pallet::compact] value: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             ensure!(value > Zero::zero(), Error::<T>::UnstakingWithNoValue);
@@ -525,7 +531,8 @@ pub mod pallet {
             contract_id: T::SmartContract,
             era: EraIndex,
         ) -> DispatchResultWithPostInfo {
-            let _ = ensure_signed(origin)?;
+            Self::ensure_pallet_enabled()?;
+            ensure_signed(origin)?;
 
             let developer =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
@@ -621,6 +628,7 @@ pub mod pallet {
         /// # </weight>
         #[pallet::weight(T::WeightInfo::force_new_era())]
         pub fn force_new_era(origin: OriginFor<T>) -> DispatchResult {
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
             ForceEra::<T>::put(Forcing::ForceNew);
             Ok(())
@@ -635,6 +643,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             developer: T::AccountId,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
 
             ensure!(
@@ -654,13 +663,36 @@ pub mod pallet {
             origin: OriginFor<T>,
             enabled: bool,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
             PreApprovalIsEnabled::<T>::put(enabled);
+            Ok(().into())
+        }
+
+        /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
+        #[pallet::weight(T::DbWeight::get().writes(1))]
+        pub fn maintenance_mode(origin: OriginFor<T>, enabled: bool) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            if enabled {
+                PalletDisabled::<T>::put(());
+            } else {
+                PalletDisabled::<T>::kill();
+            }
+
             Ok(().into())
         }
     }
 
     impl<T: Config> Pallet<T> {
+        /// `true` if pallet disabled for maintenance, `false` otherwise
+        pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
+            if PalletDisabled::<T>::exists() {
+                Err(Error::<T>::Disabled)
+            } else {
+                Ok(())
+            }
+        }
+
         /// Get AccountId assigned to the pallet.
         fn account_id() -> T::AccountId {
             T::PalletId::get().into_account()

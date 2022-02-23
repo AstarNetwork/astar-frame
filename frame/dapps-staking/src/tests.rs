@@ -254,7 +254,7 @@ fn unregister_after_register_is_ok() {
 
         // Ensure that contract can be unregistered
         assert_ok!(DappsStaking::unregister(
-            Origin::signed(developer),
+            Origin::root(),
             contract_id.clone()
         ));
         System::assert_last_event(mock::Event::DappsStaking(Event::ContractRemoved(
@@ -305,7 +305,7 @@ fn unregister_with_staked_contracts_is_ok() {
 
         // Ensure that contract can be unregistered
         assert_ok!(DappsStaking::unregister(
-            Origin::signed(developer),
+            Origin::root(),
             contract_id.clone()
         ));
         System::assert_last_event(mock::Event::DappsStaking(Event::ContractRemoved(
@@ -333,24 +333,12 @@ fn unregister_with_incorrect_contract_does_not_work() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
 
-        let developer_1 = 1;
-        let developer_2 = 2;
-        let first_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
-        let second_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
 
-        register_contract(developer_1, &first_contract_id);
-
-        // Try to unregister contract with developer who hasn't registered any contract
+        // Try to unregister contract which hasn't been registered
         assert_noop!(
-            DappsStaking::unregister(Origin::signed(developer_2), first_contract_id.clone()),
-            Error::<TestRuntime>::NotOwnedContract
-        );
-
-        // Register second contract with second dev and then try to unregister it using the first developer
-        register_contract(developer_2, &second_contract_id);
-        assert_noop!(
-            DappsStaking::unregister(Origin::signed(developer_1), second_contract_id.clone()),
-            Error::<TestRuntime>::NotOwnedContract
+            DappsStaking::unregister(Origin::root(), contract_id),
+            Error::<TestRuntime>::NotOperatedContract
         );
     })
 }
@@ -371,7 +359,7 @@ fn unregister_stake_and_unstake_is_not_ok() {
 
         // Unregister contract and verify that stake & unstake no longer work
         assert_ok!(DappsStaking::unregister(
-            Origin::signed(developer),
+            Origin::root(),
             contract_id.clone()
         ));
 
@@ -1410,10 +1398,7 @@ fn claim_after_unregister_is_ok() {
         advance_to_era(5);
 
         // Unregister contract, without claiming it!
-        assert_ok!(DappsStaking::unregister(
-            Origin::signed(developer),
-            contract.clone()
-        ));
+        assert_ok!(DappsStaking::unregister(Origin::root(), contract.clone()));
         let unregistered_era = DappsStaking::current_era();
 
         // Ensure that contract can still be claimed.
@@ -1687,5 +1672,51 @@ fn claim_two_contracts_three_stakers_new() {
             + expected_c2_staker3_e2_reward
             + expected_c2_dev2_e2_reward;
         check_paidout_rewards_for_contract(&contract2, second_claim_era, expected_contract2_reward);
+    })
+}
+
+#[test]
+fn maintenance_mode_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        assert_ok!(DappsStaking::ensure_pallet_enabled());
+        assert!(!PalletDisabled::<TestRuntime>::exists());
+
+        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert!(PalletDisabled::<TestRuntime>::exists());
+
+        let account = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_noop!(
+            DappsStaking::register(Origin::signed(account), contract_id),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::bond_and_stake(Origin::signed(account), contract_id, 100),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::unbond_unstake_and_withdraw(Origin::signed(account), contract_id, 100),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::claim(Origin::signed(account), contract_id, 5),
+            Error::<TestRuntime>::Disabled
+        );
+
+        assert_noop!(
+            DappsStaking::force_new_era(Origin::root()),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::developer_pre_approval(Origin::root(), account),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::enable_developer_pre_approval(Origin::root(), true),
+            Error::<TestRuntime>::Disabled
+        );
     })
 }

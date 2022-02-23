@@ -80,7 +80,9 @@ pub struct EraStakingPoints<AccountId: Ord, Balance: HasCompact> {
     claimed_rewards: Balance,
 }
 
-impl<AccountId: Ord, Balance: HasCompact + Default> Default for EraStakingPoints<AccountId, Balance> {
+impl<AccountId: Ord, Balance: HasCompact + Default> Default
+    for EraStakingPoints<AccountId, Balance>
+{
     fn default() -> Self {
         Self {
             total: Default::default(),
