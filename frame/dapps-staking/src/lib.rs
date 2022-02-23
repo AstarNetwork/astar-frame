@@ -85,12 +85,22 @@ impl Default for Forcing {
     }
 }
 
+/// A record of rewards allocated for stakers and dapps
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct RewardInfo<Balance: HasCompact> {
+    /// Total amount of rewards for stakers in an era
+    #[codec(compact)]
+    pub stakers: Balance,
+    /// Total amount of rewards for dapps in an era
+    #[codec(compact)]
+    pub dapps: Balance,
+}
+
 /// A record for total rewards and total amount staked for an era
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct EraInfo<Balance: HasCompact> {
-    /// Total amount of rewards for an era
-    #[codec(compact)]
-    pub rewards: Balance,
+    /// Total amount of earned rewards for an era
+    pub rewards: RewardInfo<Balance>,
     /// Total staked amount in an era
     #[codec(compact)]
     pub staked: Balance,

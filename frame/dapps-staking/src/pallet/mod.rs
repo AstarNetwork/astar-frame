@@ -7,7 +7,7 @@ use frame_support::{
     pallet_prelude::*,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
-        OnUnbalanced, ReservableCurrency, WithdrawReasons,
+        ReservableCurrency, WithdrawReasons,
     },
     weights::Weight,
     PalletId,
@@ -38,15 +38,6 @@ pub mod pallet {
     type NegativeImbalanceOf<T> = <<T as Config>::Currency as Currency<
         <T as frame_system::Config>::AccountId,
     >>::NegativeImbalance;
-
-    impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
-        fn on_nonzero_unbalanced(block_reward: NegativeImbalanceOf<T>) {
-            BlockRewardAccumulator::<T>::mutate(|accumulated_reward| {
-                *accumulated_reward = accumulated_reward.saturating_add(block_reward.peek());
-            });
-            T::Currency::resolve_creating(&Self::account_id(), block_reward);
-        }
-    }
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -144,7 +135,7 @@ pub mod pallet {
     /// Accumulator for block rewards during an era. It is reset at every new era
     #[pallet::storage]
     #[pallet::getter(fn block_reward_accumulator)]
-    pub type BlockRewardAccumulator<T> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+    pub type BlockRewardAccumulator<T> = StorageValue<_, RewardInfo<BalanceOf<T>>, ValueQuery>;
 
     #[pallet::type_value]
     pub fn ForceEraOnEmpty() -> Forcing {
@@ -867,6 +858,22 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Update total stakers and dapps rewards
+        pub fn block_rewards(
+            stakers_reward: NegativeImbalanceOf<T>,
+            dapps_reward: NegativeImbalanceOf<T>,
+        ) {
+            BlockRewardAccumulator::<T>::mutate(|accumulated_reward| {
+                accumulated_reward.stakers = accumulated_reward
+                    .stakers
+                    .saturating_add(stakers_reward.peek());
+                accumulated_reward.dapps =
+                    accumulated_reward.dapps.saturating_add(dapps_reward.peek());
+            });
+
+            T::Currency::resolve_creating(&Self::account_id(), stakers_reward.merge(dapps_reward));
+        }
+
         /// Get AccountId assigned to the pallet.
         fn account_id() -> T::AccountId {
             T::PalletId::get().into_account()
@@ -903,23 +910,23 @@ pub mod pallet {
         /// and stores it for future distribution
         ///
         /// This is called just at the beginning of an era.
-        fn reward_balance_snapshoot(era: EraIndex, reward: BalanceOf<T>) {
+        fn reward_balance_snapshoot(era: EraIndex, reward: RewardInfo<BalanceOf<T>>) {
             // Get the reward and stake information for previous era
-            let mut reward_and_stake = Self::general_era_info(era).unwrap_or_default();
+            let mut era_info = Self::general_era_info(era).unwrap_or_default();
 
             // Prepare info for the next era
             GeneralEraInfo::<T>::insert(
                 era + 1,
                 EraInfo {
-                    rewards: Zero::zero(),
-                    staked: reward_and_stake.staked.clone(),
-                    locked: reward_and_stake.locked.clone(),
+                    rewards: Default::default(),
+                    staked: era_info.staked.clone(),
+                    locked: era_info.locked.clone(),
                 },
             );
 
             // Set the reward for the previous era.
-            reward_and_stake.rewards = reward;
-            GeneralEraInfo::<T>::insert(era, reward_and_stake);
+            era_info.rewards = reward;
+            GeneralEraInfo::<T>::insert(era, era_info);
         }
 
         /// This helper returns `EraStakingPoints` for given era if possible or latest stored data
@@ -976,15 +983,14 @@ pub mod pallet {
         /// Returns (developer reward, joint stakers reward)
         pub(crate) fn dev_stakers_split(
             contract_info: &EraStakingPoints<BalanceOf<T>>,
-            reward_and_stake: &EraInfo<BalanceOf<T>>,
-            dev_reward_percentage: &Perbill,
+            era_info: &EraInfo<BalanceOf<T>>,
+            _dev_reward_percentage: &Perbill,
         ) -> (BalanceOf<T>, BalanceOf<T>) {
-            let contract_reward =
-                Perbill::from_rational(contract_info.total, reward_and_stake.staked)
-                    * reward_and_stake.rewards;
+            let contract_stake_portion =
+                Perbill::from_rational(contract_info.total, era_info.staked);
 
-            let developer_reward_part = *dev_reward_percentage * contract_reward;
-            let stakers_joint_reward = contract_reward - developer_reward_part;
+            let developer_reward_part = contract_stake_portion * era_info.rewards.dapps;
+            let stakers_joint_reward = contract_stake_portion * era_info.rewards.stakers;
 
             (developer_reward_part, stakers_joint_reward)
         }
