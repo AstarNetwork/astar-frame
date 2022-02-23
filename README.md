@@ -33,7 +33,7 @@ When a pallet has been modified (version in .toml is updated), a new release tag
 Naming format for the tag is:
 *pallet-name*-**toml-version**/polkadot-**version**
 
-E.g. `pallet-dapps-staking-1.1.2/polkadot-0.9.13`.
+E.g. `pallet-dapps-staking-1.1.2/polkadot-v0.9.13`.
 
 ## Further Reading
 
