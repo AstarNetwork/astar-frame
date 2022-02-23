@@ -721,16 +721,9 @@ pub mod pallet {
 
                 ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
-                // Self::deposit_event(Event::<T>::RewardRestaked(
-                //     staker.clone(),
-                //     contract_id.clone(),
-                //     staker_reward,
-                // ));
-
-                Self::deposit_event(Event::<T>::Reward(
+                Self::deposit_event(Event::<T>::RewardRestaked(
                     staker.clone(),
                     contract_id.clone(),
-                    era,
                     staker_reward,
                 ));
             } else {
@@ -878,29 +871,14 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::enable_compound_staking())]
         pub fn enable_compound_staking(
             origin: OriginFor<T>,
-            // take directly enum value
-            enabled: bool,
+            option: RewardHandling,
         ) -> DispatchResultWithPostInfo {
             ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
             let staker = ensure_signed(origin)?;
-            let mut ledger = Self::ledger(&staker);
 
-            // no need for err handling
-            ensure!(!ledger.is_empty(), Error::<T>::NothingStakedForAccount);
-
-            let requested_reward_handling = if enabled {
-                RewardHandling::PayoutAndStake
-            } else {
-                RewardHandling::OnlyPayout
-            };
-            ensure!(
-                requested_reward_handling != ledger.reward_handling,
-                Error::<T>::RestakingAlreadySet
-            );
-            // opt. use ::mutate directly
-            ledger.reward_handling = requested_reward_handling;
-
-            Self::update_ledger(&staker, ledger);
+            Ledger::<T>::mutate(&staker, |ledger| {
+                ledger.reward_handling = option;
+            });
             Ok(().into())
         }
     }
