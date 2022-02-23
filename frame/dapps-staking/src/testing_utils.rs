@@ -419,13 +419,23 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         Origin::signed(claimer),
         contract_id.clone(),
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-        claimer,
-        contract_id.clone(),
-        claim_era,
-        calculated_reward,
-    )));
 
+    if init_state.ledger.reward_handling == RewardHandling::PayoutAndStake
+        && !init_state.staker_info.latest_staked_value().is_zero()
+    {
+        System::assert_last_event(mock::Event::DappsStaking(Event::RewardAndRestake(
+            claimer,
+            contract_id.clone(),
+            calculated_reward,
+        )))
+    } else {
+        System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+            claimer,
+            contract_id.clone(),
+            claim_era,
+            calculated_reward,
+        )));
+    }
     let final_state = MemorySnapshot::all(claim_era, &contract_id, claimer);
     assert_eq!(
         init_state.free_balance + calculated_reward,
