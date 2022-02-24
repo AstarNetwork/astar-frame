@@ -8,8 +8,7 @@ use frame_support::{
 };
 use pallet_dapps_staking::weights;
 use pallet_evm::{
-    AddressMapping, EnsureAddressNever, EnsureAddressRoot, ExitError, PrecompileResult,
-    PrecompileSet,
+    AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
@@ -17,11 +16,10 @@ use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
     traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-    Perbill,
+    AccountId32, Perbill,
 };
 extern crate alloc;
 
-pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
@@ -82,12 +80,12 @@ impl Default for TestAccount {
 }
 
 // needed for associated type in pallet_evm
-impl AddressMapping<AccountId> for TestAccount {
-    fn into_account_id(h160_account: H160) -> AccountId {
+impl AddressMapping<AccountId32> for TestAccount {
+    fn into_account_id(h160_account: H160) -> AccountId32 {
         match h160_account {
-            a if a == H160::repeat_byte(0x11) => TestAccount::Alex.into(),
-            a if a == H160::repeat_byte(0x22) => TestAccount::Bobo.into(),
-            a if a == H160::repeat_byte(0x33) => TestAccount::Dino.into(),
+            a if a == H160::repeat_byte(0x01) => TestAccount::Alex.into(),
+            a if a == H160::repeat_byte(0x02) => TestAccount::Bobo.into(),
+            a if a == H160::repeat_byte(0x03) => TestAccount::Dino.into(),
             _ => TestAccount::Empty.into(),
         }
     }
@@ -97,36 +95,31 @@ impl TestAccount {
     pub(crate) fn to_h160(&self) -> H160 {
         match self {
             Self::Empty => Default::default(),
-            Self::Alex => H160::repeat_byte(0x11),
-            Self::Bobo => H160::repeat_byte(0x22),
-            Self::Dino => H160::repeat_byte(0x33),
+            Self::Alex => H160::repeat_byte(0x01),
+            Self::Bobo => H160::repeat_byte(0x02),
+            Self::Dino => H160::repeat_byte(0x03),
         }
     }
 }
 
-// this trait is needed since AccountId is u64
 trait H160Conversion {
     fn to_h160(&self) -> H160;
 }
 
-impl H160Conversion for AccountId {
+impl H160Conversion for AccountId32 {
     fn to_h160(&self) -> H160 {
-        match self {
-            1 => H160::repeat_byte(0x11),
-            2 => H160::repeat_byte(0x22),
-            3 => H160::repeat_byte(0x33),
-            _ => Default::default(),
-        }
+        let x = self.encode()[31];
+        H160::repeat_byte(x)
     }
 }
 
-impl From<TestAccount> for AccountId {
+impl From<TestAccount> for AccountId32 {
     fn from(x: TestAccount) -> Self {
         match x {
-            TestAccount::Alex => 1,
-            TestAccount::Bobo => 2,
-            TestAccount::Dino => 3,
-            _ => 0,
+            TestAccount::Alex => AccountId32::from([1u8; 32]),
+            TestAccount::Bobo => AccountId32::from([2u8; 32]),
+            TestAccount::Dino => AccountId32::from([3u8; 32]),
+            _ => AccountId32::from([0u8; 32]),
         }
     }
 }
@@ -147,8 +140,8 @@ impl frame_system::Config for TestRuntime {
     type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
+    type AccountId = AccountId32;
+    type Lookup = IdentityLookup<AccountId32>;
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
@@ -188,6 +181,7 @@ pub struct DappPrecompile<R>(PhantomData<R>);
 
 impl<R> PrecompileSet for DappPrecompile<R>
 where
+    R: pallet_evm::Config,
     DappsStakingWrapper<R>: Precompile,
 {
     fn execute(
@@ -218,8 +212,8 @@ parameter_types! {
 impl pallet_evm::Config for TestRuntime {
     type FeeCalculator = ();
     type GasWeightMapping = ();
-    type CallOrigin = EnsureAddressRoot<AccountId>;
-    type WithdrawOrigin = EnsureAddressNever<AccountId>;
+    type CallOrigin = EnsureAddressRoot<AccountId32>;
+    type WithdrawOrigin = EnsureAddressNever<AccountId32>;
     type AddressMapping = TestAccount;
     type Currency = Balances;
     type Event = Event;
@@ -244,18 +238,18 @@ impl pallet_timestamp::Config for TestRuntime {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
-pub enum MockSmartContract<AccountId> {
+pub enum MockSmartContract<AccountId32> {
     Evm(sp_core::H160),
-    Wasm(AccountId),
+    Wasm(AccountId32),
 }
 
-impl<AccountId> Default for MockSmartContract<AccountId> {
+impl<AccountId32> Default for MockSmartContract<AccountId32> {
     fn default() -> Self {
         MockSmartContract::Evm(H160::repeat_byte(0x00))
     }
 }
 
-impl<AccountId> pallet_dapps_staking::IsContract for MockSmartContract<AccountId> {
+impl<AccountId32> pallet_dapps_staking::IsContract for MockSmartContract<AccountId32> {
     fn is_valid(&self) -> bool {
         match self {
             MockSmartContract::Wasm(_account) => false,
@@ -284,7 +278,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type BlockPerEra = BlockPerEra;
     type RegisterDeposit = RegisterDeposit;
     type DeveloperRewardPercentage = DeveloperRewardPercentage;
-    type SmartContract = MockSmartContract<AccountId>;
+    type SmartContract = MockSmartContract<AccountId32>;
     type WeightInfo = weights::SubstrateWeight<TestRuntime>;
     type MaxNumberOfStakersPerContract = MaxNumberOfStakersPerContract;
     type HistoryDepth = HistoryDepth;
@@ -297,7 +291,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
 }
 
 pub struct ExternalityBuilder {
-    balances: Vec<(AccountId, Balance)>,
+    balances: Vec<(AccountId32, Balance)>,
 }
 
 impl Default for ExternalityBuilder {
@@ -323,7 +317,7 @@ impl ExternalityBuilder {
         ext
     }
 
-    pub(crate) fn with_balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+    pub(crate) fn with_balances(mut self, balances: Vec<(AccountId32, Balance)>) -> Self {
         self.balances = balances;
         self
     }
@@ -396,13 +390,8 @@ pub fn default_context() -> fp_evm::Context {
     }
 }
 
-/// Returns an evm error with provided (static) text.
-pub fn exit_error<T: Into<alloc::borrow::Cow<'static, str>>>(text: T) -> ExitError {
-    ExitError::Other(text.into())
-}
-
 /// returns call struct to be used with evm calls
-pub fn evm_call(source: AccountId, input: Vec<u8>) -> pallet_evm::Call<TestRuntime> {
+pub fn evm_call(source: AccountId32, input: Vec<u8>) -> pallet_evm::Call<TestRuntime> {
     pallet_evm::Call::call {
         source: source.to_h160(),
         target: precompile_address(),

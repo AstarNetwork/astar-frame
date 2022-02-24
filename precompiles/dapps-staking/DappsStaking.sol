@@ -25,8 +25,9 @@ interface DappsStaking {
     function read_era_staked(uint32 era) external view returns (uint128);
 
     /// @dev Read Staked amount for the staker
+    /// @param staker in form of 20 or 32 hex bytes
     /// @return Staked amount for the staker
-    function read_staked_amount(address staker) external view returns (uint128);
+    function read_staked_amount(bytes calldata staker) external view returns (uint128);
 
     /// @dev Read the staked amount from the era when the amount was last staked/unstaked
     /// @return The most recent total staked amount on contract
