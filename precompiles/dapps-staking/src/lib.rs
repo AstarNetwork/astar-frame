@@ -53,6 +53,7 @@ where
     BalanceOf<R>: EvmData,
     <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
     R::Call: From<pallet_dapps_staking::Call<R>>,
+    R::AccountId: From<u64>,
 {
     /// Fetch current era from CurrentEra storage map
     fn read_current_era(gasometer: &mut Gasometer) -> EvmResult<PrecompileOutput> {
@@ -148,6 +149,30 @@ where
         // parse input parameters for pallet-dapps-staking call
         let staker_h160 = input.read::<Address>(gasometer)?.0;
         let staker = R::AddressMapping::into_account_id(staker_h160);
+
+        // call pallet-dapps-staking
+        let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
+
+        // compose output
+        let output = EvmDataWriter::new().write(ledger.locked).build();
+
+        Ok(PrecompileOutput {
+            exit_status: ExitSucceed::Returned,
+            cost: gasometer.used_gas(),
+            output,
+            logs: Default::default(),
+        })
+    }
+    
+    /// Fetch Ledger storage map for ss58 account
+    fn read_staked_amount_ss58(
+        input: &mut EvmDataReader,
+        gasometer: &mut Gasometer,
+    ) -> EvmResult<PrecompileOutput> {
+        input.expect_arguments(gasometer, 1)?;
+
+        // parse input parameters for pallet-dapps-staking call
+        let staker: R::AccountId = (input.read::<u64>(gasometer)?).into();
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
@@ -349,6 +374,7 @@ pub enum Action {
     ReadEraReward = "read_era_reward(uint32)",
     ReadEraStaked = "read_era_staked(uint32)",
     ReadStakedAmount = "read_staked_amount(address)",
+    ReadStakedAmountSs58 = "read_staked_amount_ss58(bytes)",
     ReadContractStake = "read_contract_stake(address)",
     Register = "register(address)",
     BondAndStake = "bond_and_stake(address,uint128)",
@@ -365,6 +391,7 @@ where
         + GetDispatchInfo,
     <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
     BalanceOf<R>: EvmData,
+    <R as frame_system::Config>::AccountId: From<u64>,
 {
     fn execute(
         input: &[u8],
@@ -388,6 +415,7 @@ where
             Action::ReadEraReward => return Self::read_era_reward(input, gasometer),
             Action::ReadEraStaked => return Self::read_era_staked(input, gasometer),
             Action::ReadStakedAmount => return Self::read_staked_amount(input, gasometer),
+            Action::ReadStakedAmountSs58 => return Self::read_staked_amount_ss58(input, gasometer),
             Action::ReadContractStake => return Self::read_contract_stake(input, gasometer),
             // Dispatchables
             Action::Register => Self::register(input, gasometer, context)?,

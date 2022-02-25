@@ -28,6 +28,10 @@ interface DappsStaking {
     /// @return Staked amount for the staker
     function read_staked_amount(address staker) external view returns (uint128);
 
+    /// @dev Read Staked amount for the staker with ss58 account
+    /// @return Staked amount for the staker
+    function read_staked_amount_ss58(bytes calldata staker) external view returns (uint128);
+
     /// @dev Read the staked amount from the era when the amount was last staked/unstaked
     /// @return The most recent total staked amount on contract
     function read_contract_stake(address contract_id) external view returns (uint128);
