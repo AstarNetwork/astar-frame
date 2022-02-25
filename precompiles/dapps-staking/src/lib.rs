@@ -163,7 +163,7 @@ where
             logs: Default::default(),
         })
     }
-    
+
     /// Fetch Ledger storage map for ss58 account
     fn read_staked_amount_ss58(
         input: &mut EvmDataReader,

@@ -349,7 +349,6 @@ fn claim_is_ok() {
         });
 }
 
-
 #[test]
 fn bond_and_stake_ss58_is_ok() {
     ExternalityBuilder::default()
@@ -452,7 +451,6 @@ fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
     );
 }
 
-
 /// helper function to read ledger storage item for ss58 account
 fn read_staked_amount_ss58_verify(staker: AccountId, amount: u128) {
     let selector = &Keccak256::digest(b"read_staked_amount_ss58(bytes)")[0..4];
@@ -460,7 +458,7 @@ fn read_staked_amount_ss58_verify(staker: AccountId, amount: u128) {
     input_data[0..4].copy_from_slice(&selector);
 
     let staker_bytes = argument_from_u64(staker as u64);
-    input_data[4..36].copy_from_slice(&staker_bytes); 
+    input_data[4..36].copy_from_slice(&staker_bytes);
 
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
@@ -511,9 +509,7 @@ fn bond_stake_ss58_and_verify(staker: AccountId, contract_array: [u8; 20], amoun
     input_data[(68 - staking_amount.len())..68].copy_from_slice(&staking_amount);
 
     // verify that argument check is done in bond_and_stake()
-    assert_ok!(
-        Call::Evm(evm_call(staker.clone(), selector.to_vec())).dispatch(Origin::root())
-    );
+    assert_ok!(Call::Evm(evm_call(staker.clone(), selector.to_vec())).dispatch(Origin::root()));
 
     // call bond_and_stake()
     assert_ok!(Call::Evm(evm_call(staker.clone(), input_data)).dispatch(Origin::root()));
@@ -644,7 +640,6 @@ pub fn argument_from_u64(value: u64) -> Vec<u8> {
     let mut buffer = [0u8; ARG_SIZE_BYTES];
     buffer[ARG_SIZE_BYTES - core::mem::size_of::<u64>()..].copy_from_slice(&value.to_be_bytes());
     buffer.to_vec()
-
 }
 
 /// Store u128 value in the 32 bytes vector as big endian
