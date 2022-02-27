@@ -949,7 +949,7 @@ pub mod pallet {
         /// and stores it for future distribution
         ///
         /// This is called just at the beginning of an era.
-        fn reward_balance_snapshot(era: EraIndex, reward: BalanceOf<T>) {
+        fn reward_balance_snapshot(era: EraIndex, rewards: RewardInfo<BalanceOf<T>>) {
             // Get the reward and stake information for previous era
             let mut era_info = Self::general_era_info(era).unwrap_or_default();
 
