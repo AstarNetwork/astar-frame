@@ -1447,6 +1447,51 @@ fn claim_after_unregister_is_ok() {
         }
     })
 }
+#[test]
+fn claim_only_payout_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        advance_to_era(start_era + 1);
+        assert_ok!(DappsStaking::enable_compound_staking(
+            Origin::signed(staker),
+            RewardHandling::OnlyPayout
+        ));
+
+        assert_claim_staker(staker, &contract_id);
+    })
+}
+
+#[test]
+fn claim_with_zero_staked_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        advance_to_era(start_era + 1);
+
+        assert_unbond_and_unstake(staker, &contract_id, stake_value);
+
+        assert_claim_staker(staker, &contract_id);
+    })
+}
 
 #[test]
 fn claim_dapp_with_zero_stake_periods_is_ok() {
