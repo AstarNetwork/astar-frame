@@ -69,7 +69,7 @@ pub(crate) fn assert_register(developer: AccountId, contract_id: &MockSmartContr
         developer
     ));
 
-    // Verify op is successfull
+    // Verify op is successful
     assert_ok!(DappsStaking::enable_developer_pre_approval(
         Origin::root(),
         false
@@ -259,7 +259,7 @@ pub(crate) fn assert_bond_and_stake(
     );
 }
 
-/// Used to perform start_unbonding with sucess and storage assertions.
+/// Used to perform start_unbonding with success and storage assertions.
 pub(crate) fn assert_unbond_and_unstake(
     staker: AccountId,
     contract_id: &MockSmartContract<AccountId>,
@@ -356,7 +356,7 @@ pub(crate) fn assert_unbond_and_unstake(
     assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
 }
 
-/// Used to perform start_unbonding with sucess and storage assertions.
+/// Used to perform start_unbonding with success and storage assertions.
 pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let current_era = DappsStaking::current_era();
 
