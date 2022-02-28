@@ -11,7 +11,10 @@ use frame_support::{
 };
 use pallet_evm::{AddressMapping, GasWeightMapping, Precompile};
 use sp_core::H160;
-use sp_runtime::traits::{SaturatedConversion, Zero};
+use sp_runtime::{
+    traits::{SaturatedConversion, Zero},
+    ModuleError,
+};
 use sp_std::{convert::TryInto, marker::PhantomData, vec::Vec};
 extern crate alloc;
 
@@ -273,7 +276,7 @@ where
         let origin = R::AddressMapping::into_account_id(context.caller);
         let post_info = call.dispatch(Some(origin).into()).map_err(|e| {
             let error_text = match e.error {
-                sp_runtime::DispatchError::Module { message, .. } => message,
+                sp_runtime::DispatchError::Module(ModuleError { message, .. }) => message,
                 _ => Some("No error Info"),
             };
             exit_error(error_text.unwrap_or_default())
