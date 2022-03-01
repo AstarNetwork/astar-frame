@@ -144,9 +144,8 @@ pub(crate) fn assert_withdraw_from_unregistered(
     let init_state = MemorySnapshot::all(current_era, contract_id, staker);
 
     // Initial checks
-    let unregistered_era = if let DAppState::Unregistered(era) = init_state.dapp_info.state {
+    if let DAppState::Unregistered(era) = init_state.dapp_info.state {
         assert!(era <= DappsStaking::current_era());
-        era
     } else {
         panic!("Contract should be unregistered.")
     };
@@ -185,14 +184,12 @@ pub(crate) fn assert_withdraw_from_unregistered(
         init_state.ledger.unbonding_info,
         final_state.ledger.unbonding_info
     );
-    assert!(final_state.staker_info.latest_staked_value().is_zero());
 
-    if init_state.staker_info.clone().claim().0 >= unregistered_era {
-        assert!(!StakersInfo::<TestRuntime>::contains_key(
-            &staker,
-            contract_id
-        ));
-    }
+    assert!(final_state.staker_info.latest_staked_value().is_zero());
+    assert!(!StakersInfo::<TestRuntime>::contains_key(
+        &staker,
+        contract_id
+    ));
 }
 
 /// Perform `bond_and_stake` with all the accompanied checks including before/after storage comparison.

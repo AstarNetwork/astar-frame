@@ -270,6 +270,8 @@ pub mod pallet {
         NotStakedContract,
         /// Contract isn't unregistered.
         NotUnregisteredContract,
+        /// Unclaimed rewards should be claimed before withdrawing stake.
+        UnclaimedRewardsRemaining,
         /// Unstaking a contract with zero value
         UnstakingWithNoValue,
         /// There are no previously unbonded funds that can be unstaked and withdrawn.
@@ -447,30 +449,33 @@ pub mod pallet {
             // dApp must exist and it has to be unregistered
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
-            ensure!(
-                dapp_info.state != DAppState::Registered,
-                Error::<T>::NotUnregisteredContract
-            );
 
-            let current_era = Self::current_era();
+            let unregistered_era = if let DAppState::Unregistered(x) = dapp_info.state {
+                x
+            } else {
+                return Err(Error::<T>::NotUnregisteredContract.into());
+            };
 
             // There should be some leftover staked amount
             let mut staker_info = Self::staker_info(&staker, &contract_id);
             let staked_value = staker_info.latest_staked_value();
             ensure!(staked_value > Zero::zero(), Error::<T>::NotStakedContract);
-            staker_info
-                .unstake(current_era, staked_value)
-                .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
-            if let DAppState::Unregistered(unregistered_era) = dapp_info.state {
-                staker_info.unregistered_era_adjust(unregistered_era);
-            }
+
+            // Don't allow withdrawal until all rewards have been claimed.
+            let (claimable_era, _) = staker_info.claim();
+            ensure!(
+                claimable_era >= unregistered_era || claimable_era.is_zero(),
+                Error::<T>::UnclaimedRewardsRemaining
+            );
 
             // Unlock the staked amount immediately. No unbonding period for this scenario.
             let mut ledger = Self::ledger(&staker);
             ledger.locked = ledger.locked.saturating_sub(staked_value);
             Self::update_ledger(&staker, ledger);
 
-            Self::update_staker_info(&staker, &contract_id, staker_info);
+            Self::update_staker_info(&staker, &contract_id, Default::default());
+
+            let current_era = Self::current_era();
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
                 if let Some(x) = value {
                     x.staked = x.staked.saturating_sub(staked_value);
@@ -537,7 +542,8 @@ pub mod pallet {
                 .stake(current_era, value_to_stake)
                 .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
             ensure!(
-                staker_info.len() <= T::MaxEraStakeValues::get(),
+                // One spot should remain for compounding reward claim call
+                staker_info.len() < T::MaxEraStakeValues::get(),
                 Error::<T>::TooManyEraStakeValues
             );
             ensure!(
@@ -628,7 +634,8 @@ pub mod pallet {
                 .unstake(current_era, value_to_unstake)
                 .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
             ensure!(
-                staker_info.len() <= T::MaxEraStakeValues::get(),
+                // One spot should remain for compounding reward claim call
+                staker_info.len() < T::MaxEraStakeValues::get(),
                 Error::<T>::TooManyEraStakeValues
             );
 

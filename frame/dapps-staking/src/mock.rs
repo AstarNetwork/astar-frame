@@ -32,7 +32,7 @@ pub(crate) const DEVELOPER_REWARD_PERCENTAGE: u32 = 80;
 pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
-pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 10;
+pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;

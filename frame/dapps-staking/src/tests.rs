@@ -442,16 +442,16 @@ fn withdraw_from_unregistered_is_ok() {
 
         assert_unregister(developer, &contract_id);
 
-        // Unbond everything from the contract.
-        assert_withdraw_from_unregistered(staker_1, &contract_id);
-        assert_withdraw_from_unregistered(staker_2, &contract_id);
-
-        // Claim should still work for past eras
+        // Claim all past rewards
         for era in 1..DappsStaking::current_era() {
             assert_claim_staker(staker_1, &contract_id);
             assert_claim_staker(staker_2, &contract_id);
             assert_claim_dapp(&contract_id, era);
         }
+
+        // Unbond everything from the contract.
+        assert_withdraw_from_unregistered(staker_1, &contract_id);
+        assert_withdraw_from_unregistered(staker_2, &contract_id);
 
         // No additional claim ops should be possible
         assert_noop!(
@@ -529,6 +529,36 @@ fn withdraw_from_unregistered_when_nothing_is_staked() {
             DappsStaking::withdraw_from_unregistered(Origin::signed(staker), contract_id),
             Error::<TestRuntime>::NotStakedContract
         );
+    })
+}
+
+#[test]
+fn withdraw_from_unregistered_when_unclaimed_rewards_remaing() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(developer, &contract_id);
+
+        let staker = 2;
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance eras. This will accumulate some rewards.
+        advance_to_era(5);
+
+        assert_unregister(developer, &contract_id);
+
+        for _ in 1..DappsStaking::current_era() {
+            assert_noop!(
+                DappsStaking::withdraw_from_unregistered(Origin::signed(staker), contract_id),
+                Error::<TestRuntime>::UnclaimedRewardsRemaining
+            );
+            assert_claim_staker(staker, &contract_id);
+        }
+
+        // Withdraw should work after all rewards have been claimed
+        assert_withdraw_from_unregistered(staker, &contract_id);
     })
 }
 
@@ -719,9 +749,9 @@ fn bond_and_stake_too_many_era_stakes() {
         // Insert a contract under registered contracts.
         assert_register(10, &contract_id);
 
-        // Stake with MAX_NUMBER_OF_STAKERS on the same contract. It must work.
+        // Stake with MAX_NUMBER_OF_STAKERS - 1 on the same contract. It must work.
         let start_era = DappsStaking::current_era();
-        for offset in 1..=MAX_ERA_STAKE_VALUES {
+        for offset in 1..MAX_ERA_STAKE_VALUES {
             assert_bond_and_stake(staker_id, &contract_id, 100);
             advance_to_era(start_era + offset);
         }
@@ -906,6 +936,31 @@ fn unbond_and_unstake_on_not_staked_contract_is_not_ok() {
         assert_noop!(
             DappsStaking::unbond_and_unstake(Origin::signed(1), contract_id, 10),
             Error::<TestRuntime>::NotStakedContract,
+        );
+    })
+}
+
+#[test]
+fn unbond_and_unstake_too_many_era_stakes() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker_id = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(10, &contract_id);
+
+        // Fill up the `EraStakes` vec
+        let start_era = DappsStaking::current_era();
+        for offset in 1..MAX_ERA_STAKE_VALUES {
+            assert_bond_and_stake(staker_id, &contract_id, 100);
+            advance_to_era(start_era + offset);
+        }
+
+        // At this point, we have max allowed amount of `EraStake` values so we cannot create
+        // an additional one.
+        assert_noop!(
+            DappsStaking::unbond_and_unstake(Origin::signed(staker_id), contract_id, 10),
+            Error::<TestRuntime>::TooManyEraStakeValues
         );
     })
 }

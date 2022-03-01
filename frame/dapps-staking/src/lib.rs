@@ -336,35 +336,6 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
             self.stakes.remove(0);
         }
     }
-
-    /// Adjust era stakes information to the unregistered era.
-    ///
-    /// All information that exists from `unregistered_era` onwards will be cleared.
-    /// This should only be used after fetching the claim era and stake value.
-    ///
-    /// # Example 1
-    ///
-    /// `stakes: [<5, 1000>]`
-    ///
-    /// `unregistered_era_adjust(4)` results in empty vector `[]`
-    ///
-    /// # Example 2
-    ///
-    /// `stakes: [<5, 1000>, <7, 1300>, <9, 2000>]`
-    /// `unregistered_era_adjust(8)` results in `[<5, 1000>, <7, 1300>, <8, 0>]`
-    ///
-    fn unregistered_era_adjust(&mut self, unregistered_era: EraIndex) {
-        if let Some(era_stake) = self.stakes.first() {
-            if era_stake.era >= unregistered_era {
-                // In this scenario, all eras prior to unregistered era have already been claimed
-                self.stakes.clear();
-            } else {
-                self.stakes.retain(|x| x.era < unregistered_era);
-                self.stakes
-                    .push(EraStake::new(Zero::zero(), unregistered_era));
-            }
-        }
-    }
 }
 
 /// Represents an balance amount undergoing the unbonding process.
