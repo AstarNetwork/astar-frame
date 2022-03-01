@@ -21,7 +21,7 @@ use precompile_utils::{ Address,
     EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
     RuntimeHelper,
 };
-use sp_core::H160;
+use sp_core::{H160, U256};
 use sp_runtime::traits::Zero;
 use sp_std::{convert::TryInto, marker::PhantomData, vec};
 extern crate alloc;
@@ -172,7 +172,14 @@ where
         input.expect_arguments(gasometer, 1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let staker: R::AccountId = (input.read::<u64>(gasometer)?).into();
+        let staker_u256 = input.read::<U256>(gasometer)?;
+        let mut staker_bytes = [0_u8; 32];
+        sp_core::U256::from(staker_u256).to_big_endian(&mut staker_bytes[..]);
+        println!("staker_bytes {:?}", staker_bytes);
+
+        let staker = <R as frame_system::Config>::AccountId::decode(&mut &staker_bytes[..])
+            .map_err(|_| gasometer.revert("Error while decoding AccountID"))?;
+        println!("staker {:?}", staker);
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
