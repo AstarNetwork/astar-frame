@@ -1411,6 +1411,82 @@ fn claim_dapp_with_zero_stake_periods_is_ok() {
 }
 
 #[test]
+fn maintenance_mode_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        assert_ok!(DappsStaking::ensure_pallet_enabled());
+        assert!(!PalletDisabled::<TestRuntime>::exists());
+
+        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert!(PalletDisabled::<TestRuntime>::exists());
+
+        let account = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        //
+        // 1
+        assert_noop!(
+            DappsStaking::register(Origin::signed(account), contract_id),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::unregister(Origin::signed(account), contract_id),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::withdraw_from_unregistered(Origin::signed(account), contract_id),
+            Error::<TestRuntime>::Disabled
+        );
+
+        //
+        // 2
+        assert_noop!(
+            DappsStaking::bond_and_stake(Origin::signed(account), contract_id, 100),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::unbond_and_unstake(Origin::signed(account), contract_id, 100),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::claim_dapp(Origin::signed(account), contract_id, 5),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::claim_staker(Origin::signed(account), contract_id),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::withdraw_unbonded(Origin::signed(account)),
+            Error::<TestRuntime>::Disabled
+        );
+
+        //
+        // 3
+        assert_noop!(
+            DappsStaking::force_new_era(Origin::root()),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::developer_pre_approval(Origin::root(), account),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::enable_developer_pre_approval(Origin::root(), true),
+            Error::<TestRuntime>::Disabled
+        );
+        // shouldn't do anything since we're in maintenance mode
+        assert_eq!(DappsStaking::on_initialize(3), 0);
+
+        //
+        // 4
+        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), false));
+        assert_register(account, &contract_id);
+    })
+}
+
+#[test]
 fn dev_stakers_split_util() {
     let base_stakers_reward = 7 * 11 * 13 * 17;
     let base_dapps_reward = 19 * 23 * 31;
@@ -1418,7 +1494,7 @@ fn dev_stakers_split_util() {
     let total_staked = staked_on_contract * 3;
 
     // Prepare structs
-    let staking_points = EraStakingPoints::<Balance> {
+    let staking_points = ContractStakeInfo::<Balance> {
         total: staked_on_contract,
         number_of_stakers: 10,
         contract_reward_claimed: false,

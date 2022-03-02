@@ -8,7 +8,7 @@ pub(crate) struct MemorySnapshot {
     era_info: EraInfo<Balance>,
     dapp_info: DAppInfo<AccountId>,
     staker_info: StakerInfo<Balance>,
-    contract_info: EraStakingPoints<Balance>,
+    contract_info: ContractStakeInfo<Balance>,
     free_balance: Balance,
     ledger: AccountLedger<Balance>,
 }

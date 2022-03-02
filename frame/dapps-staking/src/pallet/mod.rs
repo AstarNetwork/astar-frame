@@ -134,7 +134,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
-    pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
+    pub type PalletDisabled<T: Config> = StorageValue<_, (), ValueQuery>;
 
     /// Bonded amount for the staker
     #[pallet::storage]
@@ -195,7 +195,7 @@ pub mod pallet {
         T::SmartContract,
         Twox64Concat,
         EraIndex,
-        EraStakingPoints<BalanceOf<T>>,
+        ContractStakeInfo<BalanceOf<T>>,
     >;
 
     #[pallet::storage]
@@ -312,8 +312,8 @@ pub mod pallet {
             // Runtime upgrade should be timed so we ensure that we complete it before
             // a new era is triggered. This code is just a safety net to ensure nothing is broken
             // if we fail to do that.
-            if Self::pallet_disabled() {
-                return T::DbWeight::get().reads(1);
+            if PalletDisabled::<T>::exists() {
+                return Zero::zero();
             }
 
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
@@ -374,8 +374,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
-
+            Self::ensure_pallet_enabled()?;
             let developer = ensure_signed(origin)?;
 
             ensure!(
@@ -415,7 +414,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
 
             let mut dapp_info =
@@ -444,6 +443,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             // dApp must exist and it has to be unregistered
@@ -507,7 +507,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
             #[pallet::compact] value: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             // Check that contract is ready for staking.
@@ -596,7 +596,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
             #[pallet::compact] value: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             ensure!(value > Zero::zero(), Error::<T>::UnstakingWithNoValue);
@@ -678,7 +678,7 @@ pub mod pallet {
         ///
         #[pallet::weight(T::WeightInfo::withdraw_unbonded())]
         pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             let mut ledger = Self::ledger(&staker);
@@ -713,7 +713,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             // Ensure we have something to claim
@@ -767,7 +767,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
             #[pallet::compact] era: EraIndex,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let _ = ensure_signed(origin)?;
 
             let dapp_info =
@@ -831,7 +831,7 @@ pub mod pallet {
         /// # </weight>
         #[pallet::weight(T::WeightInfo::force_new_era())]
         pub fn force_new_era(origin: OriginFor<T>) -> DispatchResult {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
             ForceEra::<T>::put(Forcing::ForceNew);
             Ok(())
@@ -846,7 +846,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             developer: T::AccountId,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
 
             ensure!(
@@ -866,9 +866,23 @@ pub mod pallet {
             origin: OriginFor<T>,
             enabled: bool,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
             PreApprovalIsEnabled::<T>::put(enabled);
+            Ok(().into())
+        }
+
+        /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
+        /// TODO: benchmarking!
+        #[pallet::weight(T::DbWeight::get().writes(1))]
+        pub fn maintenance_mode(origin: OriginFor<T>, enabled: bool) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            if enabled {
+                PalletDisabled::<T>::put(());
+            } else {
+                PalletDisabled::<T>::kill();
+            }
+
             Ok(().into())
         }
     }
@@ -877,6 +891,15 @@ pub mod pallet {
         /// Get AccountId assigned to the pallet.
         fn account_id() -> T::AccountId {
             T::PalletId::get().into_account()
+        }
+
+        /// `Ok` if pallet disabled for maintenance, `Err` otherwise
+        pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
+            if PalletDisabled::<T>::exists() {
+                Err(Error::<T>::Disabled)
+            } else {
+                Ok(())
+            }
         }
 
         /// Update the ledger for a staker. This will also update the stash lock.
@@ -929,12 +952,12 @@ pub mod pallet {
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 
-        /// This helper returns `EraStakingPoints` for given era if possible or latest stored data
+        /// This helper returns `ContractStakeInfo` for given era if possible or latest stored data
         /// or finally default value if storage have no data for it.
         pub fn staking_info(
             contract_id: &T::SmartContract,
             era: EraIndex,
-        ) -> EraStakingPoints<BalanceOf<T>> {
+        ) -> ContractStakeInfo<BalanceOf<T>> {
             // By checking current and previus era, we will avoid key prefix iteration in most of the cases.
             // It is safe to assume that contract era stake will change each era - for this to occur, either dapp rewards
             // need to be claimed or active stake amount needs to change (highly likely when automatic reward restaking introduced).
@@ -982,7 +1005,7 @@ pub mod pallet {
         ///
         /// Returns (developer reward, joint stakers reward)
         pub(crate) fn dev_stakers_split(
-            contract_info: &EraStakingPoints<BalanceOf<T>>,
+            contract_info: &ContractStakeInfo<BalanceOf<T>>,
             era_info: &EraInfo<BalanceOf<T>>,
         ) -> (BalanceOf<T>, BalanceOf<T>) {
             let contract_stake_portion =

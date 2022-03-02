@@ -113,8 +113,7 @@ pub struct EraInfo<Balance: HasCompact> {
 /// Each tuple (contract, era) has this structure.
 /// This will be used to reward contracts developer and his stakers.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-// TODO: change this name before review is finalized
-pub struct EraStakingPoints<Balance: HasCompact> {
+pub struct ContractStakeInfo<Balance: HasCompact> {
     /// Total staked amount.
     #[codec(compact)]
     pub total: Balance,

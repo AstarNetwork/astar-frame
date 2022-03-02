@@ -230,6 +230,9 @@ benchmarks! {
     force_new_era {
     }: _(RawOrigin::Root)
 
+    maintenance_mode {
+    }: _(RawOrigin::Root, true)
+
 }
 
 impl_benchmark_test_suite!(

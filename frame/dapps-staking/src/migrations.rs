@@ -147,7 +147,7 @@ pub mod v2 {
         // The first storage we process is `Ledger` so we set the starting state if needed
         if migration_state == MigrationState::NotStarted {
             migration_state = MigrationState::Ledger(None);
-            PalletDisabled::<T>::put(true);
+            PalletDisabled::<T>::put(());
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
             // If normal run, just exit here to avoid the risk of clogging the upgrade block.
@@ -292,7 +292,7 @@ pub mod v2 {
         StorageVersion::<T>::put(Version::V2_0_0);
         consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
-        PalletDisabled::<T>::put(false);
+        PalletDisabled::<T>::kill();
         consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
         consumed_weight
@@ -511,7 +511,8 @@ pub mod v3 {
                 }
             });
 
-            PalletDisabled::<T>::put(true);
+            // This will automatically override the old boolean in storage
+            PalletDisabled::<T>::put(());
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(2));
 
             migration_state = MigrationState::AccountLedger(None);
@@ -731,7 +732,7 @@ pub mod v3 {
                 translate(
                     &key_as_vec,
                     |value: OldEraStakingPoints<T::AccountId, BalanceOf<T>>| {
-                        Some(EraStakingPoints {
+                        Some(ContractStakeInfo {
                             total: value.total,
                             number_of_stakers: value.stakers.len() as u32,
                             contract_reward_claimed: value.claimed_rewards > Zero::zero(),
@@ -744,7 +745,7 @@ pub mod v3 {
 
                 if consumed_weight >= weight_limit {
                     log::info!(
-                        ">>> EraStakingPoints migration stopped after consuming {:?} weight.",
+                        ">>> ContractStakeInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
                     MigrationStateV3::<T>::put(MigrationState::StakingInfo(Some(key_as_vec)));
@@ -758,7 +759,7 @@ pub mod v3 {
                 }
             }
 
-            log::info!(">>> EraStakingPoints migration finished.");
+            log::info!(">>> ContractStakeInfo migration finished.");
             migration_state = MigrationState::DAppInfo(None);
         }
 
@@ -854,7 +855,7 @@ pub mod v3 {
         StorageVersion::<T>::put(Version::V3_0_0);
         consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
-        PalletDisabled::<T>::put(false);
+        PalletDisabled::<T>::kill();
         consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
         consumed_weight
