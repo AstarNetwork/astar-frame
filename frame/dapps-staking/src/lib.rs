@@ -135,7 +135,7 @@ pub enum Version {
 
 impl Default for Version {
     fn default() -> Self {
-        Version::V2_0_0
+        Version::V3_0_0
     }
 }
 
