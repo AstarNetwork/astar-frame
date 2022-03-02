@@ -873,8 +873,7 @@ pub mod pallet {
         }
 
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
-        /// TODO: benchmarking!
-        #[pallet::weight(T::DbWeight::get().writes(1))]
+        #[pallet::weight(T::WeightInfo::maintenance_mode())]
         pub fn maintenance_mode(origin: OriginFor<T>, enabled: bool) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             if enabled {

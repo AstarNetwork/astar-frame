@@ -18,6 +18,7 @@ pub trait WeightInfo {
     fn claim_staker() -> Weight;
 	fn claim_dapp() -> Weight;
     fn force_new_era() -> Weight;
+	fn maintenance_mode() -> Weight;
 }
 
 /// Weights for pallet_staking using the Substrate node and recommended hardware.
@@ -130,6 +131,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn force_new_era() -> Weight {
 		(3_466_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	// Storage: DappsStaking PalletDisabled (r:0 w:1)
+	fn maintenance_mode() -> Weight {
+		(1_192_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
@@ -246,6 +252,11 @@ impl WeightInfo for () {
 	fn force_new_era() -> Weight {
 		(3_466_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	// Storage: DappsStaking PalletDisabled (r:0 w:1)
+	fn maintenance_mode() -> Weight {
+		(1_192_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
