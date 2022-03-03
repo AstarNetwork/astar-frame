@@ -16,7 +16,7 @@ use sp_core::{H160, H256, U256};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
 extern crate alloc;
@@ -25,7 +25,6 @@ pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
-pub(crate) const REWARD_SCALING: u32 = 2;
 pub(crate) const MILLIAST: Balance = 1_000_000_000_000_000;
 pub(crate) const AST: Balance = 1_000 * MILLIAST;
 pub(crate) const TEST_CONTRACT: [u8; 20] = H160::repeat_byte(0x09).to_fixed_bytes();
@@ -39,9 +38,9 @@ pub(crate) const MAX_NUMBER_OF_STAKERS: u32 = 4;
 pub(crate) const MINIMUM_STAKING_AMOUNT: Balance = 10 * AST;
 pub(crate) const DEVELOPER_REWARD_PERCENTAGE: u32 = 80;
 pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
-pub(crate) const HISTORY_DEPTH: u32 = 30;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
+pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 10;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -269,13 +268,12 @@ parameter_types! {
     pub const BlockPerEra: BlockNumber = BLOCKS_PER_ERA;
     pub const MaxNumberOfStakersPerContract: u32 = MAX_NUMBER_OF_STAKERS;
     pub const MinimumStakingAmount: Balance = MINIMUM_STAKING_AMOUNT;
-    pub const HistoryDepth: u32 = HISTORY_DEPTH;
     pub const DeveloperRewardPercentage: Perbill = Perbill::from_percent(DEVELOPER_REWARD_PERCENTAGE);
     pub const DappsStakingPalletId: PalletId = PalletId(*b"mokdpstk");
     pub const MinimumRemainingAmount: Balance = MINIMUM_REMAINING_AMOUNT;
-    pub const BonusEraDuration: u32 = 3;
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
     pub const UnbondingPeriod: EraIndex = UNBONDING_PERIOD;
+    pub const MaxEraStakeValues: u32 = MAX_ERA_STAKE_VALUES;
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
@@ -287,13 +285,12 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type SmartContract = MockSmartContract<AccountId>;
     type WeightInfo = weights::SubstrateWeight<TestRuntime>;
     type MaxNumberOfStakersPerContract = MaxNumberOfStakersPerContract;
-    type HistoryDepth = HistoryDepth;
-    type BonusEraDuration = BonusEraDuration;
     type MinimumStakingAmount = MinimumStakingAmount;
     type PalletId = DappsStakingPalletId;
     type MinimumRemainingAmount = MinimumRemainingAmount;
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
+    type MaxEraStakeValues = MaxEraStakeValues;
 }
 
 pub struct ExternalityBuilder {
@@ -373,13 +370,6 @@ pub fn advance_to_era(n: EraIndex) {
 pub fn initialize_first_block() {
     // This assert prevents method misuse
     assert_eq!(System::block_number(), 1 as BlockNumber);
-
-    // We need to beef up the pallet account balance in case of bonus rewards
-    let starting_balance = BLOCK_REWARD * BLOCKS_PER_ERA as Balance * REWARD_SCALING as Balance;
-    let _ = Balances::deposit_creating(
-        &<TestRuntime as pallet_dapps_staking::Config>::PalletId::get().into_account(),
-        starting_balance,
-    );
 
     // This is performed outside of dapps staking but we expect it before on_initialize
     DappsStaking::on_unbalanced(Balances::issue(BLOCK_REWARD));
