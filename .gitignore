@@ -143,3 +143,6 @@ Cargo.lock
 .keys
 
 .vscode
+
+# Not needed for libraries
+Cargo.lock
