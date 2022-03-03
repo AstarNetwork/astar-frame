@@ -267,8 +267,6 @@ where
             [0x52, 0xb7, 0x3e, 0x41] => Self::bond_and_stake(input)?,
             [0xc7, 0x84, 0x1d, 0xd2] => Self::unbond_and_unstake(input)?,
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
-            // `claim` and `claim_dapp` both use the same function. Former is kept for legacy compatibility.
-            [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim_dapp(input)?,
             [0x1b, 0x70, 0xba, 0x65] => Self::claim_dapp(input)?,
             [0xa0, 0xb9, 0xd8, 0xbe] => Self::claim_staker(input)?,
             _ => {

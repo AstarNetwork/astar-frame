@@ -47,11 +47,6 @@ interface DappsStaking {
     /// @notice Withdraw all funds that have completed the unbonding process.
     function withdraw_unbonded() external;
 
-    /// @notice Claim contract's rewards for the specified era.
-    ///
-    /// @dev This call is deprecated and shouldn't be used anymore.
-    function claim(address, uint128) external;
-
     /// @notice Claim one era of unclaimed staker rewards for the specifeid contract.
     ///         Staker account is derived from the caller address.
     function claim_staker(address) external;
