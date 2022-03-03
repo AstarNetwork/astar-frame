@@ -9,7 +9,7 @@ use frame_support::{assert_ok, dispatch::Dispatchable};
 use pallet_evm::{ExitSucceed, PrecompileSet};
 use sha3::{Digest, Keccak256};
 use sp_core::H160;
-use sp_runtime::Perbill;
+use sp_runtime::{AccountId32, Perbill};
 use std::{assert_matches::assert_matches, collections::BTreeMap};
 
 const ARG_SIZE_BYTES: usize = 32;
@@ -366,16 +366,15 @@ fn bond_and_stake_ss58_is_ok() {
             register_and_verify(developer, TEST_CONTRACT);
 
             let amount_staked_bobo = 100 * AST;
-            let account_bobo: AccountId = 1;
-            let account_dino: AccountId = 2;
-            bond_stake_ss58_and_verify(account_bobo, TEST_CONTRACT, amount_staked_bobo);
+
+            bond_stake_ss58_and_verify(TestAccount::Bobo.into(), TEST_CONTRACT, amount_staked_bobo);
 
             let amount_staked_dino = 50 * AST;
-            bond_stake_ss58_and_verify(account_dino, TEST_CONTRACT, amount_staked_dino);
+            bond_stake_ss58_and_verify(TestAccount::Dino.into(), TEST_CONTRACT, amount_staked_dino);
 
             let mut stakers_map = BTreeMap::new();
-            stakers_map.insert(account_bobo, amount_staked_bobo);
-            stakers_map.insert(account_dino, amount_staked_dino);
+            stakers_map.insert(TestAccount::Bobo.into(), amount_staked_bobo);
+            stakers_map.insert(TestAccount::Dino.into(), amount_staked_dino);
 
             let era = 1;
             contract_era_stake_verify(TEST_CONTRACT, amount_staked_bobo + amount_staked_dino);
@@ -388,7 +387,7 @@ fn bond_and_stake_ss58_is_ok() {
 // ****************************************************************************************************
 
 /// helper function to register and verify if registration is valid
-fn register_and_verify(developer: AccountId, contract_array: [u8; 20]) {
+fn register_and_verify(developer: AccountId32, contract_array: [u8; 20]) {
     let selector = &Keccak256::digest(b"register(address)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
@@ -452,12 +451,12 @@ fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
 }
 
 /// helper function to read ledger storage item for ss58 account
-fn read_staked_amount_ss58_verify(staker: AccountId, amount: u128) {
+fn read_staked_amount_ss58_verify(staker: AccountId32, amount: u128) {
     let selector = &Keccak256::digest(b"read_staked_amount_ss58(bytes)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
 
-    let staker_bytes = argument_from_u64(staker as u64);
+    let staker_bytes = staker.encode();
     input_data[4..36].copy_from_slice(&staker_bytes);
 
     let expected = Some(Ok(PrecompileOutput {
@@ -500,7 +499,7 @@ fn bond_stake_and_verify(staker: TestAccount, contract_array: [u8; 20], amount: 
 }
 
 /// helper function to bond, stake and verify if resulet is OK
-fn bond_stake_ss58_and_verify(staker: AccountId, contract_array: [u8; 20], amount: u128) {
+fn bond_stake_ss58_and_verify(staker: AccountId32, contract_array: [u8; 20], amount: u128) {
     let selector = &Keccak256::digest(b"bond_and_stake(address,uint128)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 68]);
     input_data[0..4].copy_from_slice(&selector);
@@ -540,20 +539,20 @@ fn unbond_unstake_and_verify(staker: TestAccount, contract_array: [u8; 20], amou
 }
 
 /// helper function to withdraw unstaked funds and verify if resulet is OK
-fn withdraw_unbonded_verify(staker: AccountId) {
+fn withdraw_unbonded_verify(staker: AccountId32) {
     let selector = &Keccak256::digest(b"withdraw_unbonded()")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 4]);
     input_data[0..4].copy_from_slice(&selector);
 
     // call unbond_and_unstake(). Check usable_balance before and after the call
     assert_ne!(
-        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker.into()),
+        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker),
         <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker)
     );
     assert_ok!(Call::Evm(evm_call(staker.clone().into(), input_data)).dispatch(Origin::root()));
     assert_eq!(
-        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker.into()),
-        <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker.into())
+        <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker),
+        <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker)
     );
 }
 
@@ -609,7 +608,7 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
 fn contract_era_stakers_verify(
     contract_array: [u8; 20],
     era: EraIndex,
-    expected_stakers_map: BTreeMap<AccountId, u128>,
+    expected_stakers_map: BTreeMap<AccountId32, u128>,
 ) {
     // check the storage
     let smart_contract = decode_smart_contract_from_array(contract_array).unwrap();
@@ -633,13 +632,6 @@ fn decode_smart_contract_from_array(
     .map_err(|_| "Error while decoding SmartContract")?;
 
     Ok(smart_contract)
-}
-
-/// Store u128 value in the 32 bytes vector as big endian
-pub fn argument_from_u64(value: u64) -> Vec<u8> {
-    let mut buffer = [0u8; ARG_SIZE_BYTES];
-    buffer[ARG_SIZE_BYTES - core::mem::size_of::<u64>()..].copy_from_slice(&value.to_be_bytes());
-    buffer.to_vec()
 }
 
 /// Store u128 value in the 32 bytes vector as big endian

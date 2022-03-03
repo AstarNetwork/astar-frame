@@ -53,7 +53,7 @@ where
     BalanceOf<R>: EvmData,
     <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
     R::Call: From<pallet_dapps_staking::Call<R>>,
-    R::AccountId: From<u64>,
+    R::AccountId: From<[u8; 32]>,
 {
     /// Fetch current era from CurrentEra storage map
     fn read_current_era(gasometer: &mut Gasometer) -> EvmResult<PrecompileOutput> {
@@ -175,11 +175,10 @@ where
         let staker_u256 = input.read::<U256>(gasometer)?;
         let mut staker_bytes = [0_u8; 32];
         sp_core::U256::from(staker_u256).to_big_endian(&mut staker_bytes[..]);
-        println!("staker_bytes {:?}", staker_bytes);
+        // println!("staker_bytes {:?}", staker_bytes);
 
-        let staker = <R as frame_system::Config>::AccountId::decode(&mut &staker_bytes[..])
-            .map_err(|_| gasometer.revert("Error while decoding AccountID"))?;
-        println!("staker {:?}", staker);
+        let staker: R::AccountId = staker_bytes.into();
+        // println!("staker {:?}", staker);
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
@@ -398,7 +397,7 @@ where
         + GetDispatchInfo,
     <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
     BalanceOf<R>: EvmData,
-    <R as frame_system::Config>::AccountId: From<u64>,
+    R::AccountId: From<[u8; 32]>,
 {
     fn execute(
         input: &[u8],
