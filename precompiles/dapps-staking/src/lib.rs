@@ -11,13 +11,13 @@ use frame_support::{
     traits::{Currency, Get},
 };
 use pallet_evm::{AddressMapping, Precompile};
-use sp_std::{convert::TryInto, marker::PhantomData};
-use precompile_utils::{ Address,
-    EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
+use precompile_utils::{
+    Address, EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
     RuntimeHelper,
 };
 use sp_core::{H160, U256};
 use sp_runtime::traits::Zero;
+use sp_std::{convert::TryInto, marker::PhantomData};
 extern crate alloc;
 
 type BalanceOf<Runtime> = <<Runtime as pallet_dapps_staking::Config>::Currency as Currency<
