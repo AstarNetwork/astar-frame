@@ -12,12 +12,13 @@ use frame_support::{
 };
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    Address, EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
+    Address, Bytes, EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
     RuntimeHelper,
 };
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::traits::Zero;
-use sp_std::{convert::TryInto, marker::PhantomData};
+use sp_std::marker::PhantomData;
+use sp_std::prelude::*;
 extern crate alloc;
 
 type BalanceOf<Runtime> = <<Runtime as pallet_dapps_staking::Config>::Currency as Currency<
@@ -166,16 +167,15 @@ where
         input.expect_arguments(gasometer, 1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let staker_u256 = input.read::<U256>(gasometer)?;
+        let staker_vec: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
         let mut staker_bytes = [0_u8; 32];
-        sp_core::U256::from(staker_u256).to_big_endian(&mut staker_bytes[..]);
-        // println!("staker_bytes {:?}", staker_bytes);
+        staker_bytes[..].clone_from_slice(&staker_vec[0..32]);
 
         let staker: R::AccountId = staker_bytes.into();
-        // println!("staker {:?}", staker);
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
+        log::trace!(target: "ds-precompile", "read_staked_amount_ss58 input:{:?}, account:{:?}, ledger.locked:{:?}", staker_vec, staker, ledger.locked);
 
         // compose output
         let output = EvmDataWriter::new().write(ledger.locked).build();
@@ -187,6 +187,7 @@ where
             logs: Default::default(),
         })
     }
+
 
     /// Read the amount staked on contract in the given era
     fn read_contract_stake(
