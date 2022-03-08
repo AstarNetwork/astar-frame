@@ -189,7 +189,7 @@ pub mod pallet {
 
     /// Stores amount staked and stakers for a contract per era
     #[pallet::storage]
-    #[pallet::getter(fn contract_era_stake)]
+    #[pallet::getter(fn contract_stake_info)]
     pub type ContractEraStake<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
@@ -318,7 +318,7 @@ pub mod pallet {
             // a new era is triggered. This code is just a safety net to ensure nothing is broken
             // if we fail to do that.
             if PalletDisabled::<T>::get() {
-                return Zero::zero();
+                return T::DbWeight::get().reads(1);
             }
 
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
@@ -335,15 +335,18 @@ pub mod pallet {
 
                 let reward = BlockRewardAccumulator::<T>::take();
                 Self::reward_balance_snapshoot(previous_era, reward);
+                let consumed_weight = Self::rotate_staking_info(previous_era);
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
                 }
 
                 Self::deposit_event(Event::<T>::NewDappStakingEra(next_era));
-            }
 
-            T::DbWeight::get().writes(5)
+                consumed_weight + T::DbWeight::get().reads_writes(5, 3)
+            } else {
+                T::DbWeight::get().reads(4)
+            }
         }
     }
 
@@ -533,7 +536,8 @@ pub mod pallet {
             );
 
             let current_era = Self::current_era();
-            let mut staking_info = Self::staking_info(&contract_id, current_era);
+            let mut staking_info =
+                Self::contract_stake_info(&contract_id, current_era).unwrap_or_default();
             let mut staker_info = Self::staker_info(&staker, &contract_id);
 
             ensure!(
@@ -618,7 +622,8 @@ pub mod pallet {
             ensure!(staked_value > Zero::zero(), Error::<T>::NotStakedContract);
 
             let current_era = Self::current_era();
-            let mut contract_stake_info = Self::staking_info(&contract_id, current_era);
+            let mut contract_stake_info =
+                Self::contract_stake_info(&contract_id, current_era).unwrap_or_default();
 
             // Calculate the value which will be unstaked.
             let remaining = staked_value.saturating_sub(value);
@@ -737,7 +742,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let staking_info = Self::staking_info(&contract_id, era);
+            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -786,7 +791,8 @@ pub mod pallet {
             }
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut contract_stake_info = Self::staking_info(&contract_id, era);
+            let mut contract_stake_info =
+                Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             ensure!(
                 !contract_stake_info.contract_reward_claimed,
                 Error::<T>::AlreadyClaimedInThisEra,
@@ -965,34 +971,36 @@ pub mod pallet {
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 
-        /// This helper returns `ContractStakeInfo` for given era if possible or latest stored data
-        /// or finally default value if storage have no data for it.
-        pub fn staking_info(
-            contract_id: &T::SmartContract,
-            era: EraIndex,
-        ) -> ContractStakeInfo<BalanceOf<T>> {
-            // By checking current and previus era, we will avoid key prefix iteration in most of the cases.
-            // It is safe to assume that contract era stake will change each era - for this to occur, either dapp rewards
-            // need to be claimed or active stake amount needs to change (highly likely when automatic reward restaking introduced).
-            if ContractEraStake::<T>::contains_key(contract_id, era) {
-                ContractEraStake::<T>::get(contract_id, era).unwrap()
-            } else if ContractEraStake::<T>::contains_key(contract_id, era.saturating_sub(1)) {
-                let mut staking_points =
-                    ContractEraStake::<T>::get(contract_id, era.saturating_sub(1)).unwrap();
-                staking_points.contract_reward_claimed = false;
-                staking_points
-            } else {
-                let avail_era = ContractEraStake::<T>::iter_key_prefix(&contract_id)
-                    .filter(|x| *x <= era)
-                    .max()
-                    .unwrap_or(Zero::zero());
+        /// Used to copy all `ContractStakeInfo` from the ending era over to the next era.
+        /// This is the most primitive solution since it scales with number of dApps.
+        /// It is possible to provide a hybrid solution which allows laziness but also prevents
+        /// a situation where we don't have access to the required data.
+        fn rotate_staking_info(current_era: EraIndex) -> u64 {
+            let next_era = current_era + 1;
 
-                let mut staking_points =
-                    ContractEraStake::<T>::get(contract_id, avail_era).unwrap_or_default();
-                // Needs to be reset since otherwise it might seem as if rewards were already claimed for this era.
-                staking_points.contract_reward_claimed = false;
-                staking_points
+            let mut consumed_weight = 0;
+
+            for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
+                // Ignore dapp if it was unregistered
+                if let DAppState::Unregistered(_) = dapp_info.state {
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                    continue;
+                }
+
+                // Copy data from era `X` to era `X + 1`
+                if let Some(mut staking_info) = Self::contract_stake_info(&contract_id, current_era)
+                {
+                    staking_info.contract_reward_claimed = false;
+                    ContractEraStake::<T>::insert(&contract_id, next_era, staking_info);
+
+                    consumed_weight =
+                        consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                } else {
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                }
             }
+
+            consumed_weight
         }
 
         /// Returns available staking balance for the potential staker

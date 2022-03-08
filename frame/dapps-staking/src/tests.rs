@@ -175,61 +175,77 @@ fn new_era_forcing() {
 }
 
 #[test]
-fn staking_info_is_ok() {
+fn general_staker_info_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
 
-        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
-        assert_register(10, &contract_id);
+        let first_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(10, &first_contract_id);
+
+        let second_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+        assert_register(11, &second_contract_id);
 
         let (staker_1, staker_2, staker_3) = (1, 2, 3);
         let amount = 100;
 
         let starting_era = 3;
         advance_to_era(starting_era);
-        assert_bond_and_stake(staker_1, &contract_id, amount);
-        assert_bond_and_stake(staker_2, &contract_id, amount);
+        assert_bond_and_stake(staker_1, &first_contract_id, amount);
+        assert_bond_and_stake(staker_2, &first_contract_id, amount);
 
         let mid_era = 7;
         advance_to_era(mid_era);
-        assert_unbond_and_unstake(staker_2, &contract_id, amount);
-        assert_bond_and_stake(staker_3, &contract_id, amount);
+        assert_unbond_and_unstake(staker_2, &first_contract_id, amount);
+        assert_bond_and_stake(staker_3, &first_contract_id, amount);
+        assert_bond_and_stake(staker_3, &second_contract_id, amount);
 
         let final_era = 12;
         advance_to_era(final_era);
 
         // Check first interval
-        let mut first_staker_info = DappsStaking::staker_info(&staker_1, &contract_id);
-        let mut second_staker_info = DappsStaking::staker_info(&staker_2, &contract_id);
-        let mut third_staker_info = DappsStaking::staker_info(&staker_3, &contract_id);
+        let mut first_staker_info = DappsStaking::staker_info(&staker_1, &first_contract_id);
+        let mut second_staker_info = DappsStaking::staker_info(&staker_2, &first_contract_id);
+        let mut third_staker_info = DappsStaking::staker_info(&staker_3, &first_contract_id);
 
         for era in starting_era..mid_era {
-            let contract_info = DappsStaking::staking_info(&contract_id, era);
+            let contract_info = DappsStaking::contract_stake_info(&first_contract_id, era).unwrap();
             assert_eq!(2, contract_info.number_of_stakers);
 
             assert_eq!((era, amount), first_staker_info.claim());
             assert_eq!((era, amount), second_staker_info.claim());
+
+            assert!(!ContractEraStake::<TestRuntime>::contains_key(
+                &second_contract_id,
+                era
+            ));
         }
 
         // Check second interval
         for era in mid_era..=final_era {
-            let contract_info = DappsStaking::staking_info(&contract_id, era);
-            assert_eq!(2, contract_info.number_of_stakers);
+            let first_contract_info =
+                DappsStaking::contract_stake_info(&first_contract_id, era).unwrap();
+            assert_eq!(2, first_contract_info.number_of_stakers);
 
             assert_eq!((era, amount), first_staker_info.claim());
             assert_eq!((era, amount), third_staker_info.claim());
+
+            assert_eq!(
+                DappsStaking::contract_stake_info(&second_contract_id, era)
+                    .unwrap()
+                    .number_of_stakers,
+                1
+            );
         }
 
         // Check that before starting era nothing exists
-        let staking_info = DappsStaking::staking_info(&contract_id, starting_era - 1);
-        assert!(staking_info.number_of_stakers.is_zero());
-
-        // Era hasn't happened yet but value is returned as if it has happened
-        let overflow_era = final_era + 1;
-        let staking_info = DappsStaking::staking_info(&contract_id, overflow_era);
-        assert_eq!(2, staking_info.number_of_stakers);
-        assert_eq!((overflow_era, amount), first_staker_info.claim());
-        assert_eq!((overflow_era, amount), third_staker_info.claim());
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &first_contract_id,
+            starting_era - 1
+        ));
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &second_contract_id,
+            starting_era - 1
+        ));
     })
 }
 
@@ -573,7 +589,7 @@ fn bond_and_stake_different_eras_is_ok() {
 
         // initially, storage values should be None
         let current_era = DappsStaking::current_era();
-        assert!(ContractEraStake::<TestRuntime>::get(&contract_id, current_era).is_none());
+        assert!(DappsStaking::contract_stake_info(&contract_id, current_era).is_none());
 
         assert_bond_and_stake(staker_id, &contract_id, 100);
 
