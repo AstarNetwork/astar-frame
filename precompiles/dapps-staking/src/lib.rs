@@ -188,7 +188,6 @@ where
         })
     }
 
-
     /// Read the amount staked on contract in the given era
     fn read_contract_stake(
         input: &mut EvmDataReader,
