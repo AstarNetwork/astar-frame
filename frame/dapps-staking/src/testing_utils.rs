@@ -1,4 +1,4 @@
-use super::{Event, *};
+use super::{pallet::pallet::Event, *};
 use frame_support::assert_ok;
 use mock::{EraIndex, *};
 use sp_runtime::{traits::AccountIdConversion, Perbill};
@@ -420,7 +420,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
-    if init_state.ledger.reward_handling == RewardHandling::PayoutAndStake
+    if init_state.ledger.reward_destination == RewardDestination::StakeBalance
         && !init_state.staker_info.latest_staked_value().is_zero()
     {
         System::assert_last_event(mock::Event::DappsStaking(Event::RewardAndRestake(

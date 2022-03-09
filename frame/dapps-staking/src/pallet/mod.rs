@@ -223,7 +223,7 @@ pub mod pallet {
         /// Claimed staker reward restaked
         RewardAndRestake(T::AccountId, T::SmartContract, BalanceOf<T>),
         /// Reward handling modified
-        RewardHandlingChange(T::AccountId, RewardHandling),
+        RewardDestinationChange(T::AccountId, RewardDestination),
     }
 
     #[pallet::error]
@@ -701,7 +701,7 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
 
-            if ledger.reward_handling == RewardHandling::PayoutAndStake
+            if ledger.reward_destination == RewardDestination::StakeBalance
                 && !staker_info.latest_staked_value().is_zero()
             {
                 staker_info
@@ -866,21 +866,20 @@ pub mod pallet {
 
             Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
 
-            #[pallet::weight(T::WeightInfo::enable_compound_staking())]
-            pub fn enable_compound_staking(
-                origin: OriginFor<T>,
-                option: RewardHandling,
-            ) -> DispatchResultWithPostInfo {
-                ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
-                let staker = ensure_signed(origin)?;
+        #[pallet::weight(T::WeightInfo::set_reward_destination())]
+        pub fn set_reward_destination(
+            origin: OriginFor<T>,
+            option: RewardDestination,
+        ) -> DispatchResultWithPostInfo {
+            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            let staker = ensure_signed(origin)?;
 
-                Ledger::<T>::mutate(&staker, |ledger| {
-                    ledger.reward_handling = option;
-                });
+            Ledger::<T>::mutate(&staker, |ledger| {
+                ledger.reward_destination = option;
+            });
 
-                Self::deposit_event(Event::<T>::RewardHandlingChange(staker, option));
-                Ok(().into())
-            }
+            Self::deposit_event(Event::<T>::RewardDestinationChange(staker, option));
+            Ok(().into())
         }
     }
 

@@ -18,8 +18,8 @@ pub trait WeightInfo {
     fn claim_staker() -> Weight;
     fn claim_dapp() -> Weight;
     fn force_new_era() -> Weight;
-	fn maintenance_mode() -> Weight;
-		fn enable_compound_staking() -> Weight;
+		fn maintenance_mode() -> Weight;
+		fn set_reward_destination() -> Weight;
 }
 
 /// Weights for pallet_staking using the Substrate node and recommended hardware.
@@ -140,12 +140,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn maintenance_mode() -> Weight {
 		(10_970_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-		(1_192_000 as Weight)
+		.saturating_add(1_192_000 as Weight)
 	}
 	// Storage: DappsStaking PalledDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	// TODO: get real base value
-	fn enable_compound_staking() -> Weight {
+	fn set_reward_destination() -> Weight {
 		(3_466_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -272,7 +272,7 @@ impl WeightInfo for () {
 	// Storage: DappsStaking PalledDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	// TODO: get real base value
-	fn enable_compound_staking() -> Weight {
+	fn set_reward_destination() -> Weight {
 		(3_466_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

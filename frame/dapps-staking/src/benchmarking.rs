@@ -241,14 +241,15 @@ benchmarks! {
 
     maintenance_mode {
     }: _(RawOrigin::Root, true)
-    enable_compound_staking {
+
+    set_reward_destination {
         initialize::<T>();
 
         let staker: T::AccountId = whitelisted_caller();
-        let option = RewardHandling::OnlyPayout;
+        let option = RewardDestination::FreeBalance;
     }: _(RawOrigin::Signed(staker.clone()), option)
     verify {
-        assert_last_event::<T>(Event::<T>::RewardHandlingChange(staker, option).into());
+        assert_last_event::<T>(Event::<T>::RewardChange(staker, option).into());
     }
 
 }

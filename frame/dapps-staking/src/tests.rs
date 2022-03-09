@@ -1,4 +1,4 @@
-use super::{pallet::pallet::Error, Event, *};
+use super::{Error, Event, *};
 use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
 use mock::{Balances, MockSmartContract, *};
 use sp_core::H160;
@@ -1462,9 +1462,9 @@ fn claim_only_payout_is_ok() {
         assert_bond_and_stake(staker, &contract_id, stake_value);
 
         advance_to_era(start_era + 1);
-        assert_ok!(DappsStaking::enable_compound_staking(
+        assert_ok!(DappsStaking::set_reward_destination(
             Origin::signed(staker),
-            RewardHandling::OnlyPayout
+            RewardDestination::FreeBalance
         ));
 
         assert_claim_staker(staker, &contract_id);
