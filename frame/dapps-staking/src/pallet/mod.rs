@@ -866,20 +866,21 @@ pub mod pallet {
 
             Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
 
-        #[pallet::weight(T::WeightInfo::enable_compound_staking())]
-        pub fn enable_compound_staking(
-            origin: OriginFor<T>,
-            option: RewardHandling,
-        ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
-            let staker = ensure_signed(origin)?;
+            #[pallet::weight(T::WeightInfo::enable_compound_staking())]
+            pub fn enable_compound_staking(
+                origin: OriginFor<T>,
+                option: RewardHandling,
+            ) -> DispatchResultWithPostInfo {
+                ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+                let staker = ensure_signed(origin)?;
 
-            Ledger::<T>::mutate(&staker, |ledger| {
-                ledger.reward_handling = option;
-            });
+                Ledger::<T>::mutate(&staker, |ledger| {
+                    ledger.reward_handling = option;
+                });
 
-            Self::deposit_event(Event::<T>::RewardHandlingChange(staker, option));
-            Ok(().into())
+                Self::deposit_event(Event::<T>::RewardHandlingChange(staker, option));
+                Ok(().into())
+            }
         }
     }
 
@@ -898,7 +899,6 @@ pub mod pallet {
             }
         }
 
-        fn stake(
         fn update_staking_values(
             value_to_stake: BalanceOf<T>,
             ledger: &mut AccountLedger<BalanceOf<T>>,
