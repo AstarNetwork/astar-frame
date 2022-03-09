@@ -422,14 +422,16 @@ pub fn to_smart_contract_bytes(input: [u8; 20]) -> [u8; 21] {
 }
 
 /// helper function to read ledger storage item
-fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
-    let selector = &Keccak256::digest(b"read_staked_amount(address)")[0..4];
-    let mut input_data = Vec::<u8>::from([0u8; 36]);
+fn read_staked_amount_h160_verify(staker: TestAccount, amount: u128) {
+    let selector = &Keccak256::digest(b"read_staked_amount(bytes)")[0..4];
+    let mut input_data = Vec::<u8>::from([0u8; 100]);
     input_data[0..4].copy_from_slice(&selector);
 
-    let staker_arg = argument_from_h160(staker.to_h160());
+    input_data[35] = 32; // call data starting from position [4..36]
+    input_data[67] = 20; // size of call data in bytes [36..68]
 
-    input_data[4..36].copy_from_slice(&staker_arg);
+    let staker_arg = argument_from_h160(staker.to_h160());
+    input_data[68..100].copy_from_slice(&staker_arg);
 
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
@@ -452,12 +454,12 @@ fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
 
 /// helper function to read ledger storage item for ss58 account
 fn read_staked_amount_ss58_verify(staker: AccountId32, amount: u128) {
-    let selector = &Keccak256::digest(b"read_staked_amount_ss58(bytes)")[0..4];
+    let selector = &Keccak256::digest(b"read_staked_amount(bytes)")[0..4];
     let mut input_data = Vec::<u8>::from([0u8; 100]);
     input_data[0..4].copy_from_slice(&selector);
 
-    input_data[35] = 32; // size of the staker address [4..36]
-    input_data[67] = 32;
+    input_data[35] = 32; // call data starting from position [4..36]
+    input_data[67] = 32; // size of call data in bytes [36..68]
 
     let staker_bytes = staker.encode();
     input_data[68..100].copy_from_slice(&staker_bytes);
@@ -498,7 +500,7 @@ fn bond_stake_and_verify(staker: TestAccount, contract_array: [u8; 20], amount: 
     // call bond_and_stake()
     assert_ok!(Call::Evm(evm_call(staker.clone().into(), input_data)).dispatch(Origin::root()));
 
-    read_staked_amount_verify(staker.clone(), amount.clone());
+    read_staked_amount_h160_verify(staker.clone(), amount.clone());
 }
 
 /// helper function to bond, stake and verify if resulet is OK
@@ -538,7 +540,7 @@ fn unbond_unstake_and_verify(staker: TestAccount, contract_array: [u8; 20], amou
         Call::Evm(evm_call(staker.clone().into(), input_data.clone())).dispatch(Origin::root())
     );
 
-    read_staked_amount_verify(staker.clone(), amount.clone());
+    read_staked_amount_h160_verify(staker.clone(), amount.clone());
 }
 
 /// helper function to withdraw unstaked funds and verify if resulet is OK
@@ -647,7 +649,6 @@ pub fn argument_from_u128(value: u128) -> Vec<u8> {
 /// Store H160 value in the 32 bytes vector as big endian
 pub fn argument_from_h160(value: H160) -> Vec<u8> {
     let mut buffer = [0u8; ARG_SIZE_BYTES];
-    buffer[ARG_SIZE_BYTES - core::mem::size_of::<H160>()..]
-        .copy_from_slice(&value.to_fixed_bytes());
+    buffer[0..core::mem::size_of::<H160>()].copy_from_slice(&value.to_fixed_bytes());
     buffer.to_vec()
 }
