@@ -12,7 +12,7 @@ use frame_support::{
 use pallet_evm::{AddressMapping, GasWeightMapping, Precompile};
 use sp_core::H160;
 use sp_runtime::{
-    traits::{SaturatedConversion, Zero},
+    traits::{SaturatedConversion, Saturating, Zero},
     ModuleError,
 };
 use sp_std::{convert::TryInto, marker::PhantomData, vec::Vec};
@@ -65,8 +65,10 @@ where
     fn read_era_reward(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
         let era = input.to_u256(1).low_u32();
-        let read_reward = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
-        let reward = read_reward.map_or(Zero::zero(), |r| r.rewards);
+        let read_reward = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
+        let reward = read_reward.map_or(Zero::zero(), |r| {
+            r.rewards.stakers.saturating_add(r.rewards.dapps)
+        });
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
 
         let reward = TryInto::<u128>::try_into(reward).unwrap_or(0);
@@ -83,7 +85,7 @@ where
     fn read_era_staked(input: EvmInArg) -> Result<PrecompileOutput, PrecompileFailure> {
         input.expecting_arguments(1).map_err(|e| exit_error(e))?;
         let era = input.to_u256(1).low_u32();
-        let reward_and_stake = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
+        let reward_and_stake = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
         let staked = reward_and_stake.map_or(Zero::zero(), |r| r.staked);
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
 
@@ -190,8 +192,8 @@ where
         Ok(pallet_dapps_staking::Call::<R>::withdraw_unbonded {}.into())
     }
 
-    /// Claim rewards for the contract in the dapp-staking pallet
-    fn claim(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
+    /// Claim rewards for the contract in the dapps-staking pallet
+    fn claim_dapp(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
         input.expecting_arguments(2).map_err(|e| exit_error(e))?;
 
         // parse contract's address
@@ -201,7 +203,18 @@ where
         // parse era
         let era = input.to_u256(2).low_u128().saturated_into();
 
-        Ok(pallet_dapps_staking::Call::<R>::claim { contract_id, era }.into())
+        Ok(pallet_dapps_staking::Call::<R>::claim_dapp { contract_id, era }.into())
+    }
+
+    /// Claim rewards for the staker in the dapps-staking pallet
+    fn claim_staker(input: EvmInArg) -> Result<R::Call, PrecompileFailure> {
+        input.expecting_arguments(1).map_err(|e| exit_error(e))?;
+
+        // parse contract's address
+        let contract_h160 = input.to_h160(1);
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
+
+        Ok(pallet_dapps_staking::Call::<R>::claim_staker { contract_id }.into())
     }
 
     /// Helper method to decode type SmartContract enum
@@ -254,7 +267,8 @@ where
             [0x52, 0xb7, 0x3e, 0x41] => Self::bond_and_stake(input)?,
             [0xc7, 0x84, 0x1d, 0xd2] => Self::unbond_and_unstake(input)?,
             [0x77, 0xa0, 0xfe, 0x02] => Self::withdraw_unbonded()?,
-            [0xc1, 0x3f, 0x4a, 0xf7] => Self::claim(input)?,
+            [0x1b, 0x70, 0xba, 0x65] => Self::claim_dapp(input)?,
+            [0xa0, 0xb9, 0xd8, 0xbe] => Self::claim_staker(input)?,
             _ => {
                 return Err(PrecompileFailure::Error {
                     exit_status: ExitError::Other("No method at given selector".into()),
