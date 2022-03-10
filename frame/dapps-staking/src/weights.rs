@@ -267,7 +267,6 @@ impl WeightInfo for () {
 	fn maintenance_mode() -> Weight {
 		(10_970_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-		(1_192_000 as Weight)
 	}
 	// Storage: DappsStaking PalledDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
