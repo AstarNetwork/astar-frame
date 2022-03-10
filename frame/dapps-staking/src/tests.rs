@@ -1681,10 +1681,10 @@ fn maintenance_mode_is_ok() {
         initialize_first_block();
 
         assert_ok!(DappsStaking::ensure_pallet_enabled());
-        assert!(!PalletDisabled::<TestRuntime>::exists());
+        assert!(!PalletDisabled::<TestRuntime>::get());
 
         assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
-        assert!(PalletDisabled::<TestRuntime>::exists());
+        assert!(PalletDisabled::<TestRuntime>::get());
 
         let account = 1;
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));

@@ -132,7 +132,7 @@ pub mod pallet {
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
     #[pallet::storage]
-    pub type PalletDisabled<T> = StorageValue<_, ()>;
+    pub type PalletDisabled<T> = StorageValue<_, bool, ValueQuery>;
 
     /// Registered developer accounts points to coresponding contract
     #[pallet::storage]
@@ -238,7 +238,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
-            if PalletDisabled::<T>::exists() {
+            if PalletDisabled::<T>::get() {
                 return Zero::zero();
             }
 
@@ -671,13 +671,9 @@ pub mod pallet {
 
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
         #[pallet::weight(T::DbWeight::get().writes(1))]
-        pub fn maintenance_mode(origin: OriginFor<T>, enabled: bool) -> DispatchResultWithPostInfo {
+        pub fn maintenance_mode(origin: OriginFor<T>, enable_maintenance: bool) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            if enabled {
-                PalletDisabled::<T>::put(());
-            } else {
-                PalletDisabled::<T>::kill();
-            }
+            PalletDisabled::<T>::put(enable_maintenance);
 
             Ok(().into())
         }
@@ -686,7 +682,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// `true` if pallet disabled for maintenance, `false` otherwise
         pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
-            if PalletDisabled::<T>::exists() {
+            if PalletDisabled::<T>::get() {
                 Err(Error::<T>::Disabled)
             } else {
                 Ok(())
