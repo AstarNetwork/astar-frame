@@ -883,18 +883,18 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::maintenance_mode())]
         pub fn maintenance_mode(
             origin: OriginFor<T>,
-            enable_maintenace: bool,
+            enable_maintenance: bool,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let is_disabled = PalletDisabled::<T>::get();
 
             ensure!(
-                is_disabled ^ enable_maintenace,
+                is_disabled ^ enable_maintenance,
                 Error::<T>::NoMaintenanceModeChange
             );
-            PalletDisabled::<T>::put(enable_maintenace);
+            PalletDisabled::<T>::put(enable_maintenance);
 
-            Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenace));
+            Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
 
             Ok(().into())
         }

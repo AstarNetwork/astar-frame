@@ -462,7 +462,7 @@ pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
     /// Information about unbonding chunks.
     unbonding_info: UnbondingInfo<Balance>,
     /// Instruction on how to handle reward payout
-    reward_handling: RewardDestination,
+    reward_destination: RewardDestination,
 }
 
 impl<Balance: AtLeast32BitUnsigned + Default + Copy> AccountLedger<Balance> {

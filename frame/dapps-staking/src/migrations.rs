@@ -545,7 +545,7 @@ pub mod v3 {
                     Some(AccountLedger {
                         locked: x.locked,
                         unbonding_info: x.unbonding_info,
-                        reward_handling: Default::default(),
+                        reward_destination: Default::default(),
                     })
                 });
 
