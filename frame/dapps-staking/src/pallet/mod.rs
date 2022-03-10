@@ -511,12 +511,16 @@ pub mod pallet {
             );
 
             // Increment ledger and total staker value for contract.
-            Self::update_staking_values(
-                value_to_stake,
-                &mut ledger,
-                &mut staking_info,
-                current_era,
-            )?;
+            ledger.locked = ledger.locked.saturating_add(value_to_stake);
+            staking_info.total = staking_info.total.saturating_add(value_to_stake);
+
+            // Update storage
+            GeneralEraInfo::<T>::mutate(&current_era, |value| {
+                if let Some(x) = value {
+                    x.staked = x.staked.saturating_add(value_to_stake);
+                    x.locked = x.locked.saturating_add(value_to_stake);
+                }
+            });
 
             Self::update_ledger(&staker, ledger);
             Self::update_staker_info(&staker, &contract_id, staker_info);
@@ -708,12 +712,15 @@ pub mod pallet {
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
 
-                Self::update_staking_values(
-                    staker_reward,
-                    &mut ledger,
-                    &mut staking_info,
-                    current_era,
-                )?;
+                ledger.locked = ledger.locked.saturating_add(staker_reward);
+                staking_info.total = staking_info.total.saturating_add(staker_reward);
+                // Update storage
+                GeneralEraInfo::<T>::mutate(&current_era, |value| {
+                    if let Some(x) = value {
+                        x.staked = x.staked.saturating_add(staker_reward);
+                        x.locked = x.locked.saturating_add(staker_reward);
+                    }
+                });
 
                 Self::update_ledger(&staker, ledger);
 
@@ -896,25 +903,6 @@ pub mod pallet {
             } else {
                 Ok(())
             }
-        }
-
-        fn update_staking_values(
-            value_to_stake: BalanceOf<T>,
-            ledger: &mut AccountLedger<BalanceOf<T>>,
-            staking_info: &mut EraStakingPoints<BalanceOf<T>>,
-            current_era: u32,
-        ) -> DispatchResultWithPostInfo {
-            ledger.locked = ledger.locked.saturating_add(value_to_stake);
-            staking_info.total = staking_info.total.saturating_add(value_to_stake);
-            // Update storage
-            GeneralEraInfo::<T>::mutate(&current_era, |value| {
-                if let Some(x) = value {
-                    x.staked = x.staked.saturating_add(value_to_stake);
-                    x.locked = x.locked.saturating_add(value_to_stake);
-                }
-            });
-
-            Ok(().into())
         }
 
         /// Update the ledger for a staker. This will also update the stash lock.
