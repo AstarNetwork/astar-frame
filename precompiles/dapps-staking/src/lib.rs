@@ -131,7 +131,7 @@ where
 
         // call pallet-dapps-staking
         let staking_info =
-            pallet_dapps_staking::Pallet::<R>::contract_stake_info(&contract_id, current_era)
+            pallet_dapps_staking::Pallet::<R>::contract_era_stake(&contract_id, current_era)
                 .unwrap_or_default();
         let gas_used = R::GasWeightMapping::weight_to_gas(R::DbWeight::get().read);
         // encode output with total
