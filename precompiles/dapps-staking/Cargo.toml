@@ -19,7 +19,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 
 # Astar frame
 # TODO change this later once tag has been created
-pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
+pallet-dapps-staking = { git = "https://github.com/AstarNetwork/astar-frame", branch = "feature/individual-claim",default-features = false }
 
 
 # Frontier
