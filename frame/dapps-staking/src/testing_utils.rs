@@ -24,7 +24,7 @@ impl MemorySnapshot {
             era_info: DappsStaking::general_era_info(era).unwrap(),
             dapp_info: RegisteredDapps::<TestRuntime>::get(contract_id).unwrap(),
             staker_info: GeneralStakerInfo::<TestRuntime>::get(&account, contract_id),
-            contract_info: DappsStaking::staking_info(contract_id, era),
+            contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: DappsStaking::ledger(&account),
             free_balance: <TestRuntime as Config>::Currency::free_balance(&account),
         }
@@ -37,7 +37,7 @@ impl MemorySnapshot {
             era_info: DappsStaking::general_era_info(era).unwrap(),
             dapp_info: RegisteredDapps::<TestRuntime>::get(contract_id).unwrap(),
             staker_info: Default::default(),
-            contract_info: DappsStaking::staking_info(contract_id, era),
+            contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: Default::default(),
             free_balance: Default::default(),
         }
