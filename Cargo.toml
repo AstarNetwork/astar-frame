@@ -5,4 +5,5 @@ members = [
     "frame/dapps-staking",
     "precompiles/dapps-staking",
     "precompiles/sr25519",
+    "precompiles/utils",
 ]

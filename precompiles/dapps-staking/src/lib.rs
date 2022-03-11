@@ -16,7 +16,7 @@ use precompile_utils::{
     RuntimeHelper,
 };
 use sp_core::H160;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Saturating, Zero};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 extern crate alloc;
@@ -93,11 +93,11 @@ where
         let era: u32 = input.read::<u32>(gasometer)?.into();
 
         // call pallet-dapps-staking
-        let read_reward = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
-
+        let read_reward = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
+        let reward = read_reward.map_or(Zero::zero(), |r| {
+            r.rewards.stakers.saturating_add(r.rewards.dapps)
+        });
         // compose output
-        let reward = read_reward.map_or(Zero::zero(), |r| r.rewards);
-        let reward = TryInto::<u128>::try_into(reward).unwrap_or(0);
         let output = EvmDataWriter::new().write(reward).build();
 
         Ok(PrecompileOutput {
@@ -119,8 +119,7 @@ where
         let era: u32 = input.read::<u32>(gasometer)?.into();
 
         // call pallet-dapps-staking
-        let reward_and_stake = pallet_dapps_staking::EraRewardsAndStakes::<R>::get(era);
-
+        let reward_and_stake = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
         // compose output
         let staked = reward_and_stake.map_or(Zero::zero(), |r| r.staked);
         let staked = TryInto::<u128>::try_into(staked).unwrap_or(0);
@@ -310,8 +309,8 @@ where
         Ok((Some(origin).into(), call))
     }
 
-    /// Claim rewards for the contract in the dapp-staking pallet
-    fn claim(
+    /// Claim rewards for the contract in the dapps-staking pallet
+    fn claim_dapp(
         input: &mut EvmDataReader,
         gasometer: &mut Gasometer,
         context: &Context,
@@ -328,11 +327,36 @@ where
 
         // parse era
         let era: u32 = input.read::<u32>(gasometer)?.into();
-        log::trace!(target: "ds-precompile", "claim {:?}, era {:?}", contract_id, era);
+        log::trace!(target: "ds-precompile", "claim_dapp {:?}, era {:?}", contract_id, era);
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(context.caller);
-        let call = pallet_dapps_staking::Call::<R>::claim { contract_id, era }.into();
+        let call = pallet_dapps_staking::Call::<R>::claim_dapp { contract_id, era }.into();
+
+        // Return call information
+        Ok((Some(origin).into(), call))
+    }
+
+    /// Claim rewards for the contract in the dapps-staking pallet
+    fn claim_staker(
+        input: &mut EvmDataReader,
+        gasometer: &mut Gasometer,
+        context: &Context,
+    ) -> EvmResult<(
+        <R::Call as Dispatchable>::Origin,
+        pallet_dapps_staking::Call<R>,
+    )> {
+        input.expect_arguments(gasometer, 1)?;
+        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        // parse contract's address
+        let contract_h160 = input.read::<Address>(gasometer)?.0;
+        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        log::trace!(target: "ds-precompile", "claim_staker {:?}", contract_id);
+
+        // Build call with origin.
+        let origin = R::AddressMapping::into_account_id(context.caller);
+        let call = pallet_dapps_staking::Call::<R>::claim_staker { contract_id }.into();
 
         // Return call information
         Ok((Some(origin).into(), call))
@@ -372,7 +396,8 @@ pub enum Action {
     BondAndStake = "bond_and_stake(address,uint128)",
     UnbondAndUnstake = "unbond_and_unstake(address,uint128)",
     WithdrawUnbounded = "withdraw_unbonded()",
-    Claim = "claim(address,uint128)",
+    ClaimDapp = "claim_dapp(address,uint128)",
+    ClaimStaker = "claim_staker(address)",
 }
 
 impl<R> Precompile for DappsStakingWrapper<R>
@@ -413,7 +438,8 @@ where
             Action::BondAndStake => Self::bond_and_stake(input, gasometer, context)?,
             Action::UnbondAndUnstake => Self::unbond_and_unstake(input, gasometer, context)?,
             Action::WithdrawUnbounded => Self::withdraw_unbonded(gasometer, context)?,
-            Action::Claim => Self::claim(input, gasometer, context)?,
+            Action::ClaimDapp => Self::claim_dapp(input, gasometer, context)?,
+            Action::ClaimStaker => Self::claim_staker(input, gasometer, context)?,
         };
 
         // Dispatch call (if enough gas).
