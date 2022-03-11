@@ -223,7 +223,7 @@ benchmarks! {
 
     }: _(RawOrigin::Signed(developer.clone()), contract_id.clone(), claim_era)
     verify {
-        let staking_info = DappsStaking::<T>::contract_era_stake(&contract_id, claim_era).unwrap();
+        let staking_info = DappsStaking::<T>::contract_stake_info(&contract_id, claim_era).unwrap();
         assert!(staking_info.contract_reward_claimed);
     }
 
