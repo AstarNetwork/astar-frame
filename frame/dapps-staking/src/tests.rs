@@ -1,8 +1,5 @@
 use super::{pallet::pallet::Error, Event, *};
-use frame_support::{
-    assert_noop, assert_ok,
-    traits::{OnInitialize, OnUnbalanced},
-};
+use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
 use mock::{Balances, MockSmartContract, *};
 use sp_core::H160;
 use sp_runtime::{
@@ -39,17 +36,18 @@ fn on_unbalanced_is_ok() {
         assert!(free_balance_of_dapps_staking_account().is_zero());
 
         // After handling imbalance, accumulator and account should be updated
-        DappsStaking::on_unbalanced(Balances::issue(BLOCK_REWARD));
-        let block_reward = BlockRewardAccumulator::<TestRuntime>::get();
-        assert_eq!(BLOCK_REWARD, block_reward.stakers + block_reward.dapps);
+        let dapps_reward = 12345;
+        let stakers_reward = 9999;
+        let total_reward = dapps_reward + stakers_reward;
+        DappsStaking::rewards(
+            Balances::issue(stakers_reward),
+            Balances::issue(dapps_reward),
+        );
 
-        let expected_dapps_reward =
-            <TestRuntime as Config>::DeveloperRewardPercentage::get() * BLOCK_REWARD;
-        let expected_stakers_reward = BLOCK_REWARD - expected_dapps_reward;
-        assert_eq!(block_reward.stakers, expected_stakers_reward);
-        assert_eq!(block_reward.dapps, expected_dapps_reward);
-
-        assert_eq!(BLOCK_REWARD, free_balance_of_dapps_staking_account());
+        assert_eq!(total_reward, free_balance_of_dapps_staking_account());
+        let reward_accumulator = BlockRewardAccumulator::<TestRuntime>::get();
+        assert_eq!(reward_accumulator.stakers, stakers_reward);
+        assert_eq!(reward_accumulator.dapps, dapps_reward);
 
         // After triggering a new era, accumulator should be set to 0 but account shouldn't consume any new imbalance
         DappsStaking::on_initialize(System::block_number());
@@ -57,7 +55,7 @@ fn on_unbalanced_is_ok() {
             BlockRewardAccumulator::<TestRuntime>::get(),
             Default::default()
         );
-        assert_eq!(BLOCK_REWARD, free_balance_of_dapps_staking_account());
+        assert_eq!(total_reward, free_balance_of_dapps_staking_account());
     })
 }
 
@@ -195,7 +193,10 @@ fn new_era_is_ok() {
 
         // verify that block reward is added to the block_reward_accumulator
         let block_reward = DappsStaking::block_reward_accumulator();
-        assert_eq!(BLOCK_REWARD, block_reward.stakers + block_reward.dapps);
+        assert_eq!(
+            joint_block_reward(),
+            block_reward.stakers + block_reward.dapps
+        );
 
         // register and bond to verify storage item
         let staker = 2;
@@ -220,9 +221,8 @@ fn new_era_is_ok() {
         assert_eq!(block_reward, Default::default());
 
         let expected_era_reward = get_total_reward_per_era();
-        let expected_dapps_reward =
-            <TestRuntime as Config>::DeveloperRewardPercentage::get() * expected_era_reward;
-        let expected_stakers_reward = expected_era_reward - expected_dapps_reward;
+        let expected_dapps_reward = DAPP_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
+        let expected_stakers_reward = STAKER_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
 
         // verify that .staked is copied and .reward is added
         let era_rewards = GeneralEraInfo::<TestRuntime>::get(starting_era).unwrap();
@@ -1646,4 +1646,30 @@ fn dev_stakers_split_util() {
         calculated_stakers_reward + calculated_dev_reward,
         dev_reward + stakers_reward
     );
+}
+
+#[test]
+pub fn tvl_util_test() {
+    ExternalityBuilder::build().execute_with(|| {
+        // Ensure TVL is zero before first block and also after first block
+        assert!(DappsStaking::tvl().is_zero());
+        initialize_first_block();
+        assert!(DappsStaking::tvl().is_zero());
+
+        let developer = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(developer, &contract_id);
+
+        // Expect TVL to change as we bond&stake more
+        let iterations = 10;
+        let stake_value = 100;
+        for x in 1..=iterations {
+            assert_bond_and_stake(developer, &contract_id, stake_value);
+            assert_eq!(DappsStaking::tvl(), stake_value * x);
+        }
+
+        // Era advancement should have no effect on TVL
+        advance_to_era(5);
+        assert_eq!(DappsStaking::tvl(), stake_value * iterations);
+    })
 }

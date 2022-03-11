@@ -1,6 +1,6 @@
 [package]
 name = "pallet-dapps-staking"
-version = "3.1.0"
+version = "3.2.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2018"
 homepage = "https://astar.network/"
@@ -18,10 +18,10 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false, optional = true }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
 sp-staking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
 
