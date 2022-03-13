@@ -732,14 +732,14 @@ pub mod pallet {
                     contract_id.clone(),
                     staker_reward,
                 ));
-            } else {
-                Self::deposit_event(Event::<T>::Reward(
-                    staker.clone(),
-                    contract_id.clone(),
-                    era,
-                    staker_reward,
-                ));
             }
+
+            Self::deposit_event(Event::<T>::Reward(
+                staker.clone(),
+                contract_id.clone(),
+                era,
+                staker_reward,
+            ));
             Self::update_staker_info(&staker, &contract_id, staker_info);
             Ok(().into())
         }
