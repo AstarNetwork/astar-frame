@@ -306,6 +306,7 @@ pub mod pallet {
 
                 let reward = BlockRewardAccumulator::<T>::take();
                 Self::reward_balance_snapshot(previous_era, reward);
+                let consumed_weight = Self::rotate_staking_info(previous_era);
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
@@ -684,7 +685,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut staking_info = Self::staking_info(&contract_id, era);
+            let mut staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -872,6 +873,8 @@ pub mod pallet {
             PalletDisabled::<T>::put(enable_maintenance);
 
             Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
+            Ok(().into())
+        }
 
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
