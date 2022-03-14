@@ -572,6 +572,8 @@ pub mod v3 {
                 }
             }
 
+            MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
+
             log::info!(">>> AccountLedger migration finished.");
             migration_state = MigrationState::GeneralEraInfo(None);
         }
@@ -825,15 +827,17 @@ pub mod v3 {
             let result =
                 EraRewardsAndStakes::<T>::remove_all(Some(approximate_deletions_remaining as u32));
 
-            consumed_weight = consumed_weight
-                .saturating_add(approximate_deletions_remaining * T::DbWeight::get().writes(1));
+            consumed_weight = consumed_weight.saturating_add(
+                approximate_deletions_remaining.saturating_mul(T::DbWeight::get().writes(1)),
+            );
 
             if let KillStorageResult::AllRemoved(num) = result {
-                consumed_weight =
-                    consumed_weight.saturating_add(num as u64 * T::DbWeight::get().writes(1));
-            } else {
                 consumed_weight = consumed_weight
-                    .saturating_add(approximate_deletions_remaining * T::DbWeight::get().writes(1));
+                    .saturating_add((num as u64).saturating_mul(T::DbWeight::get().writes(1)));
+            } else {
+                consumed_weight = consumed_weight.saturating_add(
+                    approximate_deletions_remaining.saturating_mul(T::DbWeight::get().writes(1)),
+                );
                 log::info!(
                     ">>> EraRewardAndStake removal stopped after consuming {:?} weight.",
                     consumed_weight
