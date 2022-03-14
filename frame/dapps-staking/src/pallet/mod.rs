@@ -709,6 +709,12 @@ pub mod pallet {
             if ledger.reward_destination == RewardDestination::StakeBalance
                 && !staker_info.latest_staked_value().is_zero()
             {
+                // There must be one slot left for restaking
+                ensure!(
+                    staker_info.len() < T::MaxEraStakeValues::get(),
+                    Error::<T>::TooManyEraStakeValues
+                );
+
                 staker_info
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
