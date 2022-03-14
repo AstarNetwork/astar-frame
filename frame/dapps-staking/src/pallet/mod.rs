@@ -678,6 +678,7 @@ pub mod pallet {
 
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
+
             if let DAppState::Unregistered(unregister_era) = dapp_info.state {
                 ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
             }
@@ -706,9 +707,11 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
 
-            if ledger.reward_destination == RewardDestination::StakeBalance
-                && !staker_info.latest_staked_value().is_zero()
-            {
+            if Self::should_restake_reward(
+                ledger.reward_destination,
+                &contract_id,
+                staker_info.latest_staked_value(),
+            ) {
                 // There must be one slot left for restaking
                 ensure!(
                     staker_info.len() < T::MaxEraStakeValues::get(),
@@ -1025,6 +1028,17 @@ pub mod pallet {
         fn is_active(contract_id: &T::SmartContract) -> bool {
             RegisteredDapps::<T>::get(contract_id)
                 .map_or(false, |dapp_info| dapp_info.state == DAppState::Registered)
+        }
+
+        // `true` if all the conditions for restaking the reward have been met, `false` otherwise
+        fn should_restake_reward(
+            reward_destination: RewardDestination,
+            contract_id: &T::SmartContract,
+            latest_staked_value: BalanceOf<T>,
+        ) -> bool {
+            reward_destination == RewardDestination::StakeBalance
+                && Self::is_active(contract_id)
+                && latest_staked_value > Zero::zero()
         }
 
         /// Calculate reward split between developer and stakers.
