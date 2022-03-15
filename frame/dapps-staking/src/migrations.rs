@@ -488,14 +488,16 @@ pub mod v3 {
         // Ensure that all necessary `ContractEraStake` entries exist.
         let current_era = Pallet::<T>::current_era();
         for contract_id in RegisteredDapps::<T>::iter_keys() {
-            assert!(ContractEraStake::<T>::contains_key(
-                &contract_id,
-                current_era
-            ));
-            assert!(ContractEraStake::<T>::contains_key(
-                &contract_id,
-                current_era - 1
-            ));
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era - 1)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
         }
 
         Ok(().into())
@@ -503,7 +505,7 @@ pub mod v3 {
 
     /// Used to fix the current inconsistent state we have on Shibuya.
     /// This code isn't reusable for other chains.
-    pub fn shibuya_fix_for_v3<T: Config>() -> Weight {
+    pub fn ccc<T: Config>() -> Weight {
         let current_era = Pallet::<T>::current_era();
         let previous_era = current_era - 1;
 
@@ -1005,14 +1007,16 @@ pub mod v3 {
         // Ensure that all necessary `ContractEraStake` entries exist.
         let current_era = Pallet::<T>::current_era();
         for contract_id in RegisteredDapps::<T>::iter_keys() {
-            assert!(ContractEraStake::<T>::contains_key(
-                &contract_id,
-                current_era
-            ));
-            assert!(ContractEraStake::<T>::contains_key(
-                &contract_id,
-                current_era - 1
-            ));
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era - 1)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
         }
 
         let ledger_count = Ledger::<T>::iter_keys().count() as u64;
