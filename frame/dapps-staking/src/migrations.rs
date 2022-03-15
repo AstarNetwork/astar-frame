@@ -481,6 +481,8 @@ pub mod v3 {
         Ok(().into())
     }
 
+    const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 8;
+
     pub fn stateful_migrate<T: Config>(weight_limit: Weight) -> Weight {
         // Ensure this is a valid migration for this version
         if StorageVersion::<T>::get() != Version::V2_0_0 {
@@ -658,10 +660,15 @@ pub mod v3 {
             let current_era = Pallet::<T>::current_era();
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
 
+            // `ContractEraStake` can be huge in size so to prevent reading too much these entries
+            // in a single block, we limit it.
+            let mut contract_era_stake_limiter = CONTRACT_ERA_STAKE_READ_LIMIT;
+
             // The outer loop will process staking info per contract
             for contract_id in key_iter {
                 let (staking_info, era_to_use) =
                     staking_points_and_era::<T>(&contract_id, current_era);
+                let is_claimed = staking_info.claimed_rewards > Zero::zero();
 
                 // The inner loop will process each staker individually
                 for (staker_id, staked_amount) in staking_info
@@ -675,7 +682,11 @@ pub mod v3 {
                         StakerInfo::<BalanceOf<T>> {
                             stakes: vec![EraStake::<BalanceOf<T>> {
                                 staked: *staked_amount,
-                                era: era_to_use,
+                                era: if is_claimed {
+                                    era_to_use + 1
+                                } else {
+                                    era_to_use
+                                },
                             }],
                         },
                     );
@@ -690,9 +701,10 @@ pub mod v3 {
                             RegisteredDapps::<T>::storage_map_final_key(contract_id.clone()),
                         );
                         last_processed_info.processed_items = 0;
+                        contract_era_stake_limiter = contract_era_stake_limiter.saturating_sub(1);
                     }
 
-                    if consumed_weight >= weight_limit {
+                    if consumed_weight >= weight_limit || contract_era_stake_limiter.is_zero() {
                         log::info!(
                             ">>> GeneralStakerInfo migration stopped after consuming {:?} weight.",
                             consumed_weight
@@ -728,6 +740,10 @@ pub mod v3 {
 
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
+            // `ContractEraStake` can be huge in size so to prevent reading too much these entries
+            // in a single block, we limit it.
+            let mut contract_era_stake_limiter = CONTRACT_ERA_STAKE_READ_LIMIT;
+
             for (contract_id, era) in key_iter {
                 let key_as_vec =
                     ContractEraStake::<T>::storage_double_map_final_key(contract_id, era);
@@ -742,10 +758,12 @@ pub mod v3 {
                     },
                 );
 
+                contract_era_stake_limiter = contract_era_stake_limiter.saturating_sub(1);
+
                 consumed_weight =
                     consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
 
-                if consumed_weight >= weight_limit {
+                if consumed_weight >= weight_limit || contract_era_stake_limiter.is_zero() {
                     log::info!(
                         ">>> ContractStakeInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
