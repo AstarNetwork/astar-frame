@@ -505,7 +505,7 @@ pub mod v3 {
 
     /// Used to fix the current inconsistent state we have on Shibuya.
     /// This code isn't reusable for other chains.
-    pub fn ccc<T: Config>() -> Weight {
+    pub fn shibuya_fix_for_v3<T: Config>() -> Weight {
         let current_era = Pallet::<T>::current_era();
         let previous_era = current_era - 1;
 
