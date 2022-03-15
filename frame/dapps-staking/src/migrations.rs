@@ -483,7 +483,30 @@ pub mod v3 {
         Ok(().into())
     }
 
-    const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 8;
+    /// Used to fix the current inconsistent state we have on Shibuya.
+    /// This code isn't reusable for other chains.
+    pub fn shibuya_fix_for_v3<T: Config>() -> Weight {
+        let current_era = Pallet::<T>::current_era();
+        let previous_era = current_era - 1;
+
+        let mut consumed_weight = 0;
+
+        for contract_id in RegisteredDapps::<T>::iter_keys() {
+            if let Some(mut contract_stake_info) =
+                ContractEraStake::<T>::get(&contract_id, previous_era)
+            {
+                contract_stake_info.contract_reward_claimed = false;
+                ContractEraStake::<T>::insert(&contract_id, current_era, contract_stake_info);
+
+                consumed_weight =
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+            }
+        }
+
+        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+
+        consumed_weight
+    }
 
     pub fn stateful_migrate<T: Config>(weight_limit: Weight) -> Weight {
         // Ensure this is a valid migration for this version
@@ -492,6 +515,7 @@ pub mod v3 {
         }
 
         log::info!("Executing a step of stateful storage migration.");
+        const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 8;
 
         let mut migration_state = MigrationStateV3::<T>::get();
         let mut consumed_weight = T::DbWeight::get().reads(2);
@@ -895,9 +919,10 @@ pub mod v3 {
                 // so we need to account for that.
                 if !ContractEraStake::<T>::contains_key(&key, current_era) {
                     // Since we ensure all rewards have been claimed, this will always be true
-                    if let Some(contract_stake_info) =
+                    if let Some(mut contract_stake_info) =
                         ContractEraStake::<T>::get(&key, current_era - 1)
                     {
+                        contract_stake_info.contract_reward_claimed = false;
                         ContractEraStake::<T>::insert(&key, current_era, contract_stake_info);
                         consumed_weight =
                             consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
