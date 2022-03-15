@@ -396,6 +396,8 @@ pub mod v3 {
         DAppInfo(Option<Vec<u8>>),
         /// In the middle of `EraRewardAndStake` storage removal
         EraRewardAndStake,
+        /// In the middle of rotating contract stake info to make them available for current era
+        ContractStakeInfoRotation(Option<Vec<u8>>),
         Finished,
     }
 
@@ -481,6 +483,51 @@ pub mod v3 {
         Ok(().into())
     }
 
+    #[cfg(feature = "try-runtime")]
+    pub fn post_migrate_shibuya_fix_for_v3<T: Config>() -> Result<(), &'static str> {
+        // Ensure that all necessary `ContractEraStake` entries exist.
+        let current_era = Pallet::<T>::current_era();
+        for contract_id in RegisteredDapps::<T>::iter_keys() {
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era - 1)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+        }
+
+        Ok(().into())
+    }
+
+    /// Used to fix the current inconsistent state we have on Shibuya.
+    /// This code isn't reusable for other chains.
+    pub fn shibuya_fix_for_v3<T: Config>() -> Weight {
+        let current_era = Pallet::<T>::current_era();
+        let previous_era = current_era - 1;
+
+        let mut consumed_weight = 0;
+
+        for contract_id in RegisteredDapps::<T>::iter_keys() {
+            if let Some(mut contract_stake_info) =
+                ContractEraStake::<T>::get(&contract_id, previous_era)
+            {
+                contract_stake_info.contract_reward_claimed = false;
+                ContractEraStake::<T>::insert(&contract_id, current_era, contract_stake_info);
+
+                consumed_weight =
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+            }
+        }
+
+        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+
+        consumed_weight
+    }
+
     pub fn stateful_migrate<T: Config>(weight_limit: Weight) -> Weight {
         // Ensure this is a valid migration for this version
         if StorageVersion::<T>::get() != Version::V2_0_0 {
@@ -488,6 +535,7 @@ pub mod v3 {
         }
 
         log::info!("Executing a step of stateful storage migration.");
+        const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 8;
 
         let mut migration_state = MigrationStateV3::<T>::get();
         let mut consumed_weight = T::DbWeight::get().reads(2);
@@ -658,10 +706,15 @@ pub mod v3 {
             let current_era = Pallet::<T>::current_era();
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
 
+            // `ContractEraStake` can be huge in size so to prevent reading too much these entries
+            // in a single block, we limit it.
+            let mut contract_era_stake_limiter = CONTRACT_ERA_STAKE_READ_LIMIT;
+
             // The outer loop will process staking info per contract
             for contract_id in key_iter {
                 let (staking_info, era_to_use) =
                     staking_points_and_era::<T>(&contract_id, current_era);
+                let is_claimed = staking_info.claimed_rewards > Zero::zero();
 
                 // The inner loop will process each staker individually
                 for (staker_id, staked_amount) in staking_info
@@ -675,7 +728,11 @@ pub mod v3 {
                         StakerInfo::<BalanceOf<T>> {
                             stakes: vec![EraStake::<BalanceOf<T>> {
                                 staked: *staked_amount,
-                                era: era_to_use,
+                                era: if is_claimed {
+                                    era_to_use + 1
+                                } else {
+                                    era_to_use
+                                },
                             }],
                         },
                     );
@@ -690,9 +747,10 @@ pub mod v3 {
                             RegisteredDapps::<T>::storage_map_final_key(contract_id.clone()),
                         );
                         last_processed_info.processed_items = 0;
+                        contract_era_stake_limiter = contract_era_stake_limiter.saturating_sub(1);
                     }
 
-                    if consumed_weight >= weight_limit {
+                    if consumed_weight >= weight_limit || contract_era_stake_limiter.is_zero() {
                         log::info!(
                             ">>> GeneralStakerInfo migration stopped after consuming {:?} weight.",
                             consumed_weight
@@ -728,6 +786,10 @@ pub mod v3 {
 
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
+            // `ContractEraStake` can be huge in size so to prevent reading too much these entries
+            // in a single block, we limit it.
+            let mut contract_era_stake_limiter = CONTRACT_ERA_STAKE_READ_LIMIT;
+
             for (contract_id, era) in key_iter {
                 let key_as_vec =
                     ContractEraStake::<T>::storage_double_map_final_key(contract_id, era);
@@ -742,10 +804,12 @@ pub mod v3 {
                     },
                 );
 
+                contract_era_stake_limiter = contract_era_stake_limiter.saturating_sub(1);
+
                 consumed_weight =
                     consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
 
-                if consumed_weight >= weight_limit {
+                if consumed_weight >= weight_limit || contract_era_stake_limiter.is_zero() {
                     log::info!(
                         ">>> ContractStakeInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
@@ -850,6 +914,64 @@ pub mod v3 {
             };
 
             log::info!(">>> EraRewardAndStke removal finished.");
+            migration_state = MigrationState::ContractStakeInfoRotation(None);
+        }
+
+        //
+        // 7
+        //
+        if let MigrationState::ContractStakeInfoRotation(last_processed_key) =
+            migration_state.clone()
+        {
+            let key_iter = if let Some(previous_key) = last_processed_key {
+                RegisteredDapps::<T>::iter_keys_from(previous_key)
+            } else {
+                RegisteredDapps::<T>::iter_keys()
+            };
+
+            let current_era = Pallet::<T>::current_era();
+
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
+
+            for key in key_iter {
+                // We need to ensure that current era has a copy of all eligible contract staking infos.
+                // Even though it's impossible for current era to be claimed, total staked amount could have been modified
+                // so we need to account for that.
+                if !ContractEraStake::<T>::contains_key(&key, current_era) {
+                    // Since we ensure all rewards have been claimed, this will always be true
+                    if let Some(mut contract_stake_info) =
+                        ContractEraStake::<T>::get(&key, current_era - 1)
+                    {
+                        contract_stake_info.contract_reward_claimed = false;
+                        ContractEraStake::<T>::insert(&key, current_era, contract_stake_info);
+                        consumed_weight =
+                            consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
+                    }
+                } else {
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                }
+
+                if consumed_weight >= weight_limit {
+                    log::info!(
+                        ">>> ContractStakeInfoRotation migration stopped after consuming {:?} weight.",
+                        consumed_weight
+                    );
+
+                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
+                    MigrationStateV3::<T>::put(MigrationState::ContractStakeInfoRotation(Some(
+                        key_as_vec,
+                    )));
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+
+                    if cfg!(feature = "try-runtime") {
+                        return stateful_migrate::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+
+            log::info!(">>> DAppInfo migration finished.");
         }
 
         MigrationStateV3::<T>::put(MigrationState::Finished);
@@ -881,6 +1003,21 @@ pub mod v3 {
         );
 
         assert!(EraRewardsAndStakes::<T>::iter_keys().count().is_zero());
+
+        // Ensure that all necessary `ContractEraStake` entries exist.
+        let current_era = Pallet::<T>::current_era();
+        for contract_id in RegisteredDapps::<T>::iter_keys() {
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+            assert!(
+                !ContractEraStake::<T>::get(&contract_id, current_era - 1)
+                    .unwrap()
+                    .contract_reward_claimed
+            );
+        }
 
         let ledger_count = Ledger::<T>::iter_keys().count() as u64;
         U::set_temp_storage::<u64>(ledger_count, "ledger_count");
