@@ -483,6 +483,24 @@ pub mod v3 {
         Ok(().into())
     }
 
+    #[cfg(feature = "try-runtime")]
+    pub fn post_migrate_shibuya_fix_for_v3<T: Config>() -> Result<(), &'static str> {
+        // Ensure that all necessary `ContractEraStake` entries exist.
+        let current_era = Pallet::<T>::current_era();
+        for contract_id in RegisteredDapps::<T>::iter_keys() {
+            assert!(ContractEraStake::<T>::contains_key(
+                &contract_id,
+                current_era
+            ));
+            assert!(ContractEraStake::<T>::contains_key(
+                &contract_id,
+                current_era - 1
+            ));
+        }
+
+        Ok(().into())
+    }
+
     /// Used to fix the current inconsistent state we have on Shibuya.
     /// This code isn't reusable for other chains.
     pub fn shibuya_fix_for_v3<T: Config>() -> Weight {
