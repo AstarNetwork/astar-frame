@@ -424,7 +424,19 @@ where
         let (mut input, selector) = EvmDataReader::new_with_selector(gasometer, input)?;
         let input = &mut input;
 
-        gasometer.check_function_modifier(context, is_static, FunctionModifier::NonPayable)?;
+        gasometer.check_function_modifier(
+            context,
+            is_static,
+            match selector {
+                Action::ReadCurrentEra
+                | Action::ReadUnbondingPeriod
+                | Action::ReadEraReward
+                | Action::ReadEraStaked
+                | Action::ReadStakedAmount
+                | Action::ReadContractStake => FunctionModifier::View,
+                _ => FunctionModifier::NonPayable,
+            },
+        )?;
 
         let (origin, call) = match selector {
             // read storage

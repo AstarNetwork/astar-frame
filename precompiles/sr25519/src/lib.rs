@@ -40,7 +40,7 @@ impl<Runtime: pallet_evm::Config> Precompile for Sr25519Precompile<Runtime> {
         let (mut input, selector) = EvmDataReader::new_with_selector(gasometer, input)?;
         let input = &mut input;
 
-        gasometer.check_function_modifier(context, is_static, FunctionModifier::NonPayable)?;
+        gasometer.check_function_modifier(context, is_static, FunctionModifier::View)?;
 
         match selector {
             // Dispatchables
