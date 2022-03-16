@@ -397,22 +397,28 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
 /// Used to perform claim for stakers with success assertion
 pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartContract<AccountId>) {
     let (claim_era, _) = DappsStaking::staker_info(&claimer, contract_id).claim();
-    let init_state = MemorySnapshot::all(claim_era, contract_id, claimer);
+    let current_era = DappsStaking::current_era();
+
+    let init_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
+    let init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // Calculate contract portion of the reward
-    let (_, stakers_joint_reward) =
-        DappsStaking::dev_stakers_split(&init_state.contract_info, &init_state.era_info);
+    let (_, stakers_joint_reward) = DappsStaking::dev_stakers_split(
+        &init_state_claim_era.contract_info,
+        &init_state_claim_era.era_info,
+    );
 
-    let (claim_era, staked) = init_state.staker_info.clone().claim();
+    let (claim_era, staked) = init_state_claim_era.staker_info.clone().claim();
     assert!(claim_era > 0); // Sanity check - if this fails, method is being used incorrectly
 
     // Cannot claim rewards post unregister era, this indicates a bug!
-    if let DAppState::Unregistered(unregistered_era) = init_state.dapp_info.state {
+    if let DAppState::Unregistered(unregistered_era) = init_state_claim_era.dapp_info.state {
         assert!(unregistered_era > claim_era);
     }
 
     let calculated_reward =
-        Perbill::from_rational(staked, init_state.contract_info.total) * stakers_joint_reward;
+        Perbill::from_rational(staked, init_state_claim_era.contract_info.total)
+            * stakers_joint_reward;
     let issuance_before_claim = <TestRuntime as Config>::Currency::total_issuance();
 
     assert_ok!(DappsStaking::claim_staker(
@@ -420,29 +426,56 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
-    let final_state = MemorySnapshot::all(claim_era, contract_id, claimer);
+    let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
+    let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // If out of bounds, should fail anyway, so panic as acceptable
     let events = dapps_staking_events();
     let second_last_event = &events[events.len() - 2];
 
+    // println!(
+    //     "eraInfo: {:#?}, {:#?}",
+    //     init_state_current_era.era_info, final_state_current_era.era_info
+    // );
     if DappsStaking::should_restake_reward(
-        init_state.ledger.reward_destination,
+        init_state_claim_era.ledger.reward_destination,
         contract_id,
-        init_state.staker_info.latest_staked_value(),
+        init_state_claim_era.staker_info.latest_staked_value(),
     ) {
         assert_eq!(
             second_last_event.clone(),
             Event::<TestRuntime>::RewardAndRestake(claimer, contract_id.clone(), calculated_reward,)
         );
         assert_eq!(
-            init_state.staker_info.latest_staked_value() + calculated_reward,
-            final_state.staker_info.latest_staked_value()
+            init_state_claim_era.staker_info.latest_staked_value() + calculated_reward,
+            final_state_claim_era.staker_info.latest_staked_value()
+        );
+        assert_eq!(
+            init_state_claim_era.ledger.locked + calculated_reward,
+            final_state_claim_era.ledger.locked
+        );
+
+        assert_eq!(
+            init_state_current_era.era_info.staked + calculated_reward,
+            final_state_current_era.era_info.staked
+        );
+        assert_eq!(
+            init_state_current_era.era_info.locked + calculated_reward,
+            final_state_current_era.era_info.locked
         );
     } else {
         assert_eq!(
-            init_state.free_balance + calculated_reward,
-            final_state.free_balance
+            init_state_claim_era.free_balance + calculated_reward,
+            final_state_claim_era.free_balance
+        );
+
+        assert_eq!(
+            init_state_current_era.era_info.staked,
+            final_state_current_era.era_info.staked
+        );
+        assert_eq!(
+            init_state_current_era.era_info.locked,
+            final_state_current_era.era_info.locked
         );
     }
 
@@ -453,8 +486,8 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         calculated_reward,
     )));
 
-    let (new_era, _) = final_state.staker_info.clone().claim();
-    if final_state.staker_info.is_empty() {
+    let (new_era, _) = final_state_claim_era.staker_info.clone().claim();
+    if final_state_claim_era.staker_info.is_empty() {
         assert!(new_era.is_zero());
         assert!(!GeneralStakerInfo::<TestRuntime>::contains_key(
             &claimer,
