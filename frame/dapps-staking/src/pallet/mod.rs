@@ -1031,7 +1031,7 @@ pub mod pallet {
         }
 
         // `true` if all the conditions for restaking the reward have been met, `false` otherwise
-        fn should_restake_reward(
+        pub(crate) fn should_restake_reward(
             reward_destination: RewardDestination,
             contract_id: &T::SmartContract,
             latest_staked_value: BalanceOf<T>,
