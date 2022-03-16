@@ -420,22 +420,26 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
+    // If out of bounds, should fail anyway, so panic as acceptable
+    let events = dapps_staking_events();
+    let second_last_event = &events[events.len() - 2];
+    
+    // assert_ok!(matches!())
     if init_state.ledger.reward_destination == RewardDestination::StakeBalance
         && !init_state.staker_info.latest_staked_value().is_zero()
     {
-        System::assert_last_event(mock::Event::DappsStaking(Event::RewardAndRestake(
+        assert_eq!(second_last_event.clone(), Event::<TestRuntime>::RewardAndRestake(
             claimer,
             contract_id.clone(),
             calculated_reward,
-        )))
-    } else {
-        System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-            claimer,
-            contract_id.clone(),
-            claim_era,
-            calculated_reward,
-        )));
+        ));
     }
+    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+        claimer,
+        contract_id.clone(),
+        claim_era,
+        calculated_reward,
+    )));
     let final_state = MemorySnapshot::all(claim_era, &contract_id, claimer);
     assert_eq!(
         init_state.free_balance + calculated_reward,
