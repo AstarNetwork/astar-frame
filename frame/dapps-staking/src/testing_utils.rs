@@ -429,14 +429,10 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
-    // If out of bounds, should fail anyway, so panic as acceptable
+    // If there's less than 2 events, it should fail anyway, so panic as acceptable
     let events = dapps_staking_events();
     let second_last_event = &events[events.len() - 2];
 
-    // println!(
-    //     "eraInfo: {:#?}, {:#?}",
-    //     init_state_current_era.era_info, final_state_current_era.era_info
-    // );
     if DappsStaking::should_restake_reward(
         init_state_claim_era.ledger.reward_destination,
         contract_id,

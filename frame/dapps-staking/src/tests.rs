@@ -1,5 +1,8 @@
-use super::{Error, Event, *};
-use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
+use super::{pallet::pallet::Error, pallet::pallet::Event, *};
+use frame_support::{
+    assert_err, assert_noop, assert_ok,
+    traits::{OnInitialize, OnUnbalanced},
+};
 use mock::{Balances, MockSmartContract, *};
 use sp_core::H160;
 use sp_runtime::{
@@ -1476,25 +1479,91 @@ fn claim_with_zero_staked_is_ok() {
         let developer = 1;
         let staker = 2;
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
-
         let start_era = DappsStaking::current_era();
         assert_register(developer, &contract_id);
+
+        // stake some tokens and wait for an era
         let stake_value = 100;
         assert_bond_and_stake(staker, &contract_id, stake_value);
-
         advance_to_era(start_era + 1);
 
+        // ensure reward_destination is set tot StakeBalance
+        assert_set_reward_destination(staker, RewardDestination::StakeBalance);
+
+        // unstake all the tokens
         assert_unbond_and_unstake(staker, &contract_id, stake_value);
 
+        // ensure claimed value goes to claimer's free balance
         assert_claim_staker(staker, &contract_id);
     })
 }
 
 #[test]
-fn claiming_with_different_reward_destination_is_ok() {}
+fn claim_with_different_reward_destination_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        // stake some tokens
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        // disable compounding mode, wait 3 eras
+        assert_set_reward_destination(staker, RewardDestination::FreeBalance);
+        advance_to_era(start_era + 3);
+        // ensure staker can claim rewards to wallet
+        assert_claim_staker(staker, &contract_id);
+
+        // enable compounding mode, wait 3 eras
+        assert_set_reward_destination(staker, RewardDestination::StakeBalance);
+        advance_to_era(start_era + 3);
+        // ensure staker can claim with compounding
+        assert_claim_staker(staker, &contract_id);
+    })
+}
 
 #[test]
-fn claiming_when_stakes_full_without_compounding_is_ok() {}
+fn claiming_when_stakes_full_without_compounding_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker_id = 1;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        // Insert a contract under registered contracts.
+        assert_register(10, &contract_id);
+
+        // Stake with MAX_NUMBER_OF_STAKERS - 1 on the same contract. It must work.
+        let start_era = DappsStaking::current_era();
+        for offset in 1..MAX_ERA_STAKE_VALUES {
+            assert_bond_and_stake(staker_id, &contract_id, 100);
+            advance_to_era(start_era + offset * 5);
+        }
+
+        // Make sure reward_destination is set to StakeBalance
+        assert_set_reward_destination(staker_id, RewardDestination::StakeBalance);
+
+        // there's one more stake spot left by bond_and_stake
+        // it's filled by claiming and restaking once
+        assert_claim_staker(staker_id, &contract_id);
+
+        // claiming should not work because it can't stake any more
+        assert_err!(
+            DappsStaking::claim_staker(Origin::signed(staker_id), contract_id),
+            Error::<TestRuntime>::TooManyEraStakeValues
+        );
+
+        // set reward_destination to FreeBalance (disable restaking)
+        assert_set_reward_destination(staker_id, RewardDestination::FreeBalance);
+
+        // claiming should work again
+        assert_claim_staker(staker_id, &contract_id);
+    })
+}
 
 #[test]
 fn claim_dapp_with_zero_stake_periods_is_ok() {
