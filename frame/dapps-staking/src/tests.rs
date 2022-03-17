@@ -1,6 +1,6 @@
 use super::{pallet::pallet::Error, pallet::pallet::Event, *};
 use frame_support::{
-    assert_err, assert_noop, assert_ok,
+    assert_noop, assert_ok,
     traits::{OnInitialize, OnUnbalanced},
 };
 use mock::{Balances, MockSmartContract, *};
@@ -1459,14 +1459,17 @@ fn claim_only_payout_is_ok() {
         let staker = 2;
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
 
+        // stake some tokens
         let start_era = DappsStaking::current_era();
         assert_register(developer, &contract_id);
         let stake_value = 100;
         assert_bond_and_stake(staker, &contract_id, stake_value);
 
+        // disable reward restaking
         advance_to_era(start_era + 1);
         assert_set_reward_destination(staker, RewardDestination::FreeBalance);
 
+        // ensure it's claimed correctly
         assert_claim_staker(staker, &contract_id);
     })
 }
@@ -1552,7 +1555,7 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
         assert_claim_staker(staker_id, &contract_id);
 
         // claiming should not work because it can't stake any more
-        assert_err!(
+        assert_noop!(
             DappsStaking::claim_staker(Origin::signed(staker_id), contract_id),
             Error::<TestRuntime>::TooManyEraStakeValues
         );

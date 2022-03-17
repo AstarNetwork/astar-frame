@@ -695,16 +695,6 @@ pub mod pallet {
             let staker_reward =
                 Perbill::from_rational(staked, staking_info.total) * stakers_joint_reward;
 
-            // Withdraw reward funds from the dapps staking pot
-            let reward_imbalance = T::Currency::withdraw(
-                &Self::account_id(),
-                staker_reward,
-                WithdrawReasons::TRANSFER,
-                ExistenceRequirement::AllowDeath,
-            )?;
-
-            T::Currency::resolve_creating(&staker, reward_imbalance);
-
             let mut ledger = Self::ledger(&staker);
 
             if Self::should_restake_reward(
@@ -742,6 +732,16 @@ pub mod pallet {
                     staker_reward,
                 ));
             }
+
+            // Withdraw reward funds from the dapps staking pot
+            let reward_imbalance = T::Currency::withdraw(
+                &Self::account_id(),
+                staker_reward,
+                WithdrawReasons::TRANSFER,
+                ExistenceRequirement::AllowDeath,
+            )?;
+
+            T::Currency::resolve_creating(&staker, reward_imbalance);
 
             Self::deposit_event(Event::<T>::Reward(
                 staker.clone(),
