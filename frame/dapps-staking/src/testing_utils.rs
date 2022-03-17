@@ -542,3 +542,22 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
     assert_eq!(init_state.staker_info, final_state.staker_info);
     assert_eq!(init_state.ledger, final_state.ledger);
 }
+
+pub(crate) fn assert_set_reward_destination(
+    account_id: AccountId,
+    reward_destination: RewardDestination,
+) {
+    assert_ok!(DappsStaking::set_reward_destination(
+        Origin::signed(account_id),
+        reward_destination
+    ));
+
+    System::assert_last_event(mock::Event::DappsStaking(Event::RewardDestinationSet(
+        account_id,
+        reward_destination,
+    )));
+
+    let ledger = Ledger::<TestRuntime>::get(&account_id);
+
+    assert_eq!(ledger.reward_destination, reward_destination);
+}

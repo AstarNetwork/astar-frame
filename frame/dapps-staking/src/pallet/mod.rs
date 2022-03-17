@@ -223,7 +223,7 @@ pub mod pallet {
         /// Claimed staker reward restaked
         RewardAndRestake(T::AccountId, T::SmartContract, BalanceOf<T>),
         /// Reward handling modified
-        RewardDestinationChange(T::AccountId, RewardDestination),
+        RewardDestinationSet(T::AccountId, RewardDestination),
     }
 
     #[pallet::error]
@@ -888,16 +888,16 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
-            option: RewardDestination,
+            reward_destination: RewardDestination,
         ) -> DispatchResultWithPostInfo {
             ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
             let staker = ensure_signed(origin)?;
 
             Ledger::<T>::mutate(&staker, |ledger| {
-                ledger.reward_destination = option;
+                ledger.reward_destination = reward_destination;
             });
 
-            Self::deposit_event(Event::<T>::RewardDestinationChange(staker, option));
+            Self::deposit_event(Event::<T>::RewardDestinationSet(staker, reward_destination));
             Ok(().into())
         }
     }

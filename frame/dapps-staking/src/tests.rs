@@ -243,7 +243,7 @@ fn new_era_forcing() {
         advance_to_era(3);
         let starting_era = mock::DappsStaking::current_era();
 
-        // call on_initilize. It is not last block in the era, but it should increment the era
+        // call on_initialize. It is not last block in the era, but it should increment the era
         <ForceEra<TestRuntime>>::put(Forcing::ForceNew);
         run_for_blocks(1);
 
@@ -636,7 +636,7 @@ fn withdraw_from_unregistered_when_nothing_is_staked() {
 }
 
 #[test]
-fn withdraw_from_unregistered_when_unclaimed_rewards_remaing() {
+fn withdraw_from_unregistered_when_unclaimed_rewards_remaining() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
 
@@ -1163,7 +1163,7 @@ fn withdraw_unbonded_full_vector_is_ok() {
             advance_to_era(DappsStaking::current_era() + 1);
         }
 
-        // Now clean up all that are eligible for cleanu-up
+        // Now clean up all that are eligible for clean-up
         assert_withdraw_unbonded(staker_id);
 
         // This is a sanity check for the test. Some chunks should remain, otherwise test isn't testing realistic unbonding period.
@@ -1462,10 +1462,7 @@ fn claim_only_payout_is_ok() {
         assert_bond_and_stake(staker, &contract_id, stake_value);
 
         advance_to_era(start_era + 1);
-        assert_ok!(DappsStaking::set_reward_destination(
-            Origin::signed(staker),
-            RewardDestination::FreeBalance
-        ));
+        assert_set_reward_destination(staker, RewardDestination::FreeBalance);
 
         assert_claim_staker(staker, &contract_id);
     })
@@ -1492,6 +1489,12 @@ fn claim_with_zero_staked_is_ok() {
         assert_claim_staker(staker, &contract_id);
     })
 }
+
+#[test]
+fn claiming_with_different_reward_destination_is_ok() {}
+
+#[test]
+fn claiming_when_stakes_full_without_compounding_is_ok() {}
 
 #[test]
 fn claim_dapp_with_zero_stake_periods_is_ok() {
