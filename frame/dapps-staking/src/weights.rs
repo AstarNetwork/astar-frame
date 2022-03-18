@@ -300,7 +300,7 @@ impl WeightInfo for () {
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	fn set_reward_destination() -> Weight {
 		(24_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
