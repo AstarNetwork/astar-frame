@@ -563,7 +563,7 @@ pub mod v3 {
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(2));
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
-            migration_state = MigrationState::AccountLedger(None);
+            migration_state = MigrationState::DAppInfo(None);
 
             // If normal run, just exit here to avoid the risk of clogging the upgrade block.
             if !cfg!(feature = "try-runtime") {
@@ -575,6 +575,64 @@ pub mod v3 {
 
         //
         // 1
+        //
+        if let MigrationState::DAppInfo(last_processed_key) = migration_state.clone() {
+            let key_iter = if let Some(previous_key) = last_processed_key {
+                RegisteredDapps::<T>::iter_keys_from(previous_key)
+            } else {
+                RegisteredDapps::<T>::iter_keys()
+            };
+
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+
+            for key in key_iter {
+                let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key.clone());
+                translate(&key_as_vec, |value: T::AccountId| {
+                    let is_registered = RegisteredDevelopers::<T>::contains_key(&value);
+
+                    // We no longer delete enry for RegisteredDevelopers, so we will restore this in case it was deleted before
+                    if !is_registered {
+                        RegisteredDevelopers::<T>::insert(&value, key.clone());
+                    }
+
+                    Some(DAppInfo::<T::AccountId> {
+                        developer: value,
+                        state: if is_registered {
+                            DAppState::Registered
+                        } else {
+                            DAppState::Unregistered(0)
+                        },
+                    })
+                });
+
+                consumed_weight =
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
+
+                if consumed_weight >= weight_limit {
+                    log::info!(
+                        ">>> DAppInfo migration stopped after consuming {:?} weight.",
+                        consumed_weight
+                    );
+                    MigrationStateV3::<T>::put(MigrationState::DAppInfo(Some(key_as_vec)));
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+
+                    if cfg!(feature = "try-runtime") {
+                        return stateful_migrate::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+
+            log::info!(">>> DAppInfo migration finished.");
+            migration_state = MigrationState::AccountLedger(None);
+
+            MigrationStateV3::<T>::put(migration_state.clone());
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+        }
+
+        //
+        // 2
         //
         if let MigrationState::AccountLedger(last_processed_key) = migration_state.clone() {
             // First, get correct iterator.
@@ -627,7 +685,7 @@ pub mod v3 {
         }
 
         //
-        // 2
+        // 3
         //
         if let MigrationState::GeneralEraInfo(last_processed_key) = migration_state.clone() {
             let key_iter = if let Some(previous_key) = last_processed_key {
@@ -697,7 +755,7 @@ pub mod v3 {
         }
 
         //
-        // 3
+        // 4
         //
         if let MigrationState::GeneralStakerInfo(last_processed_info) = migration_state.clone() {
             let mut last_processed_info = last_processed_info;
@@ -712,6 +770,13 @@ pub mod v3 {
 
             // The outer loop will process staking info per contract
             for contract_id in key_iter {
+                // skip unregistered dapps
+                if let Some(dapp_info) = RegisteredDapps::<T>::get(&contract_id) {
+                    if let DAppState::Unregistered(_) = dapp_info.state {
+                        continue;
+                    }
+                }
+
                 let (staking_info, era_to_use) =
                     staking_points_and_era::<T>(&contract_id, current_era);
                 let is_claimed = staking_info.claimed_rewards > Zero::zero();
@@ -775,7 +840,7 @@ pub mod v3 {
         }
 
         //
-        // 4
+        // 5
         //
         if let MigrationState::StakingInfo(last_processed_key) = migration_state.clone() {
             let key_iter = if let Some(previous_key) = last_processed_key {
@@ -826,54 +891,7 @@ pub mod v3 {
             }
 
             log::info!(">>> ContractStakeInfo migration finished.");
-            migration_state = MigrationState::DAppInfo(None);
-        }
-
-        //
-        // 5
-        //
-        if let MigrationState::DAppInfo(last_processed_key) = migration_state.clone() {
-            let key_iter = if let Some(previous_key) = last_processed_key {
-                RegisteredDapps::<T>::iter_keys_from(previous_key)
-            } else {
-                RegisteredDapps::<T>::iter_keys()
-            };
-
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-
-            for key in key_iter {
-                let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
-                translate(&key_as_vec, |value: T::AccountId| {
-                    Some(DAppInfo::<T::AccountId> {
-                        developer: value,
-                        state: DAppState::Registered,
-                    })
-                });
-
-                consumed_weight =
-                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
-
-                if consumed_weight >= weight_limit {
-                    log::info!(
-                        ">>> DAppInfo migration stopped after consuming {:?} weight.",
-                        consumed_weight
-                    );
-                    MigrationStateV3::<T>::put(MigrationState::DAppInfo(Some(key_as_vec)));
-                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
-
-                    if cfg!(feature = "try-runtime") {
-                        return stateful_migrate::<T>(weight_limit);
-                    } else {
-                        return consumed_weight;
-                    }
-                }
-            }
-
-            log::info!(">>> DAppInfo migration finished.");
             migration_state = MigrationState::EraRewardAndStake;
-
-            MigrationStateV3::<T>::put(MigrationState::EraRewardAndStake);
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         }
 
         //
@@ -1006,17 +1024,38 @@ pub mod v3 {
 
         // Ensure that all necessary `ContractEraStake` entries exist.
         let current_era = Pallet::<T>::current_era();
-        for contract_id in RegisteredDapps::<T>::iter_keys() {
+        for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
+            if let DAppState::Unregistered(_) = dapp_info.state {
+                continue;
+            }
+
             assert!(
                 !ContractEraStake::<T>::get(&contract_id, current_era)
                     .unwrap()
                     .contract_reward_claimed
             );
             assert!(
-                !ContractEraStake::<T>::get(&contract_id, current_era - 1)
+                ContractEraStake::<T>::get(&contract_id, current_era - 1)
                     .unwrap()
                     .contract_reward_claimed
             );
+        }
+
+        // Ensure that all dapps have the inverse map mapping for dev (even unregistered contracts)
+        for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
+            assert_eq!(
+                RegisteredDevelopers::<T>::get(dapp_info.developer).unwrap(),
+                contract_id
+            );
+        }
+
+        // Ensure that all staker info is as expected
+        for staker_id in Ledger::<T>::iter_keys() {
+            for (_contract_id, mut staker_info) in GeneralStakerInfo::<T>::iter_prefix(staker_id) {
+                let (last_staked_era, _staked) = staker_info.claim();
+                // MUST be true since we do the upgrade IFF all pending rewards have been claimed
+                assert_eq!(last_staked_era, current_era);
+            }
         }
 
         let ledger_count = Ledger::<T>::iter_keys().count() as u64;
