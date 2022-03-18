@@ -15,7 +15,8 @@ pub trait WeightInfo {
     fn bond_and_stake() -> Weight;
     fn unbond_and_unstake() -> Weight;
     fn withdraw_unbonded() -> Weight;
-    fn claim_staker() -> Weight;
+    fn claim_staker_without_restake() -> Weight;
+    fn claim_staker_with_restake() -> Weight;
     fn claim_dapp() -> Weight;
     fn force_new_era() -> Weight;
 		fn maintenance_mode() -> Weight;
@@ -30,7 +31,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DappsStaking RegisteredDapps (r:1 w:1)
 	// Storage: DappsStaking PreApprovalIsEnabled (r:1 w:0)
 	fn register() -> Weight {
-		(32_139_000 as Weight)
+		(60_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
@@ -39,34 +40,34 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: System Account (r:1 w:1)
 	fn unregister() -> Weight {
-		(31_929_000 as Weight)
+		(50_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
-	// Storage: DappsStaking StakersInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
 	fn withdraw_from_unregistered() -> Weight {
-		(46_667_000 as Weight)
+		(69_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking PreApprovalIsEnabled (r:0 w:1)
 	fn enable_developer_pre_approval() -> Weight {
-		(2_745_000 as Weight)
+		(5_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking PreApprovedDevelopers (r:1 w:1)
 	fn developer_pre_approval() -> Weight {
-		(5_320_000 as Weight)
+		(8_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -75,24 +76,24 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking ContractEraStake (r:1 w:1)
-	// Storage: DappsStaking StakersInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond_and_stake() -> Weight {
-		(133_638_000 as Weight)
+		(98_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
-	// Storage: DappsStaking StakersInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking ContractEraStake (r:1 w:1)
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
 	fn unbond_and_unstake() -> Weight {
-		(134_480_000 as Weight)
+		(95_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
@@ -102,22 +103,35 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
 	fn withdraw_unbonded() -> Weight {
-		(114_252_000 as Weight)
+		(72_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
-	// Storage: DappsStaking StakersInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking ContractEraStake (r:1 w:1)
-	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralEraInfo (r:2 w:1)
 	// Storage: DappsStaking Ledger (r:1 w:1)
-	// Storage: DappsStaking EraRewardsAndStakes (r:1 w:0)
-	fn claim_staker() -> Weight {
-		(41_878_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	// Storage: Balances Locks (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn claim_staker_with_restake() -> Weight {
+		(91_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(10 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
+	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
+	// Storage: DappsStaking CurrentEra (r:1 w:0)
+	// Storage: DappsStaking ContractEraStake (r:1 w:0)
+	// Storage: DappsStaking GeneralEraInfo (r:1 w:0)
+	// Storage: DappsStaking Ledger (r:1 w:0)
+	fn claim_staker_without_restake() -> Weight {
+		(56_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(7 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
@@ -125,28 +139,27 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DappsStaking ContractEraStake (r:1 w:1)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:0)
 	fn claim_dapp() -> Weight {
-		(31_619_000 as Weight)
+		(43_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking ForceEra (r:0 w:1)
 	fn force_new_era() -> Weight {
-		(2_815_000 as Weight)
+		(5_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:1)
 	fn maintenance_mode() -> Weight {
-		(10_970_000 as Weight)
+		(18_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-		.saturating_add(1_192_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	// Storage: DappsStaking PalledDisabled (r:1 w:0)
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
-	// TODO: get real base value
 	fn set_reward_destination() -> Weight {
-		(3_466_000 as Weight)
+		(24_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -236,14 +249,29 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
-	// Storage: DappsStaking StakersInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
+	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
+	// Storage: DappsStaking CurrentEra (r:1 w:0)
+	// Storage: DappsStaking ContractEraStake (r:1 w:1)
+	// Storage: DappsStaking GeneralEraInfo (r:2 w:1)
+	// Storage: DappsStaking Ledger (r:1 w:1)
+	// Storage: Balances Locks (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn claim_staker_with_restake() -> Weight {
+		(91_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+	}
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking ContractEraStake (r:1 w:0)
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:0)
-	fn claim_staker() -> Weight {
-		(36_748_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
+	// Storage: DappsStaking Ledger (r:1 w:0)
+	fn claim_staker_without_restake() -> Weight {
+		(56_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
@@ -268,12 +296,11 @@ impl WeightInfo for () {
 		(10_970_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 	}
-	// Storage: DappsStaking PalledDisabled (r:1 w:0)
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
-	// TODO: get real base value
 	fn set_reward_destination() -> Weight {
-		(3_466_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(24_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

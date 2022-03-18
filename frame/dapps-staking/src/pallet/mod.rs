@@ -663,7 +663,7 @@ pub mod pallet {
         // TODO: do we need to add force methods or at least methods that allow others to claim for someone else?
 
         /// Claim earned staker rewards for the oldest era.
-        #[pallet::weight(T::WeightInfo::claim_staker())]
+        #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
@@ -750,7 +750,11 @@ pub mod pallet {
                 staker_reward,
             ));
             Self::update_staker_info(&staker, &contract_id, staker_info);
-            Ok(().into())
+            Ok(Some(
+                T::WeightInfo::claim_staker_with_restake()
+                    .max(T::WeightInfo::claim_staker_without_restake()),
+            )
+            .into())
         }
 
         /// Claim earned dapp rewards for the specified era.

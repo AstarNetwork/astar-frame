@@ -204,7 +204,7 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::Withdrawn(staker, unstake_amount).into());
     }
 
-    claim_staker {
+    claim_staker_with_restake {
         initialize::<T>();
         let (_, contract_id) = register_contract::<T>()?;
 
@@ -214,7 +214,26 @@ benchmarks! {
         let staker = stakers[0].clone();
         advance_to_era::<T>(claim_era + 1u32);
 
-    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    }: claim_staker(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    verify {
+        let mut staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
+        let (era, _) = staker_info.claim();
+        assert!(era > claim_era);
+    }
+
+    claim_staker_without_restake {
+        initialize::<T>();
+        let (_, contract_id) = register_contract::<T>()?;
+
+        let number_of_stakers = 3;
+        let claim_era = DappsStaking::<T>::current_era();
+        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
+
+        DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::FreeBalance)?;
+        advance_to_era::<T>(claim_era + 1u32);
+
+    }: claim_staker(RawOrigin::Signed(staker.clone()), contract_id.clone())
     verify {
         let mut staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
         let (era, _) = staker_info.claim();
@@ -249,7 +268,7 @@ benchmarks! {
         let option = RewardDestination::FreeBalance;
     }: _(RawOrigin::Signed(staker.clone()), option)
     verify {
-        assert_last_event::<T>(Event::<T>::RewardChange(staker, option).into());
+        assert_last_event::<T>(Event::<T>::RewardDestinationSet(staker, option).into());
     }
 
 }
