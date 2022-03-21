@@ -535,7 +535,7 @@ pub mod v3 {
         }
 
         log::info!("Executing a step of stateful storage migration.");
-        const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 8;
+        const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 64;
 
         let mut migration_state = MigrationStateV3::<T>::get();
         let mut consumed_weight = T::DbWeight::get().reads(2);
@@ -988,12 +988,15 @@ pub mod v3 {
             log::info!(">>> DAppInfo migration finished.");
         }
 
+        // Since enum was modified, we want to avoid corrupt data decoding
+        ForceEra::<T>::put(Forcing::NotForcing);
+
         MigrationStateV3::<T>::put(MigrationState::Finished);
         StorageVersion::<T>::put(Version::V3_0_0);
         PalletDisabled::<T>::put(false);
         log::info!(">>> Migration finalized.");
 
-        consumed_weight.saturating_add(T::DbWeight::get().writes(3))
+        consumed_weight.saturating_add(T::DbWeight::get().writes(4))
     }
 
     #[cfg(feature = "try-runtime")]
