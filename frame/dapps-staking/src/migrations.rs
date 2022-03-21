@@ -560,8 +560,7 @@ pub mod v3 {
             });
 
             PalletDisabled::<T>::put(true);
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(2));
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
 
             migration_state = MigrationState::DAppInfo(None);
 
@@ -583,16 +582,17 @@ pub mod v3 {
                 RegisteredDapps::<T>::iter_keys()
             };
 
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-
             for key in key_iter {
                 let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key.clone());
+
                 translate(&key_as_vec, |value: T::AccountId| {
                     let is_registered = RegisteredDevelopers::<T>::contains_key(&value);
 
                     // We no longer delete enry for RegisteredDevelopers, so we will restore this in case it was deleted before
                     if !is_registered {
                         RegisteredDevelopers::<T>::insert(&value, key.clone());
+                        consumed_weight =
+                            consumed_weight.saturating_add(T::DbWeight::get().writes(1));
                     }
 
                     Some(DAppInfo::<T::AccountId> {
@@ -606,7 +606,7 @@ pub mod v3 {
                 });
 
                 consumed_weight =
-                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(3, 1));
 
                 if consumed_weight >= weight_limit {
                     log::info!(
@@ -626,9 +626,6 @@ pub mod v3 {
 
             log::info!(">>> DAppInfo migration finished.");
             migration_state = MigrationState::AccountLedger(None);
-
-            MigrationStateV3::<T>::put(migration_state.clone());
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         }
 
         //
@@ -657,7 +654,7 @@ pub mod v3 {
 
                 // Increment total consumed weight.
                 consumed_weight =
-                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
 
                 // Check if we've consumed enough weight already.
                 if consumed_weight >= weight_limit {
@@ -667,7 +664,8 @@ pub mod v3 {
                     );
                     MigrationStateV3::<T>::put(MigrationState::AccountLedger(Some(key_as_vec)));
                     MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
-                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(2));
+                    consumed_weight =
+                        consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
 
                     // we want try-runtime to execute the entire migration
                     if cfg!(feature = "try-runtime") {
@@ -679,6 +677,7 @@ pub mod v3 {
             }
 
             MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
 
             log::info!(">>> AccountLedger migration finished.");
             migration_state = MigrationState::GeneralEraInfo(None);
@@ -719,7 +718,7 @@ pub mod v3 {
                 );
 
                 consumed_weight =
-                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
 
                 if consumed_weight >= weight_limit {
                     log::info!(
@@ -746,8 +745,7 @@ pub mod v3 {
                     x.locked = x.staked + total_locked;
                 }
             });
-            consumed_weight = consumed_weight
-                .saturating_add(T::DbWeight::get().writes(1) + T::DbWeight::get().reads(3));
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads_writes(3, 1));
 
             log::info!(">>> GeneralEraInfo migration finished.");
 
@@ -762,7 +760,7 @@ pub mod v3 {
             let key_iter = last_processed_info.iter_keys::<T>();
 
             let current_era = Pallet::<T>::current_era();
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
             // `ContractEraStake` can be huge in size so to prevent reading too much these entries
             // in a single block, we limit it.
@@ -804,7 +802,8 @@ pub mod v3 {
 
                     // One additional item in the map has been processed
                     last_processed_info.processed_items += 1;
-                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+                    consumed_weight =
+                        consumed_weight.saturating_add(T::DbWeight::get().reads_writes(3, 1));
 
                     if last_processed_info.processed_items == staking_info.stakers.len() as u32 {
                         // this means one contract has been fully processed
@@ -849,8 +848,6 @@ pub mod v3 {
                 ContractEraStake::<T>::iter_keys()
             };
 
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-
             // `ContractEraStake` can be huge in size so to prevent reading too much these entries
             // in a single block, we limit it.
             let mut contract_era_stake_limiter = CONTRACT_ERA_STAKE_READ_LIMIT;
@@ -872,7 +869,7 @@ pub mod v3 {
                 contract_era_stake_limiter = contract_era_stake_limiter.saturating_sub(1);
 
                 consumed_weight =
-                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                    consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
 
                 if consumed_weight >= weight_limit || contract_era_stake_limiter.is_zero() {
                     log::info!(
@@ -948,8 +945,7 @@ pub mod v3 {
             };
 
             let current_era = Pallet::<T>::current_era();
-
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
             for key in key_iter {
                 // We need to ensure that current era has a copy of all eligible contract staking infos.
@@ -963,10 +959,10 @@ pub mod v3 {
                         contract_stake_info.contract_reward_claimed = false;
                         ContractEraStake::<T>::insert(&key, current_era, contract_stake_info);
                         consumed_weight =
-                            consumed_weight.saturating_add(T::DbWeight::get().reads_writes(2, 1));
+                            consumed_weight.saturating_add(T::DbWeight::get().reads_writes(3, 1));
                     }
                 } else {
-                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(2));
                 }
 
                 if consumed_weight >= weight_limit {
@@ -993,16 +989,11 @@ pub mod v3 {
         }
 
         MigrationStateV3::<T>::put(MigrationState::Finished);
-        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+        StorageVersion::<T>::put(Version::V3_0_0);
+        PalletDisabled::<T>::put(false);
         log::info!(">>> Migration finalized.");
 
-        StorageVersion::<T>::put(Version::V3_0_0);
-        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
-
-        PalletDisabled::<T>::put(false);
-        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
-
-        consumed_weight
+        consumed_weight.saturating_add(T::DbWeight::get().writes(3))
     }
 
     #[cfg(feature = "try-runtime")]
