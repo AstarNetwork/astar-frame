@@ -435,7 +435,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 
     if DappsStaking::should_restake_reward(
         init_state_claim_era.ledger.reward_destination,
-        contract_id,
+        init_state_claim_era.dapp_info.state,
         init_state_claim_era.staker_info.latest_staked_value(),
     ) {
         assert_eq!(

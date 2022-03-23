@@ -523,7 +523,7 @@ pub mod pallet {
 
             Self::update_ledger(&staker, ledger);
             Self::update_staker_info(&staker, &contract_id, staker_info);
-            ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+            ContractEraStake::<T>::insert(&contract_id, current_era, staking_info);
 
             Self::deposit_event(Event::<T>::BondAndStake(
                 staker,
@@ -697,7 +697,7 @@ pub mod pallet {
 
             if Self::should_restake_reward(
                 ledger.reward_destination,
-                &contract_id,
+                dapp_info.state,
                 staker_info.latest_staked_value(),
             ) {
                 // There must be one slot left for restaking
@@ -1035,11 +1035,11 @@ pub mod pallet {
         // `true` if all the conditions for restaking the reward have been met, `false` otherwise
         pub(crate) fn should_restake_reward(
             reward_destination: RewardDestination,
-            contract_id: &T::SmartContract,
+            dapp_state: DAppState,
             latest_staked_value: BalanceOf<T>,
         ) -> bool {
             reward_destination == RewardDestination::StakeBalance
-                && Self::is_active(contract_id)
+                && dapp_state == DAppState::Registered
                 && latest_staked_value > Zero::zero()
         }
 
