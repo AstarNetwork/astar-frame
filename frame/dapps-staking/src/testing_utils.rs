@@ -548,7 +548,7 @@ pub(crate) fn assert_set_reward_destination(
         reward_destination
     ));
 
-    System::assert_last_event(mock::Event::DappsStaking(Event::RewardDestinationSet(
+    System::assert_last_event(mock::Event::DappsStaking(Event::RewardDestination(
         account_id,
         reward_destination,
     )));

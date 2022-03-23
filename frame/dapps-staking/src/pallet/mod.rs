@@ -221,7 +221,7 @@ pub mod pallet {
         /// Maintenance mode has been enabled or disabled
         MaintenanceMode(bool),
         /// Reward handling modified
-        RewardDestinationSet(T::AccountId, RewardDestination),
+        RewardDestination(T::AccountId, RewardDestination),
     }
 
     #[pallet::error]
@@ -899,7 +899,7 @@ pub mod pallet {
                 ledger.reward_destination = reward_destination;
             });
 
-            Self::deposit_event(Event::<T>::RewardDestinationSet(staker, reward_destination));
+            Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
             Ok(().into())
         }
     }

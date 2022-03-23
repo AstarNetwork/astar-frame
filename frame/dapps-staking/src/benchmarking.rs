@@ -268,7 +268,7 @@ benchmarks! {
         let option = RewardDestination::FreeBalance;
     }: _(RawOrigin::Signed(staker.clone()), option)
     verify {
-        assert_last_event::<T>(Event::<T>::RewardDestinationSet(staker, option).into());
+        assert_last_event::<T>(Event::<T>::RewardDestination(staker, option).into());
     }
 
 }
