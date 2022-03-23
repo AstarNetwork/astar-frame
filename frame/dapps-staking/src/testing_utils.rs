@@ -440,7 +440,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     ) {
         assert_eq!(
             second_last_event.clone(),
-            Event::<TestRuntime>::RewardAndRestake(claimer, contract_id.clone(), calculated_reward,)
+            Event::<TestRuntime>::BondAndStake(claimer, contract_id.clone(), calculated_reward,)
         );
         assert_eq!(
             init_state_claim_era.staker_info.latest_staked_value() + calculated_reward,

@@ -220,8 +220,6 @@ pub mod pallet {
         Reward(T::AccountId, T::SmartContract, EraIndex, BalanceOf<T>),
         /// Maintenance mode has been enabled or disabled
         MaintenanceMode(bool),
-        /// Claimed staker reward restaked
-        RewardAndRestake(T::AccountId, T::SmartContract, BalanceOf<T>),
         /// Reward handling modified
         RewardDestinationSet(T::AccountId, RewardDestination),
     }
@@ -726,7 +724,7 @@ pub mod pallet {
 
                 ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
 
-                Self::deposit_event(Event::<T>::RewardAndRestake(
+                Self::deposit_event(Event::<T>::BondAndStake(
                     staker.clone(),
                     contract_id.clone(),
                     staker_reward,
