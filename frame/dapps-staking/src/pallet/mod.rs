@@ -695,17 +695,29 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
 
-            if Self::should_restake_reward(
+            let should_restake_reward = Self::should_restake_reward(
                 ledger.reward_destination,
                 dapp_info.state,
                 staker_info.latest_staked_value(),
-            ) {
+            );
+
+            if should_restake_reward {
                 // There must be one slot left for restaking
                 ensure!(
                     staker_info.len() < T::MaxEraStakeValues::get(),
                     Error::<T>::TooManyEraStakeValues
                 );
+            }
 
+            // Withdraw reward funds from the dapps staking pot
+            let reward_imbalance = T::Currency::withdraw(
+                &Self::account_id(),
+                staker_reward,
+                WithdrawReasons::TRANSFER,
+                ExistenceRequirement::AllowDeath,
+            )?;
+
+            if should_restake_reward {
                 staker_info
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
@@ -731,28 +743,15 @@ pub mod pallet {
                 ));
             }
 
-            // Withdraw reward funds from the dapps staking pot
-            let reward_imbalance = T::Currency::withdraw(
-                &Self::account_id(),
-                staker_reward,
-                WithdrawReasons::TRANSFER,
-                ExistenceRequirement::AllowDeath,
-            )?;
-
             T::Currency::resolve_creating(&staker, reward_imbalance);
-
-            Self::deposit_event(Event::<T>::Reward(
-                staker.clone(),
-                contract_id.clone(),
-                era,
-                staker_reward,
-            ));
             Self::update_staker_info(&staker, &contract_id, staker_info);
-            Ok(Some(
-                T::WeightInfo::claim_staker_with_restake()
-                    .max(T::WeightInfo::claim_staker_without_restake()),
-            )
-            .into())
+            Self::deposit_event(Event::<T>::Reward(staker, contract_id, era, staker_reward));
+
+            if should_restake_reward {
+                Ok(Some(T::WeightInfo::claim_staker_with_restake()).into())
+            } else {
+                Ok(Some(T::WeightInfo::claim_staker_without_restake()).into())
+            }
         }
 
         /// Claim earned dapp rewards for the specified era.
