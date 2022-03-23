@@ -2,9 +2,6 @@ on: [push]
 
 name: Integration
 
-env:
-  RUST_VERSION: 'nightly-2021-11-29'
-
 jobs:
   native:
     runs-on: ${{ matrix.os }}
@@ -12,15 +9,13 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ env.RUST_VERSION }}
-        targets: 'wasm32-unknown-unknown'
-
     - name: Checkout the source code
       uses: actions/checkout@master
       with:
         submodules: true
+
+    - name: Install & display rust toolchain
+      run: rustup show
 
     - name: Check targets are installed correctly
       run: rustup target list --installed
@@ -31,15 +26,13 @@ jobs:
   test-and-coverage:
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ env.RUST_VERSION }}
-        targets: 'wasm32-unknown-unknown'
-
     - name: Checkout the source code
       uses: actions/checkout@master
       with:
         submodules: true
+
+    - name: Install & display rust toolchain
+      run: rustup show
 
     - name: Check targets are installed correctly
       run: rustup target list --installed
