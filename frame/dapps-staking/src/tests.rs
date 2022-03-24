@@ -1550,11 +1550,11 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
         // Make sure reward_destination is set to StakeBalance
         assert_set_reward_destination(staker_id, RewardDestination::StakeBalance);
 
-        // there's one more stake spot left by bond_and_stake
-        // it's filled by claiming and restaking once
+        // claim and restake once, so there's a claim record for the for the current era in the stakes vec
         assert_claim_staker(staker_id, &contract_id);
 
-        // claiming should not work because it can't stake any more
+        // making another gap in eras and trying to claim and restake would exceed MAX_ERA_STAKE_VALUES
+        advance_to_era(MAX_ERA_STAKE_VALUES * 5);
         assert_noop!(
             DappsStaking::claim_staker(Origin::signed(staker_id), contract_id),
             Error::<TestRuntime>::TooManyEraStakeValues

@@ -702,9 +702,12 @@ pub mod pallet {
             );
 
             if should_restake_reward {
-                // There must be one slot left for restaking
+                staker_info
+                    .stake(current_era, staker_reward)
+                    .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
+
                 ensure!(
-                    staker_info.len() < T::MaxEraStakeValues::get(),
+                    staker_info.len() <= T::MaxEraStakeValues::get(),
                     Error::<T>::TooManyEraStakeValues
                 );
             }
@@ -718,12 +721,9 @@ pub mod pallet {
             )?;
 
             if should_restake_reward {
-                staker_info
-                    .stake(current_era, staker_reward)
-                    .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
-
                 ledger.locked = ledger.locked.saturating_add(staker_reward);
                 staking_info.total = staking_info.total.saturating_add(staker_reward);
+
                 // Update storage
                 GeneralEraInfo::<T>::mutate(&current_era, |value| {
                     if let Some(x) = value {
