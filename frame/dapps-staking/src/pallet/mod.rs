@@ -747,11 +747,12 @@ pub mod pallet {
             Self::update_staker_info(&staker, &contract_id, staker_info);
             Self::deposit_event(Event::<T>::Reward(staker, contract_id, era, staker_reward));
 
-            if should_restake_reward {
-                Ok(Some(T::WeightInfo::claim_staker_with_restake()).into())
+            Ok(Some(if should_restake_reward {
+                T::WeightInfo::claim_staker_with_restake()
             } else {
-                Ok(Some(T::WeightInfo::claim_staker_without_restake()).into())
-            }
+                T::WeightInfo::claim_staker_without_restake()
+            })
+            .into())
         }
 
         /// Claim earned dapp rewards for the specified era.
