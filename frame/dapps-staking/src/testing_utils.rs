@@ -399,6 +399,9 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let (claim_era, _) = DappsStaking::staker_info(&claimer, contract_id).claim();
     let current_era = DappsStaking::current_era();
 
+    //clean up possible leftover events
+    System::reset_events();
+
     let init_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
     let init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
@@ -429,40 +432,37 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
-    // If there's less than 2 events, it should fail anyway, so panic as acceptable
-    let events = dapps_staking_events();
-    let second_last_event = &events[events.len() - 2];
-
     if DappsStaking::should_restake_reward(
         init_state_claim_era.ledger.reward_destination,
         init_state_claim_era.dapp_info.state,
         init_state_claim_era.staker_info.latest_staked_value(),
     ) {
+        // If there's less than 2 events, it should fail anyway, so panic as acceptable
+        let events = dapps_staking_events();
+        let second_last_event = &events[events.len() - 2];
         assert_eq!(
             second_last_event.clone(),
             Event::<TestRuntime>::BondAndStake(claimer, contract_id.clone(), calculated_reward,)
         );
+
         assert_eq!(
-            init_state_claim_era.staker_info.latest_staked_value() + calculated_reward,
-            final_state_claim_era.staker_info.latest_staked_value()
-        );
-        assert_eq!(
-            init_state_claim_era.ledger.locked + calculated_reward,
-            final_state_claim_era.ledger.locked
+            init_state_current_era.staker_info.latest_staked_value() + calculated_reward,
+            final_state_current_era.staker_info.latest_staked_value()
         );
 
         assert_eq!(
             init_state_current_era.era_info.staked + calculated_reward,
             final_state_current_era.era_info.staked
         );
+
         assert_eq!(
             init_state_current_era.era_info.locked + calculated_reward,
             final_state_current_era.era_info.locked
         );
     } else {
         assert_eq!(
-            init_state_claim_era.free_balance + calculated_reward,
-            final_state_claim_era.free_balance
+            init_state_current_era.free_balance + calculated_reward,
+            final_state_current_era.free_balance
         );
 
         assert_eq!(

@@ -1450,6 +1450,7 @@ fn claim_after_unregister_is_ok() {
         }
     })
 }
+
 #[test]
 fn claim_only_payout_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
@@ -1502,7 +1503,7 @@ fn claim_with_zero_staked_is_ok() {
 }
 
 #[test]
-fn claim_with_different_reward_destination_is_ok() {
+fn claims_with_different_reward_destination_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
 
