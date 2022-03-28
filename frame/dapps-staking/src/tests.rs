@@ -92,6 +92,93 @@ fn on_initialize_is_ok() {
 }
 
 #[test]
+fn new_era_length_is_always_blocks_per_era() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+        let blocks_per_era = mock::BLOCKS_PER_ERA;
+
+        // go to beginning of an era
+        advance_to_era(mock::DappsStaking::current_era() + 1);
+
+        // record era number and block number
+        let start_era = mock::DappsStaking::current_era();
+        let starting_block_number = System::block_number();
+
+        // go to next era
+        advance_to_era(mock::DappsStaking::current_era() + 1);
+        let ending_block_number = System::block_number();
+
+        // make sure block number difference is is blocks_per_era
+        assert_eq!(mock::DappsStaking::current_era(), start_era + 1);
+        assert_eq!(ending_block_number - starting_block_number, blocks_per_era);
+    })
+}
+
+#[test]
+fn new_era_is_handled_with_maintenance_mode() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // enable maintenance mode
+        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert!(PalletDisabled::<TestRuntime>::exists());
+        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(true)));
+
+        // advance 9 blocks or 3 era lengths (advance_to_era() doesn't work in maintenance mode)
+        run_for_blocks(mock::BLOCKS_PER_ERA * 3);
+
+        // verify that `current block > NextEraStartingBlock` but era hasn't changed
+        assert!(System::block_number() > DappsStaking::next_era_starting_block());
+        assert_eq!(DappsStaking::current_era(), 1);
+
+        // disable maintenance mode
+        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), false));
+        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(false)));
+
+        // advance one era
+        run_for_blocks(mock::BLOCKS_PER_ERA);
+
+        // verify we're at block 14
+        assert_eq!(System::block_number(), (4 * mock::BLOCKS_PER_ERA) + 2); // 2 from initialization, advanced 4 eras worth of blocks
+
+        // verify era was updated and NextEraStartingBlock is 15
+        assert_eq!(DappsStaking::current_era(), 2);
+        assert_eq!(
+            DappsStaking::next_era_starting_block(),
+            (5 * mock::BLOCKS_PER_ERA)
+        );
+    })
+}
+
+#[test]
+fn new_forced_era_length_is_always_blocks_per_era() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+        let blocks_per_era = mock::BLOCKS_PER_ERA;
+
+        // go to beginning of an era
+        advance_to_era(mock::DappsStaking::current_era() + 1);
+
+        // go to middle of era
+        run_for_blocks(1); // can be any number between 0 and blocks_per_era
+
+        // force new era
+        <ForceEra<TestRuntime>>::put(Forcing::ForceNew);
+        run_for_blocks(1); // calls on_initialize()
+
+        // note the start block number of new (forced) era
+        let start_block_number = System::block_number();
+
+        // go to start of next era
+        advance_to_era(mock::DappsStaking::current_era() + 1);
+
+        // show the length of the forced era is equal to blocks_per_era
+        let end_block_number = System::block_number();
+        assert_eq!(end_block_number - start_block_number, blocks_per_era);
+    })
+}
+
+#[test]
 fn new_era_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         // set initial era index
