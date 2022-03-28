@@ -1830,3 +1830,35 @@ pub fn extra_reward_for_the_first_era() {
         );
     })
 }
+
+fn should_restake_reward_util() {
+    // only passing case
+    let stake_registered_non_zero = DappsStaking::should_restake_reward(
+        RewardDestination::StakeBalance,
+        DAppState::Registered,
+        5000,
+    );
+    // false because of 0 last_staked_value
+    let stake_registered_zero = DappsStaking::should_restake_reward(
+        RewardDestination::StakeBalance,
+        DAppState::Registered,
+        0,
+    );
+    // false because of unregistered dapp state
+    let stake_unregistered = DappsStaking::should_restake_reward(
+        RewardDestination::StakeBalance,
+        DAppState::Unregistered(10),
+        1000,
+    );
+    // false because of reward destination
+    let free_registered = DappsStaking::should_restake_reward(
+        RewardDestination::FreeBalance,
+        DAppState::Registered,
+        1000,
+    );
+
+    assert!(stake_registered_non_zero);
+    assert!(!stake_registered_zero);
+    assert!(!stake_unregistered);
+    assert!(!free_registered);
+}
