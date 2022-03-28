@@ -887,6 +887,8 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// `StakeBalance` (default) means claimed amount gets restaked,
+        /// `FreeBalance` sets claiming without restaking
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,

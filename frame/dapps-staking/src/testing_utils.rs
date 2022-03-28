@@ -432,49 +432,24 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
-    if DappsStaking::should_restake_reward(
-        init_state_claim_era.ledger.reward_destination,
-        init_state_claim_era.dapp_info.state,
-        init_state_claim_era.staker_info.latest_staked_value(),
+    // assert staked and free balances depending on restake check,
+    // check for stake event if restaking is performed
+    if assert_restake_reward(
+        init_state_current_era,
+        final_state_current_era,
+        calculated_reward,
     ) {
-        // If there's less than 2 events, it should fail anyway, so panic as acceptable
+        // There should be at least 2 events, Reward and BondAndStake.
+        // if there's less, panic is acceptable
         let events = dapps_staking_events();
         let second_last_event = &events[events.len() - 2];
         assert_eq!(
             second_last_event.clone(),
-            Event::<TestRuntime>::BondAndStake(claimer, contract_id.clone(), calculated_reward,)
-        );
-
-        assert_eq!(
-            init_state_current_era.staker_info.latest_staked_value() + calculated_reward,
-            final_state_current_era.staker_info.latest_staked_value()
-        );
-
-        assert_eq!(
-            init_state_current_era.era_info.staked + calculated_reward,
-            final_state_current_era.era_info.staked
-        );
-
-        assert_eq!(
-            init_state_current_era.era_info.locked + calculated_reward,
-            final_state_current_era.era_info.locked
-        );
-    } else {
-        assert_eq!(
-            init_state_current_era.free_balance + calculated_reward,
-            final_state_current_era.free_balance
-        );
-
-        assert_eq!(
-            init_state_current_era.era_info.staked,
-            final_state_current_era.era_info.staked
-        );
-        assert_eq!(
-            init_state_current_era.era_info.locked,
-            final_state_current_era.era_info.locked
+            Event::<TestRuntime>::BondAndStake(claimer, contract_id.clone(), calculated_reward)
         );
     }
 
+    // last event should be Reward, regardless of restaking
     System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
         claimer,
         contract_id.clone(),
@@ -497,6 +472,41 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     // Claim shouldn't mint new tokens, instead it should just transfer from the dapps staking pallet account
     let issuance_after_claim = <TestRuntime as Config>::Currency::total_issuance();
     assert_eq!(issuance_before_claim, issuance_after_claim);
+}
+
+// assert staked and locked states depending on should_restake_reward
+// returns should_restake_reward result so further checks can be made
+fn assert_restake_reward(
+    init_state: MemorySnapshot,
+    final_state: MemorySnapshot,
+    reward: u128,
+) -> bool {
+    let should_restake_reward = DappsStaking::should_restake_reward(
+        init_state.ledger.reward_destination,
+        init_state.dapp_info.state,
+        init_state.staker_info.latest_staked_value(),
+    );
+    if should_restake_reward {
+        // staked values should increase
+        assert_eq!(
+            init_state.staker_info.latest_staked_value() + reward,
+            final_state.staker_info.latest_staked_value()
+        );
+        assert_eq!(
+            init_state.era_info.staked + reward,
+            final_state.era_info.staked
+        );
+        assert_eq!(
+            init_state.era_info.locked + reward,
+            final_state.era_info.locked
+        );
+    } else {
+        // staked values should remain the same, and free balance increase
+        assert_eq!(init_state.free_balance + reward, final_state.free_balance);
+        assert_eq!(init_state.era_info.staked, final_state.era_info.staked);
+        assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
+    }
+    should_restake_reward
 }
 
 /// Used to perform claim for dApp reward with success assertion
@@ -539,6 +549,7 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
     assert_eq!(init_state.ledger, final_state.ledger);
 }
 
+// change reward destination and verify the update
 pub(crate) fn assert_set_reward_destination(
     account_id: AccountId,
     reward_destination: RewardDestination,
