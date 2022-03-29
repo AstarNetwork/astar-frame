@@ -46,9 +46,12 @@ impl MemorySnapshot {
 
 /// Used to fetch the free balance of dapps staking account
 pub(crate) fn free_balance_of_dapps_staking_account() -> Balance {
-    <TestRuntime as Config>::Currency::free_balance(
-        &<TestRuntime as Config>::PalletId::get().into_account(),
-    )
+    <TestRuntime as Config>::Currency::free_balance(&account_id())
+}
+
+/// Used to fetch pallet account Id
+pub(crate) fn account_id() -> AccountId {
+    <TestRuntime as Config>::PalletId::get().into_account()
 }
 
 /// Used to get total dapps reward for an era.

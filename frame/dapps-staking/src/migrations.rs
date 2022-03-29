@@ -1077,3 +1077,234 @@ pub mod v3 {
         Ok(())
     }
 }
+
+pub mod festival_end {
+
+    use super::*;
+    use frame_support::{log, storage::child::KillStorageResult, traits::Get, weights::Weight};
+    use sp_runtime::traits::Zero;
+
+    #[cfg(feature = "try-runtime")]
+    pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
+        assert!(Ledger::<T>::iter().count().is_zero());
+        assert!(BlockRewardAccumulator::<T>::exists());
+
+        // Sanity check for pallet free balance. UT covers this but not via live chain check.
+        let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
+        let unit = halved_unit * halved_unit;
+        let threshold_balance = unit * 25_000_000_u32.into();
+
+        assert!(T::Currency::free_balance(&Pallet::<T>::account_id()) > threshold_balance);
+
+        Ok(())
+    }
+
+    /// Should be executed during runtime upgrade
+    /// Won't do the entire cleanup, instead it will just do necessary preparatory actions.
+    pub fn on_runtime_upgrade<T: Config>(weight_limit: Weight) -> Weight {
+        if Ledger::<T>::iter_keys().peekable().peek().is_some() {
+            log::warn!(">>> There are existing account ledgers. This upgrade is invalid!");
+            return T::DbWeight::get().reads(1);
+        }
+
+        // 1. Accumulated rewards for the ongoing era are killed - however, funds will remain in pallet account
+        BlockRewardAccumulator::<T>::kill();
+
+        // 2. To ensure we don't have errors with decoding
+        ForceEra::<T>::put(Forcing::NotForcing);
+
+        // 3. Sanity check, should be entirely empty already
+        RegisteredDevelopers::<T>::remove_all(None);
+
+        // 4. Reset eras since we're doing a clean start.
+        CurrentEra::<T>::put(0);
+
+        // 5. Maintenance mode so we can keep track of cleanup progress
+        PalletDisabled::<T>::put(true);
+
+        let consumed_weight = T::DbWeight::get().reads_writes(1, 2);
+        if cfg!(feature = "try-runtime") {
+            consumed_weight + storage_cleanup::<T>(weight_limit)
+        } else {
+            consumed_weight
+        }
+    }
+
+    /// Used to cleanup leftover storage items from legacy dapps-staking
+    ///
+    /// `weight-limit` - used to limit how many entries can be deleted using a single call
+    ///
+    pub fn storage_cleanup<T: Config>(weight_limit: Weight) -> Weight {
+        if Ledger::<T>::iter_keys().peekable().peek().is_some() {
+            log::warn!(">>> There are existing account ledgers, cannot do cleanup.");
+            return T::DbWeight::get().reads(1);
+        }
+        if !CurrentEra::<T>::get().is_zero() || !PalletDisabled::<T>::get() {
+            log::warn!(">>> Pallet should be in maintenance mode and current era should be zero while doing storage cleanup.");
+            return T::DbWeight::get().reads(3);
+        }
+
+        log::info!(">>> Executing a step of staking festival storage cleanup.");
+
+        let mut consumed_weight = Zero::zero();
+
+        let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
+        let mut approximate_deletions_remaining =
+            (weight_limit / (T::DbWeight::get().writes(1) * 11 / 10)).max(1);
+
+        //
+        // 1
+        //
+        if RegisteredDapps::<T>::iter_keys()
+            .peekable()
+            .peek()
+            .is_some()
+        {
+            let removal_result = if cfg!(feature = "try-runtime") {
+                RegisteredDapps::<T>::remove_all(None)
+            } else {
+                RegisteredDapps::<T>::remove_all(Some(approximate_deletions_remaining as u32))
+            };
+            match removal_result {
+                KillStorageResult::AllRemoved(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    approximate_deletions_remaining -= removed_entries_num as u64;
+                    log::info!(">>> RegisteredDapps cleanup finished.");
+                }
+                KillStorageResult::SomeRemaining(removed_entries_num) => {
+                    log::info!(
+                    ">>> RegisteredDapps cleanup stopped due to reaching max amount of deletions."
+                );
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    if cfg!(feature = "try-runtime") {
+                        return consumed_weight + storage_cleanup::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+        }
+
+        //
+        // 2
+        //
+        if PreApprovedDevelopers::<T>::iter_keys()
+            .peekable()
+            .peek()
+            .is_some()
+        {
+            let removal_result = if cfg!(feature = "try-runtime") {
+                PreApprovedDevelopers::<T>::remove_all(None)
+            } else {
+                PreApprovedDevelopers::<T>::remove_all(Some(approximate_deletions_remaining as u32))
+            };
+            match removal_result {
+                KillStorageResult::AllRemoved(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    approximate_deletions_remaining -= removed_entries_num as u64;
+                    log::info!(">>> PreApprovedDevelopers cleanup finished.");
+                }
+                KillStorageResult::SomeRemaining(removed_entries_num) => {
+                    log::info!(">>> PreApprovedDevelopers cleanup stopped due to reaching max amount of deletions.");
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    if cfg!(feature = "try-runtime") {
+                        return consumed_weight + storage_cleanup::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+        }
+
+        //
+        // 3
+        //
+        if EraRewardsAndStakes::<T>::iter_keys()
+            .peekable()
+            .peek()
+            .is_some()
+        {
+            let removal_result = if cfg!(feature = "try-runtime") {
+                EraRewardsAndStakes::<T>::remove_all(None)
+            } else {
+                EraRewardsAndStakes::<T>::remove_all(Some(approximate_deletions_remaining as u32))
+            };
+            match removal_result {
+                KillStorageResult::AllRemoved(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    approximate_deletions_remaining -= removed_entries_num as u64;
+                    log::info!(">>> EraRewardsAndStakes cleanup finished.");
+                }
+                KillStorageResult::SomeRemaining(removed_entries_num) => {
+                    log::info!(">>> EraRewardsAndStakes cleanup stopped due to reaching max amount of deletions.");
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    if cfg!(feature = "try-runtime") {
+                        return consumed_weight + storage_cleanup::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+        }
+
+        //
+        // 4
+        //
+        // We limit this in order to reduce PoV size
+        approximate_deletions_remaining = approximate_deletions_remaining.min(128);
+        if ContractEraStake::<T>::iter_keys()
+            .peekable()
+            .peek()
+            .is_some()
+        {
+            // `remove_all` cannot be called multiple times in the same block since it won't produce different results
+            let removal_result = if cfg!(feature = "try-runtime") {
+                ContractEraStake::<T>::remove_all(None)
+            } else {
+                ContractEraStake::<T>::remove_all(Some(approximate_deletions_remaining as u32))
+            };
+            match removal_result {
+                KillStorageResult::AllRemoved(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    log::info!(">>> ContractEraStake cleanup finished.");
+                }
+                KillStorageResult::SomeRemaining(removed_entries_num) => {
+                    log::info!(
+                    ">>> ContractEraStake cleanup stopped due to reaching max amount of deletions."
+                );
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                    if cfg!(feature = "try-runtime") {
+                        return consumed_weight + storage_cleanup::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+        }
+
+        log::info!(">>> Storage cleanup finished.");
+        // Disable maintenance mode
+        PalletDisabled::<T>::put(false);
+        consumed_weight += T::DbWeight::get().writes(1);
+
+        consumed_weight
+    }
+
+    #[cfg(feature = "try-runtime")]
+    pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
+        assert!(Ledger::<T>::iter().count().is_zero());
+        assert!(CurrentEra::<T>::get().is_zero());
+        assert!(ForceEra::<T>::exists());
+        assert_eq!(ForceEra::<T>::get(), Forcing::NotForcing);
+
+        assert!(!PalletDisabled::<T>::get());
+
+        assert!(RegisteredDapps::<T>::iter().count().is_zero());
+        assert!(RegisteredDevelopers::<T>::iter().count().is_zero());
+        assert!(EraRewardsAndStakes::<T>::iter().count().is_zero());
+        assert!(ContractEraStake::<T>::iter().count().is_zero());
+        assert!(PreApprovedDevelopers::<T>::iter().count().is_zero());
+
+        Ok(())
+    }
+}
