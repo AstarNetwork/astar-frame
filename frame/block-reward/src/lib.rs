@@ -292,7 +292,7 @@ impl Default for RewardDistributionConfig {
 
 impl RewardDistributionConfig {
     /// `true` if sum of all percentages is `one whole`, `false` otherwise.
-    fn is_consistent(&self) -> bool {
+    pub fn is_consistent(&self) -> bool {
         // TODO: perhaps this can be writen in a more cleaner way?
         // experimental-only `try_reduce` could be used but it's not available
         // https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.try_reduce
