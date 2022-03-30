@@ -106,7 +106,7 @@ pub fn set_configuration_fails() {
     ExternalityBuilder::build().execute_with(|| {
         // 1
         assert_noop!(
-            RewardDistribution::set_configuration(Origin::signed(1), Default::default()),
+            BlockReward::set_configuration(Origin::signed(1), Default::default()),
             BadOrigin
         );
 
@@ -117,7 +117,7 @@ pub fn set_configuration_fails() {
         };
         assert!(!reward_config.is_consistent());
         assert_noop!(
-            RewardDistribution::set_configuration(Origin::root(), reward_config),
+            BlockReward::set_configuration(Origin::root(), reward_config),
             Error::<TestRuntime>::InvalidDistributionConfiguration,
         );
     })
@@ -137,11 +137,11 @@ pub fn set_configuration_is_ok() {
         };
         assert!(reward_config.is_consistent());
 
-        assert_ok!(RewardDistribution::set_configuration(
+        assert_ok!(BlockReward::set_configuration(
             Origin::root(),
             reward_config.clone()
         ));
-        System::assert_last_event(mock::Event::RewardDistribution(
+        System::assert_last_event(mock::Event::BlockReward(
             Event::DistributionConfigurationChanged(reward_config.clone()),
         ));
 
@@ -162,7 +162,7 @@ pub fn inflation_and_total_issuance_as_expected() {
                 <TestRuntime as Config>::Currency::total_issuance(),
                 block * BLOCK_REWARD + init_issuance
             );
-            RewardDistribution::on_timestamp_set(0);
+            BlockReward::on_timestamp_set(0);
             assert_eq!(
                 <TestRuntime as Config>::Currency::total_issuance(),
                 (block + 1) * BLOCK_REWARD + init_issuance
@@ -188,7 +188,7 @@ pub fn reward_distribution_as_expected() {
             ideal_dapps_staking_tvl: Perbill::from_percent(50),
         };
         assert!(reward_config.is_consistent());
-        assert_ok!(RewardDistribution::set_configuration(
+        assert_ok!(BlockReward::set_configuration(
             Origin::root(),
             reward_config.clone()
         ));
@@ -201,7 +201,7 @@ pub fn reward_distribution_as_expected() {
             let init_balance_state = FreeBalanceSnapshot::new();
             let rewards = Rewards::calculate(&reward_config);
 
-            RewardDistribution::on_timestamp_set(0);
+            BlockReward::on_timestamp_set(0);
 
             let final_balance_state = FreeBalanceSnapshot::new();
             init_balance_state.assert_distribution(&final_balance_state, &rewards);
@@ -221,7 +221,7 @@ pub fn reward_distribution_no_adjustable_part() {
             ideal_dapps_staking_tvl: Perbill::from_percent(50), // this is irrelevant
         };
         assert!(reward_config.is_consistent());
-        assert_ok!(RewardDistribution::set_configuration(
+        assert_ok!(BlockReward::set_configuration(
             Origin::root(),
             reward_config.clone()
         ));
@@ -235,7 +235,7 @@ pub fn reward_distribution_no_adjustable_part() {
 
             assert_eq!(rewards, const_rewards);
 
-            RewardDistribution::on_timestamp_set(0);
+            BlockReward::on_timestamp_set(0);
 
             let final_balance_state = FreeBalanceSnapshot::new();
             init_balance_state.assert_distribution(&final_balance_state, &rewards);
@@ -255,7 +255,7 @@ pub fn reward_distribution_all_zero_except_one() {
             ideal_dapps_staking_tvl: Perbill::from_percent(50), // this is irrelevant
         };
         assert!(reward_config.is_consistent());
-        assert_ok!(RewardDistribution::set_configuration(
+        assert_ok!(BlockReward::set_configuration(
             Origin::root(),
             reward_config.clone()
         ));
@@ -264,7 +264,7 @@ pub fn reward_distribution_all_zero_except_one() {
             let init_balance_state = FreeBalanceSnapshot::new();
             let rewards = Rewards::calculate(&reward_config);
 
-            RewardDistribution::on_timestamp_set(0);
+            BlockReward::on_timestamp_set(0);
 
             let final_balance_state = FreeBalanceSnapshot::new();
             init_balance_state.assert_distribution(&final_balance_state, &rewards);
@@ -354,7 +354,7 @@ impl Rewards {
         // Calculate `tvl-dependent` portions
         let future_total_issuance =
             <TestRuntime as Config>::Currency::total_issuance() + BLOCK_REWARD;
-        let tvl = <TestRuntime as Config>::DappsStakingTvlProvider::tvl();
+        let tvl = <TestRuntime as Config>::DappsStakingTvlProvider::get();
         let tvl_percentage = Perbill::from_rational(tvl, future_total_issuance);
 
         // Calculate factor for adjusting staker reward portion
@@ -384,7 +384,7 @@ impl Rewards {
 /// Adjusts total_issuance  in order to try-and-match the requested TVL percentage
 fn adjust_tvl_percentage(desired_tvl_percentage: Perbill) {
     // Calculate the required total issuance
-    let tvl = <TestRuntime as Config>::DappsStakingTvlProvider::tvl();
+    let tvl = <TestRuntime as Config>::DappsStakingTvlProvider::get();
     let required_total_issuance = desired_tvl_percentage.saturating_reciprocal_mul(tvl);
 
     // Calculate how much more we need to issue in order to get the desired TVL percentage

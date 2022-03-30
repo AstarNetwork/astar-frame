@@ -1,7 +1,8 @@
-use crate::{self as pallet_reward_distribution, NegativeImbalanceOf};
+use crate::{self as pallet_block_reward, NegativeImbalanceOf};
 
 use frame_support::{
-    construct_runtime, parameter_types, sp_io::TestExternalities, traits::Currency, PalletId,
+    construct_runtime, parameter_types, sp_io::TestExternalities, traits::Currency, traits::Get,
+    PalletId,
 };
 
 use sp_core::H256;
@@ -29,7 +30,7 @@ construct_runtime!(
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        RewardDistribution: pallet_reward_distribution::{Pallet, Call, Storage, Event<T>},
+        BlockReward: pallet_block_reward::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -109,15 +110,15 @@ pub(crate) const DAPPS_POT: PalletId = PalletId(*b"mokdapps");
 
 // Type used as TVL provider
 pub struct TvlProvider();
-impl pallet_reward_distribution::TvlProvider<Balance> for TvlProvider {
-    fn tvl() -> Balance {
+impl Get<Balance> for TvlProvider {
+    fn get() -> Balance {
         TVL
     }
 }
 
 // Type used as beneficiary payout handle
 pub struct BeneficiaryPayout();
-impl pallet_reward_distribution::BeneficiaryPayout<NegativeImbalanceOf<TestRuntime>>
+impl pallet_block_reward::BeneficiaryPayout<NegativeImbalanceOf<TestRuntime>>
     for BeneficiaryPayout
 {
     fn treasury(reward: NegativeImbalanceOf<TestRuntime>) {
@@ -141,7 +142,7 @@ parameter_types! {
     pub const RewardAmount: Balance = BLOCK_REWARD;
 }
 
-impl pallet_reward_distribution::Config for TestRuntime {
+impl pallet_block_reward::Config for TestRuntime {
     type Event = Event;
     type Currency = Balances;
     type RewardAmount = RewardAmount;
