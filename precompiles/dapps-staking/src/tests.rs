@@ -1,7 +1,6 @@
 use crate::mock::{
     advance_to_era, default_context, evm_call, initialize_first_block, precompile_address, Call,
-    DappsStaking, EraIndex, ExternalityBuilder, Origin, TestAccount, AST, BLOCK_REWARD,
-    UNBONDING_PERIOD, *,
+    DappsStaking, EraIndex, ExternalityBuilder, Origin, TestAccount, AST, UNBONDING_PERIOD, *,
 };
 use codec::{Decode, Encode};
 use fp_evm::{PrecompileFailure, PrecompileOutput};
@@ -147,7 +146,7 @@ fn read_era_reward_is_ok() {
         input_data[4..36].copy_from_slice(&era);
 
         // build expected outcome
-        let reward = BLOCK_REWARD;
+        let reward = joint_block_reward();
         let expected_output = argument_from_u128(reward);
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
@@ -312,9 +311,7 @@ fn claim_dapp_is_ok() {
             claim_dapp_and_verify(TEST_CONTRACT, era - 1);
 
             //check that the reward is payed out to the developer
-            let developer_reward = Perbill::from_percent(DEVELOPER_REWARD_PERCENTAGE)
-                * BLOCK_REWARD
-                * BLOCKS_PER_ERA as u128;
+            let developer_reward = DAPP_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
             assert_eq!(
                 <TestRuntime as pallet_evm::Config>::Currency::free_balance(
                     &TestAccount::Alex.into()
@@ -352,9 +349,7 @@ fn claim_staker_is_ok() {
             // advance era and claim reward
             advance_to_era(5);
 
-            let stakers_reward = Perbill::from_percent(100 - DEVELOPER_REWARD_PERCENTAGE)
-                * BLOCK_REWARD
-                * BLOCKS_PER_ERA as u128;
+            let stakers_reward = STAKER_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
 
             // Ensure that all rewards can be claimed for the first staker
             for era in 1..DappsStaking::current_era() as Balance {

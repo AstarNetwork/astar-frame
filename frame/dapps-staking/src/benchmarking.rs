@@ -4,12 +4,13 @@ use super::*;
 use crate::Pallet as DappsStaking;
 
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_support::traits::{Get, OnFinalize, OnInitialize, OnUnbalanced};
+use frame_support::traits::{Get, OnFinalize, OnInitialize};
 use frame_system::{Pallet as System, RawOrigin};
 use sp_runtime::traits::{Bounded, One};
 
 const SEED: u32 = 9000;
-const BLOCK_REWARD: u32 = 1000u32;
+const STAKER_BLOCK_REWARD: u32 = 1234u32;
+const DAPP_BLOCK_REWARD: u32 = 9876u32;
 
 /// Used to prepare Dapps staking for testing.
 /// Resets all existing storage ensuring a clean run for the code that follows.
@@ -28,8 +29,16 @@ fn initialize<T: Config>() {
     PreApprovalIsEnabled::<T>::kill();
 
     // Initialize the first block.
-    DappsStaking::<T>::on_unbalanced(T::Currency::issue(BLOCK_REWARD.into()));
+    payout_block_rewards::<T>();
     DappsStaking::<T>::on_initialize(1u32.into());
+}
+
+/// Payout block rewards to stakers & dapps
+fn payout_block_rewards<T: Config>() {
+    DappsStaking::<T>::rewards(
+        T::Currency::issue(STAKER_BLOCK_REWARD.into()),
+        T::Currency::issue(DAPP_BLOCK_REWARD.into()),
+    );
 }
 
 /// Assert that the last event equals the provided one.
@@ -43,7 +52,7 @@ fn advance_to_era<T: Config>(n: EraIndex) {
         DappsStaking::<T>::on_finalize(System::<T>::block_number());
         System::<T>::set_block_number(System::<T>::block_number() + One::one());
         // This is performed outside of dapps staking but we expect it before on_initialize
-        DappsStaking::<T>::on_unbalanced(T::Currency::issue(BLOCK_REWARD.into()));
+        payout_block_rewards::<T>();
         DappsStaking::<T>::on_initialize(System::<T>::block_number());
     }
 }

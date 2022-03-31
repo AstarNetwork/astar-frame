@@ -5,7 +5,7 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for pallet_staking.
+/// Weight functions needed for pallet-dapps-staking.
 pub trait WeightInfo {
     fn register() -> Weight;
     fn unregister() -> Weight;

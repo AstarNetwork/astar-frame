@@ -7,7 +7,7 @@ use frame_support::{
     pallet_prelude::*,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
-        OnUnbalanced, ReservableCurrency, WithdrawReasons,
+        ReservableCurrency, WithdrawReasons,
     },
     weights::Weight,
     PalletId,
@@ -39,21 +39,6 @@ pub mod pallet {
         <T as frame_system::Config>::AccountId,
     >>::NegativeImbalance;
 
-    impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
-        fn on_nonzero_unbalanced(block_reward: NegativeImbalanceOf<T>) {
-            let dapps_part = T::DeveloperRewardPercentage::get() * block_reward.peek();
-            let stakers_part = block_reward.peek().saturating_sub(dapps_part);
-
-            BlockRewardAccumulator::<T>::mutate(|accumulated_reward| {
-                accumulated_reward.dapps = accumulated_reward.dapps.saturating_add(dapps_part);
-                accumulated_reward.stakers =
-                    accumulated_reward.stakers.saturating_add(stakers_part);
-            });
-
-            T::Currency::resolve_creating(&Self::account_id(), block_reward);
-        }
-    }
-
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// The staking balance.
@@ -70,10 +55,6 @@ pub mod pallet {
         /// Minimum bonded deposit for new contract registration.
         #[pallet::constant]
         type RegisterDeposit: Get<BalanceOf<Self>>;
-
-        /// Percentage of reward paid to developer.
-        #[pallet::constant]
-        type DeveloperRewardPercentage: Get<Perbill>;
 
         /// Maximum number of unique stakers per contract.
         #[pallet::constant]
@@ -357,28 +338,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::BlockWeights::get().max_block / 5 * 3)]
-        pub fn do_upgrade(
-            origin: OriginFor<T>,
-            weight_limit: Option<Weight>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_signed(origin)?;
-
-            let max_allowed_weight = T::BlockWeights::get().max_block / 5 * 3; // e.g. 60%
-
-            let weight_limit = weight_limit.unwrap_or(max_allowed_weight);
-
-            // A sanity check to prevent too heavy upgrade
-            ensure!(
-                weight_limit <= max_allowed_weight,
-                Error::<T>::UpgradeTooHeavy
-            );
-
-            let consumed_weight = migrations::v3::stateful_migrate::<T>(weight_limit);
-
-            Ok(Some(consumed_weight).into())
-        }
-
         /// register contract into staking targets.
         /// contract_id should be ink! or evm contract.
         ///
@@ -1041,6 +1000,31 @@ pub mod pallet {
             let stakers_joint_reward = contract_stake_portion * era_info.rewards.stakers;
 
             (developer_reward_part, stakers_joint_reward)
+        }
+
+        /// Adds `stakers` and `dapps` rewards to the reward pool.
+        ///
+        /// - `stakers` - portion of the reward that will be distributed to stakers
+        /// - `dapps` - portion of the reward that will be distributed to dapps
+        pub fn rewards(stakers: NegativeImbalanceOf<T>, dapps: NegativeImbalanceOf<T>) {
+            BlockRewardAccumulator::<T>::mutate(|accumulated_reward| {
+                accumulated_reward.dapps = accumulated_reward.dapps.saturating_add(dapps.peek());
+                accumulated_reward.stakers =
+                    accumulated_reward.stakers.saturating_add(stakers.peek());
+            });
+
+            T::Currency::resolve_creating(&Self::account_id(), stakers.merge(dapps));
+        }
+
+        /// Returns total value locked by dapps-staking
+        pub fn tvl() -> BalanceOf<T> {
+            let current_era = Self::current_era();
+            if let Some(era_info) = Self::general_era_info(current_era) {
+                era_info.locked
+            } else {
+                // Should never happen since era info for current era must always exist
+                Zero::zero()
+            }
         }
     }
 }

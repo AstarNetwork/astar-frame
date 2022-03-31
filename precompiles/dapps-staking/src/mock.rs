@@ -3,7 +3,7 @@ use super::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
-    traits::{Currency, OnFinalize, OnInitialize, OnUnbalanced},
+    traits::{Currency, OnFinalize, OnInitialize},
     PalletId,
 };
 use pallet_dapps_staking::weights;
@@ -16,7 +16,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    AccountId32, Perbill,
+    AccountId32,
 };
 extern crate alloc;
 
@@ -34,7 +34,6 @@ type Block = frame_system::mocking::MockBlock<TestRuntime>;
 pub(crate) const MAX_NUMBER_OF_STAKERS: u32 = 4;
 /// Value shouldn't be less than 2 for testing purposes, otherwise we cannot test certain corner cases.
 pub(crate) const MINIMUM_STAKING_AMOUNT: Balance = 10 * AST;
-pub(crate) const DEVELOPER_REWARD_PERCENTAGE: u32 = 80;
 pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
@@ -45,9 +44,8 @@ pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
 
 pub(crate) const REGISTER_DEPOSIT: Balance = 10 * AST;
 
-// ignore MILLIAST for easier test handling.
-// reward for dapps-staking will be BLOCK_REWARD/2 = 1000
-pub(crate) const BLOCK_REWARD: Balance = 1000 * AST;
+pub(crate) const STAKER_BLOCK_REWARD: Balance = 531911;
+pub(crate) const DAPP_BLOCK_REWARD: Balance = 773333;
 
 #[derive(
     Eq,
@@ -262,7 +260,6 @@ parameter_types! {
     pub const BlockPerEra: BlockNumber = BLOCKS_PER_ERA;
     pub const MaxNumberOfStakersPerContract: u32 = MAX_NUMBER_OF_STAKERS;
     pub const MinimumStakingAmount: Balance = MINIMUM_STAKING_AMOUNT;
-    pub const DeveloperRewardPercentage: Perbill = Perbill::from_percent(DEVELOPER_REWARD_PERCENTAGE);
     pub const DappsStakingPalletId: PalletId = PalletId(*b"mokdpstk");
     pub const MinimumRemainingAmount: Balance = MINIMUM_REMAINING_AMOUNT;
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
@@ -275,7 +272,6 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type Currency = Balances;
     type BlockPerEra = BlockPerEra;
     type RegisterDeposit = RegisterDeposit;
-    type DeveloperRewardPercentage = DeveloperRewardPercentage;
     type SmartContract = MockSmartContract<AccountId32>;
     type WeightInfo = weights::SubstrateWeight<TestRuntime>;
     type MaxNumberOfStakersPerContract = MaxNumberOfStakersPerContract;
@@ -340,7 +336,7 @@ pub fn run_to_block(n: u64) {
         DappsStaking::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         // This is performed outside of dapps staking but we expect it before on_initialize
-        DappsStaking::on_unbalanced(Balances::issue(BLOCK_REWARD));
+        payout_block_rewards();
         DappsStaking::on_initialize(System::block_number());
     }
 }
@@ -366,9 +362,23 @@ pub fn initialize_first_block() {
     assert_eq!(System::block_number(), 1 as BlockNumber);
 
     // This is performed outside of dapps staking but we expect it before on_initialize
-    DappsStaking::on_unbalanced(Balances::issue(BLOCK_REWARD));
+    payout_block_rewards();
     DappsStaking::on_initialize(System::block_number());
     run_to_block(2);
+}
+
+/// Returns total block rewards that goes to dapps-staking.
+/// Contains both `dapps` reward and `stakers` reward.
+pub fn joint_block_reward() -> Balance {
+    STAKER_BLOCK_REWARD + DAPP_BLOCK_REWARD
+}
+
+/// Payout block rewards to stakers & dapps
+fn payout_block_rewards() {
+    DappsStaking::rewards(
+        Balances::issue(STAKER_BLOCK_REWARD.into()),
+        Balances::issue(DAPP_BLOCK_REWARD.into()),
+    );
 }
 
 /// default evm context

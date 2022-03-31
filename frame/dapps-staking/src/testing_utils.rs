@@ -53,7 +53,7 @@ pub(crate) fn free_balance_of_dapps_staking_account() -> Balance {
 
 /// Used to get total dapps reward for an era.
 pub(crate) fn get_total_reward_per_era() -> Balance {
-    BLOCK_REWARD * BLOCKS_PER_ERA as Balance
+    mock::joint_block_reward() * BLOCKS_PER_ERA as Balance
 }
 
 /// Used to register contract for staking and assert success.

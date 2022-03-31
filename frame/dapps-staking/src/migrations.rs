@@ -4,6 +4,7 @@ use super::*;
 use codec::{Decode, FullCodec};
 use frame_support::storage::unhashed;
 use pallet::pallet::*;
+use sp_runtime::Perbill;
 use sp_std::fmt::Debug;
 
 /// TODO: this should be part of `IterableStorageMap` and all other `Iterable` storage traits.
@@ -40,7 +41,6 @@ pub mod v2 {
     };
     use sp_std::collections::btree_map::BTreeMap;
 
-    // #[cfg(feature = "try-runtime")]
     use frame_support::log;
     #[cfg(feature = "try-runtime")]
     use frame_support::traits::OnRuntimeUpgradeHelpersExt;
@@ -540,6 +540,9 @@ pub mod v3 {
         let mut migration_state = MigrationStateV3::<T>::get();
         let mut consumed_weight = T::DbWeight::get().reads(2);
 
+        // Just a placeholder since old configurable constant has been removed
+        let dev_reward_percentage = Perbill::from_percent(50);
+
         //
         // 0
         //
@@ -548,7 +551,7 @@ pub mod v3 {
             // the block reward accumulator immediately
             let _ = BlockRewardAccumulator::<T>::translate(|x: Option<BalanceOf<T>>| {
                 if let Some(reward) = x {
-                    let dapps_reward = T::DeveloperRewardPercentage::get() * reward;
+                    let dapps_reward = dev_reward_percentage * reward;
                     let stakers_reward = reward.saturating_sub(dapps_reward);
                     Some(RewardInfo::<BalanceOf<T>> {
                         dapps: dapps_reward,
@@ -698,7 +701,7 @@ pub mod v3 {
 
                 // Read value from old storage
                 let reward_and_stake = EraRewardsAndStakes::<T>::get(&key).unwrap();
-                let dapps_reward = T::DeveloperRewardPercentage::get() * reward_and_stake.rewards;
+                let dapps_reward = dev_reward_percentage * reward_and_stake.rewards;
 
                 GeneralEraInfo::<T>::insert(
                     key,
