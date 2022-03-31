@@ -1491,7 +1491,7 @@ fn claim_with_zero_staked_is_ok() {
         assert_bond_and_stake(staker, &contract_id, stake_value);
         advance_to_era(start_era + 1);
 
-        // ensure reward_destination is set tot StakeBalance
+        // ensure reward_destination is set to StakeBalance
         assert_set_reward_destination(staker, RewardDestination::StakeBalance);
 
         // unstake all the tokens
@@ -1541,7 +1541,7 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
         // Insert a contract under registered contracts.
         assert_register(10, &contract_id);
 
-        // Stake with MAX_NUMBER_OF_STAKERS - 1 on the same contract. It must work.
+        // Stake with MAX_ERA_STAKE_VALUES - 1 on the same contract. It must work.
         let start_era = DappsStaking::current_era();
         for offset in 1..MAX_ERA_STAKE_VALUES {
             assert_bond_and_stake(staker_id, &contract_id, 100);
@@ -1555,7 +1555,7 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
         assert_claim_staker(staker_id, &contract_id);
 
         // making another gap in eras and trying to claim and restake would exceed MAX_ERA_STAKE_VALUES
-        advance_to_era(MAX_ERA_STAKE_VALUES * 5);
+        advance_to_era(DappsStaking::current_era() + 1);
         assert_noop!(
             DappsStaking::claim_staker(Origin::signed(staker_id), contract_id),
             Error::<TestRuntime>::TooManyEraStakeValues

@@ -706,6 +706,8 @@ pub mod pallet {
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
 
+                // Restaking will, in the worst case, remove one, and add one record,
+                // so it's fine if the vector is full
                 ensure!(
                     staker_info.len() <= T::MaxEraStakeValues::get(),
                     Error::<T>::TooManyEraStakeValues
