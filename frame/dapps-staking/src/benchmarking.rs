@@ -212,6 +212,8 @@ benchmarks! {
         let claim_era = DappsStaking::<T>::current_era();
         let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
         let staker = stakers[0].clone();
+
+        DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::StakeBalance)?;
         advance_to_era::<T>(claim_era + 1u32);
 
     }: claim_staker(RawOrigin::Signed(staker.clone()), contract_id.clone())
