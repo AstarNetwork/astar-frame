@@ -433,11 +433,17 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // assert staked and free balances depending on restake check,
-    // check for stake event if restaking is performed
-    if assert_restake_reward(
-        init_state_current_era,
-        final_state_current_era,
+    assert_restake_reward(
+        &init_state_current_era,
+        &final_state_current_era,
         calculated_reward,
+    );
+
+    // check for stake event if restaking is performed
+    if DappsStaking::should_restake_reward(
+        init_state_current_era.ledger.reward_destination,
+        init_state_current_era.dapp_info.state,
+        init_state_current_era.staker_info.latest_staked_value(),
     ) {
         // There should be at least 2 events, Reward and BondAndStake.
         // if there's less, panic is acceptable
@@ -476,17 +482,12 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 
 // assert staked and locked states depending on should_restake_reward
 // returns should_restake_reward result so further checks can be made
-fn assert_restake_reward(
-    init_state: MemorySnapshot,
-    final_state: MemorySnapshot,
-    reward: u128,
-) -> bool {
-    let should_restake_reward = DappsStaking::should_restake_reward(
+fn assert_restake_reward(init_state: &MemorySnapshot, final_state: &MemorySnapshot, reward: u128) {
+    if DappsStaking::should_restake_reward(
         init_state.ledger.reward_destination,
         init_state.dapp_info.state,
         init_state.staker_info.latest_staked_value(),
-    );
-    if should_restake_reward {
+    ) {
         // staked values should increase
         assert_eq!(
             init_state.staker_info.latest_staked_value() + reward,
@@ -506,7 +507,6 @@ fn assert_restake_reward(
         assert_eq!(init_state.era_info.staked, final_state.era_info.staked);
         assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
     }
-    should_restake_reward
 }
 
 /// Used to perform claim for dApp reward with success assertion
