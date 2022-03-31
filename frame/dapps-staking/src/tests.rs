@@ -1519,13 +1519,13 @@ fn claims_with_different_reward_destination_is_ok() {
 
         // disable compounding mode, wait 3 eras
         assert_set_reward_destination(staker, RewardDestination::FreeBalance);
-        advance_to_era(start_era + 3);
+        advance_to_era(start_era + 1);
         // ensure staker can claim rewards to wallet
         assert_claim_staker(staker, &contract_id);
 
         // enable compounding mode, wait 3 eras
         assert_set_reward_destination(staker, RewardDestination::StakeBalance);
-        advance_to_era(start_era + 3);
+        advance_to_era(start_era + 2);
         // ensure staker can claim with compounding
         assert_claim_staker(staker, &contract_id);
     })
