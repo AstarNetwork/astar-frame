@@ -896,7 +896,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             reward_destination: RewardDestination,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!Self::pallet_disabled(), Error::<T>::Disabled);
+            Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
             Ledger::<T>::mutate(&staker, |ledger| {
@@ -914,7 +914,7 @@ pub mod pallet {
             T::PalletId::get().into_account()
         }
 
-        /// `Ok` if pallet disabled for maintenance, `Err` otherwise
+        /// `Err` if pallet disabled for maintenance, `Ok` otherwise
         pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
             if PalletDisabled::<T>::get() {
                 Err(Error::<T>::Disabled)
