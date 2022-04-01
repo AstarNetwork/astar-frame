@@ -482,7 +482,11 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 
 // assert staked and locked states depending on should_restake_reward
 // returns should_restake_reward result so further checks can be made
-fn assert_restake_reward(init_state: &MemorySnapshot, final_state: &MemorySnapshot, reward: u128) {
+fn assert_restake_reward(
+    init_state: &MemorySnapshot,
+    final_state: &MemorySnapshot,
+    reward: Balance,
+) {
     if DappsStaking::should_restake_reward(
         init_state.ledger.reward_destination,
         init_state.dapp_info.state,
