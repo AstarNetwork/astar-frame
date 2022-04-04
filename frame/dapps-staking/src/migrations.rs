@@ -141,7 +141,8 @@ pub mod v2 {
 
         log::info!("Executing a step of stateful storage migration.");
 
-        let mut migration_state = MigrationStateV2::<T>::get();
+        // let mut migration_state = MigrationStateV2::<T>::get();
+        let mut migration_state = MigrationState::NotStarted;
         let mut consumed_weight = T::DbWeight::get().reads(2);
 
         // The first storage we process is `Ledger` so we set the starting state if needed
@@ -152,7 +153,7 @@ pub mod v2 {
 
             // If normal run, just exit here to avoid the risk of clogging the upgrade block.
             if !cfg!(feature = "try-runtime") {
-                MigrationStateV2::<T>::put(migration_state);
+                // MigrationStateV2::<T>::put(migration_state);
                 return consumed_weight;
             }
         }
@@ -185,7 +186,7 @@ pub mod v2 {
                         ">>> Ledger migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV2::<T>::put(MigrationState::Ledger(Some(key_as_vec)));
+                    // MigrationStateV2::<T>::put(MigrationState::Ledger(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     // we want try-runtime to execute the entire migration
@@ -231,7 +232,7 @@ pub mod v2 {
                         ">>> EraStakingPoints migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV2::<T>::put(MigrationState::StakingInfo(Some(key_as_vec)));
+                    // MigrationStateV2::<T>::put(MigrationState::StakingInfo(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -271,7 +272,7 @@ pub mod v2 {
                         ">>> EraRewardsAndStakes migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV2::<T>::put(MigrationState::RewardsAndStakes(Some(key_as_vec)));
+                    // MigrationStateV2::<T>::put(MigrationState::RewardsAndStakes(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -285,7 +286,7 @@ pub mod v2 {
             log::info!(">>> EraRewardsAndStakes migration finished.");
         }
 
-        MigrationStateV2::<T>::put(MigrationState::Finished);
+        // MigrationStateV2::<T>::put(MigrationState::Finished);
         consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         log::info!(">>> Migration finalized.");
 
@@ -537,7 +538,8 @@ pub mod v3 {
         log::info!("Executing a step of stateful storage migration.");
         const CONTRACT_ERA_STAKE_READ_LIMIT: u32 = 64;
 
-        let mut migration_state = MigrationStateV3::<T>::get();
+        // let mut migration_state = MigrationStateV3::<T>::get();
+        let mut migration_state = MigrationState::NotStarted;
         let mut consumed_weight = T::DbWeight::get().reads(2);
 
         // Just a placeholder since old configurable constant has been removed
@@ -569,7 +571,7 @@ pub mod v3 {
 
             // If normal run, just exit here to avoid the risk of clogging the upgrade block.
             if !cfg!(feature = "try-runtime") {
-                MigrationStateV3::<T>::put(migration_state);
+                // MigrationStateV3::<T>::put(migration_state);
                 consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
                 return consumed_weight;
             }
@@ -616,7 +618,7 @@ pub mod v3 {
                         ">>> DAppInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV3::<T>::put(MigrationState::DAppInfo(Some(key_as_vec)));
+                    // MigrationStateV3::<T>::put(MigrationState::DAppInfo(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -628,7 +630,7 @@ pub mod v3 {
             }
 
             log::info!(">>> DAppInfo migration finished.");
-            migration_state = MigrationState::AccountLedger(None);
+            // migration_state = MigrationState::AccountLedger(None);
         }
 
         //
@@ -665,8 +667,8 @@ pub mod v3 {
                         ">>> AccountLedger migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV3::<T>::put(MigrationState::AccountLedger(Some(key_as_vec)));
-                    MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
+                    // MigrationStateV3::<T>::put(MigrationState::AccountLedger(Some(key_as_vec)));
+                    // MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
                     consumed_weight =
                         consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
 
@@ -679,7 +681,7 @@ pub mod v3 {
                 }
             }
 
-            MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
+            // MigrationUndergoingUnbonding::<T>::mutate(|x| *x += total_locked);
             consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
 
             log::info!(">>> AccountLedger migration finished.");
@@ -697,7 +699,7 @@ pub mod v3 {
             };
 
             for key in key_iter {
-                let key_as_vec = EraRewardsAndStakes::<T>::storage_map_final_key(key);
+                // let key_as_vec = EraRewardsAndStakes::<T>::storage_map_final_key(key);
 
                 // Read value from old storage
                 let reward_and_stake = EraRewardsAndStakes::<T>::get(&key).unwrap();
@@ -728,7 +730,7 @@ pub mod v3 {
                         ">>> GeneralEraInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV3::<T>::put(MigrationState::GeneralEraInfo(Some(key_as_vec)));
+                    // MigrationStateV3::<T>::put(MigrationState::GeneralEraInfo(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -742,7 +744,8 @@ pub mod v3 {
             // At this point, all `GeneralEraInfo` values have been migrated.
             // Update the latest era info to contain correct dApps staking TVL value
             let current_era = Pallet::<T>::current_era();
-            let total_locked = MigrationUndergoingUnbonding::<T>::get();
+            // let total_locked = MigrationUndergoingUnbonding::<T>::get();
+            let total_locked = Zero::zero();
             GeneralEraInfo::<T>::mutate(current_era, |value| {
                 if let Some(x) = value {
                     x.locked = x.staked + total_locked;
@@ -822,9 +825,9 @@ pub mod v3 {
                             ">>> GeneralStakerInfo migration stopped after consuming {:?} weight.",
                             consumed_weight
                         );
-                        MigrationStateV3::<T>::put(MigrationState::GeneralStakerInfo(
-                            last_processed_info,
-                        ));
+                        // MigrationStateV3::<T>::put(MigrationState::GeneralStakerInfo(
+                        //     last_processed_info,
+                        // ));
                         consumed_weight =
                             consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
@@ -879,7 +882,7 @@ pub mod v3 {
                         ">>> ContractStakeInfo migration stopped after consuming {:?} weight.",
                         consumed_weight
                     );
-                    MigrationStateV3::<T>::put(MigrationState::StakingInfo(Some(key_as_vec)));
+                    // MigrationStateV3::<T>::put(MigrationState::StakingInfo(Some(key_as_vec)));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -974,10 +977,10 @@ pub mod v3 {
                         consumed_weight
                     );
 
-                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
-                    MigrationStateV3::<T>::put(MigrationState::ContractStakeInfoRotation(Some(
-                        key_as_vec,
-                    )));
+                    // let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(key);
+                    // MigrationStateV3::<T>::put(MigrationState::ContractStakeInfoRotation(Some(
+                    //     key_as_vec,
+                    // )));
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
                     if cfg!(feature = "try-runtime") {
@@ -994,7 +997,7 @@ pub mod v3 {
         // Since enum was modified, we want to avoid corrupt data decoding
         ForceEra::<T>::put(Forcing::NotForcing);
 
-        MigrationStateV3::<T>::put(MigrationState::Finished);
+        // MigrationStateV3::<T>::put(MigrationState::Finished);
         StorageVersion::<T>::put(Version::V3_0_0);
         PalletDisabled::<T>::put(false);
         log::info!(">>> Migration finalized.");

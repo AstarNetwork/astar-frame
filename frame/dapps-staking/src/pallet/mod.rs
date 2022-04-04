@@ -101,20 +101,6 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn migration_state_v2)]
-    pub type MigrationStateV2<T: Config> =
-        StorageValue<_, migrations::v2::MigrationState, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn migration_state_v3)]
-    pub type MigrationStateV3<T: Config> =
-        StorageValue<_, migrations::v3::MigrationState, ValueQuery>;
-
-    // TODO: remove this after V3 migration is finished
-    #[pallet::storage]
-    pub type MigrationUndergoingUnbonding<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-    #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -162,7 +148,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
 
     /// Legacy, don't use.
-    /// TODO: remove in future upgrades
+    /// TODO: remove after individual claim becomes active on Astar
     #[pallet::storage]
     pub type EraRewardsAndStakes<T: Config> =
         StorageMap<_, Twox64Concat, EraIndex, migrations::v3::OldEraRewardAndStake<BalanceOf<T>>>;
