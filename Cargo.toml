@@ -5,8 +5,9 @@ members = [
     "frame/custom-signatures",
     "frame/dapps-staking",
     "precompiles/assets-erc20",
+    "precompiles/dapps-staking",
+    "precompiles/sr25519",
     "precompiles/utils",
-    "precompiles/xtokens"
 ]
 
 [patch.crates-io]

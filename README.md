@@ -35,6 +35,12 @@ Naming format for the tag is:
 
 E.g. `pallet-dapps-staking-1.1.2/polkadot-v0.9.13`.
 
+### dApps-staking Pallets
+
+Since both `pallet-dapps-staking` and `pallet-precompile-dapps-staking` are tightly related, we use a direct dependency (**path**) from the precompile to FRAME pallet. Due to this, both pallet versions should be the same (incrementing one also means that other should be incremented).
+
+When creating tags, it is sufficient to just create a single tag for `pallet-dapps-staking` and reuse it for the precompiles in `Astar` repo.
+
 ## Further Reading
 
 * [Official Documentation](https://docs.astar.network/)

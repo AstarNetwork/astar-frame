@@ -8,46 +8,50 @@ interface DappsStaking {
 
     // Storage getters
 
-    /// @dev Read current era.
-    /// @return The current era
+    /// @notice Read current era.
+    /// @return era, The current era
     function read_current_era() external view returns (uint256);
 
-    /// @dev Read unbonding period constant.
-    /// @return The unbonding period in eras
+    /// @notice Read unbonding period constant.
+    /// @return period, The unbonding period in eras
     function read_unbonding_period() external view returns (uint256);
 
-    /// @dev Read Total network reward for the given era
-    /// @return Total network reward for the given era
+    /// @notice Read Total network reward for the given era
+    /// @return reward, Total network reward for the given era
     function read_era_reward(uint32 era) external view returns (uint128);
 
-    /// @dev Read Total staked amount for the given era
-    /// @return Total staked amount for the given era
+    /// @notice Read Total staked amount for the given era
+    /// @return staked, Total staked amount for the given era
     function read_era_staked(uint32 era) external view returns (uint128);
 
-    /// @dev Read Staked amount for the staker
-    /// @return Staked amount for the staker
-    function read_staked_amount(address staker) external view returns (uint128);
+    /// @notice Read Staked amount for the staker
+    /// @param staker in form of 20 or 32 hex bytes
+    /// @return amount, Staked amount by the staker
+    function read_staked_amount(bytes calldata staker) external view returns (uint128);
 
-    /// @dev Read the staked amount from the era when the amount was last staked/unstaked
-    /// @return The most recent total staked amount on contract
+    /// @notice Read the staked amount from the era when the amount was last staked/unstaked
+    /// @return total, The most recent total staked amount on contract
     function read_contract_stake(address contract_id) external view returns (uint128);
 
 
     // Extrinsic calls
 
-    /// @dev Register provided contract.
+    /// @notice Register provided contract.
     function register(address) external;
 
-    /// @dev Stake provided amount on the contract.
+    /// @notice Stake provided amount on the contract.
     function bond_and_stake(address, uint128) external;
 
-    /// @dev Start unbonding process and unstake balance from the contract.
+    /// @notice Start unbonding process and unstake balance from the contract.
     function unbond_and_unstake(address, uint128) external;
 
-    /// @dev Withdraw all funds that have completed the unbonding process.
+    /// @notice Withdraw all funds that have completed the unbonding process.
     function withdraw_unbonded() external;
 
-    /// @dev Claim contract's rewards.
-    /// @dev Please use only for testing. This call will be replaced with 2 new calls in PR#6
-    function claim(address, uint128) external;
+    /// @notice Claim one era of unclaimed staker rewards for the specifeid contract.
+    ///         Staker account is derived from the caller address.
+    function claim_staker(address) external;
+
+    /// @notice Claim one era of unclaimed dapp rewards for the specified contract and era.
+    function claim_dapp(address, uint128) external;
 }
