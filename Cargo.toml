@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "frame/asset-manager",
     "frame/block-reward",
     "frame/custom-signatures",
     "frame/dapps-staking",
