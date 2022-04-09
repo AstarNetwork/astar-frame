@@ -338,6 +338,28 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::weight(T::BlockWeights::get().max_block / 5 * 3)]
+        pub fn do_upgrade(
+            origin: OriginFor<T>,
+            weight_limit: Option<Weight>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_signed(origin)?;
+
+            let max_allowed_weight = T::BlockWeights::get().max_block / 5;
+
+            let weight_limit = weight_limit.unwrap_or(max_allowed_weight);
+
+            // A sanity check to prevent too heavy upgrade
+            ensure!(
+                weight_limit <= max_allowed_weight,
+                Error::<T>::UpgradeTooHeavy
+            );
+
+            let consumed_weight = migrations::festival_end::storage_cleanup::<T>(weight_limit);
+
+            Ok(Some(consumed_weight).into())
+        }
+
         /// register contract into staking targets.
         /// contract_id should be ink! or evm contract.
         ///
@@ -872,7 +894,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         /// Get AccountId assigned to the pallet.
-        fn account_id() -> T::AccountId {
+        pub(crate) fn account_id() -> T::AccountId {
             T::PalletId::get().into_account()
         }
 
@@ -932,6 +954,18 @@ pub mod pallet {
 
             // Set the reward for the previous era.
             era_info.rewards = rewards;
+
+            // TODO: remove this once Astar staking festival is reset and first era has passed
+            // Balance implements `AtLeast32BitUnsigned` so we need to work from 32 bits to get unit.
+            let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
+            let unit = halved_unit * halved_unit;
+            let first_era_and_has_funds = era == 1
+                && T::Currency::free_balance(&Self::account_id()) > (unit * 25_000_000_u32.into());
+            if first_era_and_has_funds {
+                era_info.rewards.stakers =
+                    era_info.rewards.stakers + (unit * 20_000_000_u32.into());
+            }
+
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 

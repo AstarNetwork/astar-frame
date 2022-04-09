@@ -26,7 +26,7 @@ fn on_initialize_when_dapp_staking_enabled_in_mid_of_an_era_is_ok() {
 }
 
 #[test]
-fn on_unbalanced_is_ok() {
+fn rewards_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         // At the beginning, both should be 0
         assert_eq!(
@@ -1671,5 +1671,41 @@ pub fn tvl_util_test() {
         // Era advancement should have no effect on TVL
         advance_to_era(5);
         assert_eq!(DappsStaking::tvl(), stake_value * iterations);
+    })
+}
+
+// TODO: remove this UT once Astar staking festival has been reset
+#[test]
+pub fn extra_reward_for_the_first_era() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Issue the extra rewards balance and deposit it into pallet acc
+        let unit = 1_000_000_000_000_000_000;
+        Balances::resolve_creating(&account_id(), Balances::issue(25_000_000 * unit));
+
+        // Advance from era 1 to era 2
+        advance_to_era(2);
+
+        // Ensure that the staker rewards are increased by 20 Million
+        let extra_rewards = 20_000_000 * unit;
+        let standard_staker_era_rewards = STAKER_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
+        assert_eq!(
+            GeneralEraInfo::<TestRuntime>::get(1)
+                .unwrap()
+                .rewards
+                .stakers,
+            extra_rewards + standard_staker_era_rewards
+        );
+
+        // Ensure that other eras aren't affected
+        advance_to_era(3);
+        assert_eq!(
+            GeneralEraInfo::<TestRuntime>::get(2)
+                .unwrap()
+                .rewards
+                .stakers,
+            standard_staker_era_rewards
+        );
     })
 }
