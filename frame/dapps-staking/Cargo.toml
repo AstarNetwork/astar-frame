@@ -1,6 +1,6 @@
 [package]
 name = "pallet-dapps-staking"
-version = "3.3.5"
+version = "3.4.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
 homepage = "https://astar.network/"

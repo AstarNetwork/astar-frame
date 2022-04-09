@@ -6,7 +6,7 @@ use crate::Pallet as DappsStaking;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::{Get, OnFinalize, OnInitialize};
 use frame_system::{Pallet as System, RawOrigin};
-use sp_runtime::traits::{Bounded, One};
+use sp_runtime::traits::{Bounded, One, TrailingZeroInput};
 
 const SEED: u32 = 9000;
 const STAKER_BLOCK_REWARD: u32 = 1234u32;
@@ -21,16 +21,30 @@ fn initialize<T: Config>() {
     Ledger::<T>::remove_all(None);
     RegisteredDevelopers::<T>::remove_all(None);
     RegisteredDapps::<T>::remove_all(None);
+    PreApprovedDevelopers::<T>::remove_all(None);
     GeneralEraInfo::<T>::remove_all(None);
     ContractEraStake::<T>::remove_all(None);
     GeneralStakerInfo::<T>::remove_all(None);
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
     PreApprovalIsEnabled::<T>::kill();
+    NominationTransferCooldowns::<T>::remove_all(None);
 
     // Initialize the first block.
     payout_block_rewards::<T>();
     DappsStaking::<T>::on_initialize(1u32.into());
+}
+
+/// Generate an unique smart contract using the provided index as sort-of indetifier
+fn smart_contract<T: Config>(index: u8) -> T::SmartContract {
+    // This is a hacky approach to provide different smart contracts without touching the smart contract trait.
+    // In case this proves troublesome in the future, recommendation is to just replace it with
+    // runtime-benchmarks only trait that allows us to construct an arbitrary valid smart contract instance.
+    let mut encoded_smart_contract = T::SmartContract::default().encode();
+    *encoded_smart_contract.last_mut().unwrap() = index;
+
+    Decode::decode(&mut TrailingZeroInput::new(encoded_smart_contract.as_ref()))
+        .expect("Shouldn't occur as long as EVM is the default type.")
 }
 
 /// Payout block rewards to stakers & dapps
@@ -60,16 +74,18 @@ fn advance_to_era<T: Config>(n: EraIndex) {
 /// Used to register a contract by a developer account.
 ///
 /// Registered contract is returned.
-fn register_contract<T: Config>() -> Result<(T::AccountId, T::SmartContract), &'static str> {
-    let developer: T::AccountId = account("developer", 10000, SEED);
+fn register_contract<T: Config>(
+    index: u8,
+) -> Result<(T::AccountId, T::SmartContract), &'static str> {
+    let developer: T::AccountId = account("developer", index.into(), SEED);
+    let smart_contract = smart_contract::<T>(index);
     T::Currency::make_free_balance_be(&developer, BalanceOf::<T>::max_value());
-    let contract_id = T::SmartContract::default();
     DappsStaking::<T>::register(
         RawOrigin::Signed(developer.clone()).into(),
-        contract_id.clone(),
+        smart_contract.clone(),
     )?;
 
-    Ok((developer, contract_id))
+    Ok((developer, smart_contract))
 }
 
 /// Used to bond_and_stake the given contract with the specified amount of stakers.
@@ -113,7 +129,7 @@ benchmarks! {
 
     unregister {
         initialize::<T>();
-        let (developer_id, contract_id) = register_contract::<T>()?;
+        let (developer_id, contract_id) = register_contract::<T>(1)?;
         prepare_bond_and_stake::<T>(2, &contract_id, SEED)?;
 
     }: _(RawOrigin::Root, contract_id.clone())
@@ -123,7 +139,7 @@ benchmarks! {
 
     withdraw_from_unregistered {
         initialize::<T>();
-        let (developer, contract_id) = register_contract::<T>()?;
+        let (developer, contract_id) = register_contract::<T>(1)?;
         let stakers = prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
         let staker = stakers[0].clone();
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
@@ -153,7 +169,7 @@ benchmarks! {
     bond_and_stake {
         initialize::<T>();
 
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
         prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
@@ -168,7 +184,7 @@ benchmarks! {
     unbond_and_unstake {
         initialize::<T>();
 
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
         prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
@@ -185,7 +201,7 @@ benchmarks! {
     withdraw_unbonded {
         initialize::<T>();
 
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
         prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
@@ -204,9 +220,22 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::Withdrawn(staker, unstake_amount).into());
     }
 
+    nomination_transfer {
+        initialize::<T>();
+
+        let (_, origin_contract_id) = register_contract::<T>(1)?;
+        let (_, target_contract_id) = register_contract::<T>(2)?;
+
+        let staker = prepare_bond_and_stake::<T>(1, &origin_contract_id, SEED)?[0].clone();
+
+    }: _(RawOrigin::Signed(staker.clone()), origin_contract_id.clone(), T::MinimumStakingAmount::get(), target_contract_id.clone())
+    verify {
+        assert_last_event::<T>(Event::<T>::NominationTransfer(staker, origin_contract_id, T::MinimumStakingAmount::get(), target_contract_id).into());
+    }
+
     claim_staker_with_restake {
         initialize::<T>();
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
 
         let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
@@ -225,7 +254,7 @@ benchmarks! {
 
     claim_staker_without_restake {
         initialize::<T>();
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
 
         let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
@@ -244,7 +273,7 @@ benchmarks! {
 
     claim_dapp {
         initialize::<T>();
-        let (developer, contract_id) = register_contract::<T>()?;
+        let (developer, contract_id) = register_contract::<T>(1)?;
 
         let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();

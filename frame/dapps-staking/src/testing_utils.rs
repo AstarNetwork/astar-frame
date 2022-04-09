@@ -11,6 +11,7 @@ pub(crate) struct MemorySnapshot {
     contract_info: ContractStakeInfo<Balance>,
     free_balance: Balance,
     ledger: AccountLedger<Balance>,
+    nomination_transfer_cd: Vec<BlockNumber>,
 }
 
 impl MemorySnapshot {
@@ -27,6 +28,7 @@ impl MemorySnapshot {
             contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: DappsStaking::ledger(&account),
             free_balance: <TestRuntime as Config>::Currency::free_balance(&account),
+            nomination_transfer_cd: DappsStaking::nomination_transfer_cooldowns(account).into(),
         }
     }
 
@@ -40,6 +42,7 @@ impl MemorySnapshot {
             contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: Default::default(),
             free_balance: Default::default(),
+            nomination_transfer_cd: Default::default(),
         }
     }
 }
@@ -392,6 +395,107 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
         final_ledger.locked,
         init_ledger.locked - expected_unbond_amount
     );
+}
+
+/// Used to perform nomination transfer with success and storage assertions.
+pub(crate) fn assert_nomination_transfer(
+    staker: AccountId,
+    origin_contract_id: &MockSmartContract<AccountId>,
+    value: Balance,
+    target_contract_id: &MockSmartContract<AccountId>,
+) {
+    // Get latest staking info
+    let current_era = DappsStaking::current_era();
+    let origin_init_state = MemorySnapshot::all(current_era, &origin_contract_id, staker);
+    let target_init_state = MemorySnapshot::all(current_era, &target_contract_id, staker);
+
+    // Calculate value which will actually be transfered
+    let init_staked_value = origin_init_state.staker_info.latest_staked_value();
+    let expected_transfer_amount = if init_staked_value - value >= MINIMUM_STAKING_AMOUNT {
+        value
+    } else {
+        init_staked_value
+    };
+
+    // Ensure op is successful and event is emitted
+    assert_ok!(DappsStaking::nomination_transfer(
+        Origin::signed(staker),
+        origin_contract_id.clone(),
+        value,
+        target_contract_id.clone()
+    ));
+    System::assert_last_event(mock::Event::DappsStaking(Event::NominationTransfer(
+        staker,
+        origin_contract_id.clone(),
+        expected_transfer_amount,
+        target_contract_id.clone(),
+    )));
+
+    let origin_final_state = MemorySnapshot::all(current_era, &origin_contract_id, staker);
+    let target_final_state = MemorySnapshot::all(current_era, &target_contract_id, staker);
+
+    // Ensure staker info has increased/decreased staked amount
+    assert_eq!(
+        origin_final_state.staker_info.latest_staked_value(),
+        init_staked_value - expected_transfer_amount
+    );
+    assert_eq!(
+        target_final_state.staker_info.latest_staked_value(),
+        target_init_state.staker_info.latest_staked_value() + expected_transfer_amount
+    );
+
+    // Ensure total value staked on contracts has appropriately increased/decreased
+    assert_eq!(
+        origin_final_state.contract_info.total,
+        origin_init_state.contract_info.total - expected_transfer_amount
+    );
+    assert_eq!(
+        target_final_state.contract_info.total,
+        target_init_state.contract_info.total + expected_transfer_amount
+    );
+
+    // Ensure number of contracts has been reduced on origin contract if it is fully unstaked
+    let origin_contract_fully_unstaked = init_staked_value == expected_transfer_amount;
+    if origin_contract_fully_unstaked {
+        assert_eq!(
+            origin_final_state.contract_info.number_of_stakers + 1,
+            origin_init_state.contract_info.number_of_stakers
+        );
+    }
+
+    // Ensure number of contracts has been increased on target contract it is first stake by the staker
+    let no_init_stake_on_target_contract = target_init_state
+        .staker_info
+        .latest_staked_value()
+        .is_zero();
+    if no_init_stake_on_target_contract {
+        assert_eq!(
+            target_final_state.contract_info.number_of_stakers,
+            target_init_state.contract_info.number_of_stakers + 1
+        );
+    }
+
+    // Ensure DB entry has been removed if era stake vector is empty
+    let fully_unstaked_and_nothing_to_claim =
+        origin_contract_fully_unstaked && origin_final_state.staker_info.clone().claim() == (0, 0);
+    if fully_unstaked_and_nothing_to_claim {
+        assert!(!GeneralStakerInfo::<TestRuntime>::contains_key(
+            &staker,
+            &origin_contract_id
+        ));
+    }
+
+    // Ensure nomination transfer cooldowns are as expected
+    let current_block = System::block_number();
+    let mut filtered_init_cds = origin_init_state.nomination_transfer_cd.clone();
+    filtered_init_cds.retain(|&x| x > current_block);
+    let (&latest_cd, old_cds) = origin_final_state
+        .nomination_transfer_cd
+        .split_last()
+        .unwrap();
+
+    assert_eq!(latest_cd, current_block + NOMINATION_TRANSFER_COOLDOWN);
+    assert_eq!(filtered_init_cds, old_cds);
 }
 
 /// Used to perform claim for stakers with success assertion

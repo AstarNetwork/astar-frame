@@ -1223,6 +1223,395 @@ fn withdraw_unbonded_no_unbonding_period() {
 }
 
 #[test]
+fn nomination_transfer_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, MINIMUM_STAKING_AMOUNT * 2);
+
+        // Ensure that at the start, staker doesn't have any cooldowns
+        assert!(!NominationTransferCooldowns::<TestRuntime>::contains_key(
+            &staker
+        ));
+
+        // The first transfer will ensure that both contracts are staked after operation is complete
+        assert_nomination_transfer(
+            staker,
+            &origin_contract_id,
+            MINIMUM_STAKING_AMOUNT,
+            &target_contract_id,
+        );
+        assert!(
+            !GeneralStakerInfo::<TestRuntime>::get(&staker, &origin_contract_id)
+                .latest_staked_value()
+                .is_zero()
+        );
+
+        // The second operation should fully unstake origin contract since it takes it below minimum staking amount
+        assert_nomination_transfer(
+            staker,
+            &origin_contract_id,
+            MINIMUM_STAKING_AMOUNT,
+            &target_contract_id,
+        );
+        assert!(
+            GeneralStakerInfo::<TestRuntime>::get(&staker, &origin_contract_id)
+                .latest_staked_value()
+                .is_zero()
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_to_same_contract_is_not_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+        let developer = 1;
+        let staker = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_register(developer, &contract_id);
+
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                contract_id,
+                100,
+                contract_id,
+            ),
+            Error::<TestRuntime>::NominationTransferToSameContract
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_to_inactive_contracts_is_not_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        // 1. Neither contract is registered
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id,
+                100,
+                target_contract_id,
+            ),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+
+        // 2. Only first contract is registered
+        assert_register(origin_developer, &origin_contract_id);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id,
+                100,
+                target_contract_id,
+            ),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+
+        // 3. Both are registered but then target contract gets unregistered
+        assert_register(target_developer, &target_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, 100);
+        assert_nomination_transfer(staker, &origin_contract_id, 100, &target_contract_id);
+
+        assert_unregister(target_developer, &target_contract_id);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id,
+                100,
+                target_contract_id,
+            ),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+
+        // 4. Origin contract is unregistered
+        assert_unregister(origin_developer, &origin_contract_id);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id,
+                100,
+                target_contract_id,
+            ),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_exceeds_charges() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        // Register contracts and bond&stake some amount on both
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, 1000);
+        assert_bond_and_stake(staker, &target_contract_id, 1000);
+
+        // Fill up the cooldown vector
+        for _ in 0..NOMINATION_TRANSFER_CHARGES {
+            // Small amount so we ensure we keep the origin nomination
+            assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
+            run_for_blocks(1);
+        }
+
+        // Assert that vector is full and that it's no longer possible to transfer nomination
+        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
+        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                3,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::MaxNumberOfNominationTransfersExceeded
+        );
+
+        // Advance to block at which first cooldown should be expired and assert it's possible to transfer nomination once again
+        run_to_block(cooldowns[0]);
+        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
+
+        // Try to transfer again but it should fail since vector should be full
+        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
+        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                3,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::MaxNumberOfNominationTransfersExceeded
+        );
+
+        // Advance to block at which first two cooldowns are expired. Expect that they should both be removed.
+        run_to_block(cooldowns[1]);
+        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
+        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
+        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize - 1);
+
+        // Do yet another nomination transfer but in the same block and assert that both are cleaned up
+        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
+        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
+        assert_eq!(
+            cooldowns[NOMINATION_TRANSFER_CHARGES as usize - 1],
+            cooldowns[NOMINATION_TRANSFER_CHARGES as usize - 2]
+        );
+        run_to_block(*cooldowns.last().unwrap());
+        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
+        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
+        assert_eq!(cooldowns.len(), 1);
+    })
+}
+
+#[test]
+fn nomination_transfer_from_not_staked_contract() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                20,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::NotStakedContract
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_with_no_value() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, 100);
+
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                Zero::zero(),
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::UnstakingWithNoValue
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_with_insufficient_value() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, 100);
+
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                MINIMUM_STAKING_AMOUNT - 1,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::InsufficientValue
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_contracts_have_too_many_era_stake_values() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        let staker = 3;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+
+        // Ensure we fill up era stakes vector
+        for _ in 1..MAX_ERA_STAKE_VALUES {
+            // We use bond&stake since its only limiting factor is max era stake values
+            assert_bond_and_stake(staker, &origin_contract_id, 15);
+            advance_to_era(DappsStaking::current_era() + 1);
+        }
+        assert_noop!(
+            DappsStaking::bond_and_stake(Origin::signed(staker), origin_contract_id.clone(), 15),
+            Error::<TestRuntime>::TooManyEraStakeValues
+        );
+
+        // Ensure it's not possible to transfer from origin contract since it's era stake values are maxed
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                15,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::TooManyEraStakeValues
+        );
+
+        // Swap origin and target to verify that same is true if target contract era stake values is maxed out
+        let (origin_contract_id, target_contract_id) = (target_contract_id, origin_contract_id);
+        assert_bond_and_stake(staker, &origin_contract_id, 15);
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(staker),
+                origin_contract_id.clone(),
+                15,
+                target_contract_id.clone()
+            ),
+            Error::<TestRuntime>::TooManyEraStakeValues
+        );
+    })
+}
+
+#[test]
+fn nomination_transfer_max_number_of_stakers_exceeded() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let origin_developer = 1;
+        let target_developer = 2;
+        // This one will only stake on origin contract
+        let first_staker = 3;
+        // This one will stake on both origin and target contracts
+        let second_staker = 4;
+        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
+
+        // Register contracts and bond&stake them with both stakers
+        assert_register(origin_developer, &origin_contract_id);
+        assert_register(target_developer, &target_contract_id);
+
+        assert_bond_and_stake(first_staker, &origin_contract_id, 23);
+        assert_bond_and_stake(second_staker, &target_contract_id, 37);
+        assert_bond_and_stake(second_staker, &target_contract_id, 41);
+
+        // Fill up the second contract with stakers until max number of stakers limit has been reached
+        for temp_staker in (second_staker + 1)..(MAX_NUMBER_OF_STAKERS as u64 + second_staker) {
+            Balances::resolve_creating(&temp_staker, Balances::issue(100));
+            assert_bond_and_stake(temp_staker, &target_contract_id, 13);
+        }
+        // Sanity check + assurance that first_staker isn't staking on target contract
+        assert_noop!(
+            DappsStaking::bond_and_stake(
+                Origin::signed(first_staker),
+                target_contract_id.clone(),
+                19
+            ),
+            Error::<TestRuntime>::MaxNumberOfStakersExceeded
+        );
+
+        // Now attempt transfer nomination and expect an error
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(first_staker),
+                origin_contract_id.clone(),
+                19,
+                target_contract_id.clone(),
+            ),
+            Error::<TestRuntime>::MaxNumberOfStakersExceeded
+        );
+    })
+}
+
+#[test]
 fn claim_not_staked_contract() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
@@ -1696,6 +2085,15 @@ fn maintenance_mode_is_ok() {
         );
         assert_noop!(
             DappsStaking::withdraw_unbonded(Origin::signed(account)),
+            Error::<TestRuntime>::Disabled
+        );
+        assert_noop!(
+            DappsStaking::nomination_transfer(
+                Origin::signed(account),
+                contract_id,
+                100,
+                contract_id,
+            ),
             Error::<TestRuntime>::Disabled
         );
 

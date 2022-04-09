@@ -69,4 +69,14 @@ interface DappsStaking {
     /// @notice Set reward destination for staker rewards
     /// @param reward_destination instruction on how the reward payout should be handled
     function set_reward_destination(RewardDestination reward_destination) external;
+    
+    /// @notice Withdraw staked funds from an unregistered contract.
+    /// @param smart_contract smart contract address
+    function withdraw_from_unregistered(address smart_contract) external;
+
+    /// @notice Transfer part or entire nomination from origin smart contract to target smart contract
+    /// @param origin_smart_contract origin smart contract address
+    /// @param amount amount to transfer from origin to target
+    /// @param target_smart_contract target smart contract address
+    function nomination_transfer(address origin_smart_contract, uint128 amount, address target_smart_contract) external;
 }
