@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 /**
  * @title SubstrateEcdsa signature interface.
  */
-interface SubstrateEcdsa {
+interface ISubstrateEcdsa {
     /**
      * @dev Verify signed message using Substrate version of ECDSA crypto.
      * @return A boolean confirming whether the public key is signer for the message. 
