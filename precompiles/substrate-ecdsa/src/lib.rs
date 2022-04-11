@@ -63,7 +63,7 @@ impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
         let signature_bytes: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
         let message: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
 
-        // Parse public key 
+        // Parse public key
         let public = if let Ok(public) = ecdsa::Public::try_from(&public_bytes[..]) {
             public
         } else {

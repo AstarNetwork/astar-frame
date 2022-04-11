@@ -31,8 +31,7 @@ fn wrong_argument_count_reverts() {
                 if output == b"tried to parse selector out of bounds",
         );
 
-        let input = EvmDataWriter::new_with_selector(Action::Verify)
-            .build();
+        let input = EvmDataWriter::new_with_selector(Action::Verify).build();
         assert_matches!(
             precompiles().execute(
                 TestAccount::Precompile.into(),
