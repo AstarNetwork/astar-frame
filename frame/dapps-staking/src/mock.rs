@@ -247,6 +247,8 @@ fn payout_block_rewards() {
         Balances::issue(STAKER_BLOCK_REWARD.into()),
         Balances::issue(DAPP_BLOCK_REWARD.into()),
     );
+}
+
 // Used to get a vec of all dapps staking events
 pub fn dapps_staking_events() -> Vec<crate::Event<TestRuntime>> {
     System::events()

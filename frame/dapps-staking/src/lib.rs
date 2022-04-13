@@ -60,7 +60,7 @@ impl<AccountId> DAppInfo<AccountId> {
     /// Create new `DAppInfo` struct instance with the given developer and state `Registered`
     fn new(developer: AccountId) -> Self {
         Self {
-            developer: developer,
+            developer,
             state: DAppState::Registered,
         }
     }
@@ -157,7 +157,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> EraStake<Balance> {
     }
 }
 
-/// Used to provide a compact and bounded storage for informatio about stakes in unclaimed eras.
+/// Used to provide a compact and bounded storage for information about stakes in unclaimed eras.
 ///
 /// In order to avoid creating a separate storage entry for each `(staker, contract, era)` triplet,
 /// this struct is used to provide a more memory efficient solution.
@@ -288,7 +288,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     /// `stakes: [<5, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
     ///
     /// 1. `claim()` will return `(5, 1000)`
-    ///     Interal vector is modified to `[<6, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
+    ///     Internal vector is modified to `[<6, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
     ///
     /// 2. `claim()` will return `(6, 1000)`.
     ///    Internal vector is modified to `[<7, 1300>, <8, 0>, <15, 3000>]`
@@ -439,9 +439,9 @@ where
 /// automatically restake anything they earn.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum RewardDestination {
-    /// Rewards are transfered to stakers free balance without any further action.
+    /// Rewards are transferred to stakers free balance without any further action.
     FreeBalance,
-    /// Rewards are transfered to stakers balance and are immediately re-staked
+    /// Rewards are transferred to stakers balance and are immediately re-staked
     /// on the contract from which the reward was received.
     StakeBalance,
 }

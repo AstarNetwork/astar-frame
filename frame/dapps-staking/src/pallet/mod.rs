@@ -130,6 +130,11 @@ pub mod pallet {
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
+    /// Stores the block number of when the next era starts
+    #[pallet::storage]
+    #[pallet::getter(fn next_era_starting_block)]
+    pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
     /// Registered developer accounts points to corresponding contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
@@ -141,12 +146,6 @@ pub mod pallet {
     #[pallet::getter(fn dapp_info)]
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
-
-    /// Legacy, don't use.
-    /// TODO: remove in future upgrades
-    #[pallet::storage]
-    pub type EraRewardsAndStakes<T: Config> =
-        StorageMap<_, Twox64Concat, EraIndex, migrations::v3::OldEraRewardAndStake<BalanceOf<T>>>;
 
     /// Total staked, locked & rewarded for a particular era
     #[pallet::storage]
