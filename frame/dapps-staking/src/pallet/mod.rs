@@ -101,20 +101,6 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn migration_state_v2)]
-    pub type MigrationStateV2<T: Config> =
-        StorageValue<_, migrations::v2::MigrationState, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn migration_state_v3)]
-    pub type MigrationStateV3<T: Config> =
-        StorageValue<_, migrations::v3::MigrationState, ValueQuery>;
-
-    // TODO: remove this after V3 migration is finished
-    #[pallet::storage]
-    pub type MigrationUndergoingUnbonding<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-    #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -160,12 +146,6 @@ pub mod pallet {
     #[pallet::getter(fn dapp_info)]
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
-
-    /// Legacy, don't use.
-    /// TODO: remove in future upgrades
-    #[pallet::storage]
-    pub type EraRewardsAndStakes<T: Config> =
-        StorageMap<_, Twox64Concat, EraIndex, migrations::v3::OldEraRewardAndStake<BalanceOf<T>>>;
 
     /// Total staked, locked & rewarded for a paticular era
     #[pallet::storage]
@@ -338,28 +318,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::BlockWeights::get().max_block / 5 * 3)]
-        pub fn do_upgrade(
-            origin: OriginFor<T>,
-            weight_limit: Option<Weight>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_signed(origin)?;
-
-            let max_allowed_weight = T::BlockWeights::get().max_block / 5;
-
-            let weight_limit = weight_limit.unwrap_or(max_allowed_weight);
-
-            // A sanity check to prevent too heavy upgrade
-            ensure!(
-                weight_limit <= max_allowed_weight,
-                Error::<T>::UpgradeTooHeavy
-            );
-
-            let consumed_weight = migrations::festival_end::storage_cleanup::<T>(weight_limit);
-
-            Ok(Some(consumed_weight).into())
-        }
-
         /// register contract into staking targets.
         /// contract_id should be ink! or evm contract.
         ///

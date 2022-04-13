@@ -20,7 +20,6 @@ pub use traits::*;
 
 #[cfg(any(feature = "runtime-benchmarks"))]
 pub mod benchmarking;
-pub mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
