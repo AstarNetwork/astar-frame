@@ -1682,7 +1682,7 @@ pub fn extra_reward_for_the_first_era() {
 
         // Issue the extra rewards balance and deposit it into pallet acc
         let unit = 1_000_000_000_000_000_000;
-        Balances::resolve_creating(&account_id(), Balances::issue(25_000_000 * unit));
+        Balances::resolve_creating(&account_id(), Balances::issue(10_000_000 * unit));
 
         // Advance from era 1 to era 7
         advance_to_era(8);

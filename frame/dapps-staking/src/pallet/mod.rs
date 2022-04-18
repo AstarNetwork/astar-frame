@@ -919,7 +919,7 @@ pub mod pallet {
             let unit = halved_unit * halved_unit;
             let bonus_eras = vec![8, 9, 10];
             let is_bonus_era_and_has_funds = bonus_eras.contains(&era)
-                && T::Currency::free_balance(&Self::account_id()) > (unit * 25_000_000_u32.into());
+                && T::Currency::free_balance(&Self::account_id()) > (unit * 10_000_000_u32.into());
             if is_bonus_era_and_has_funds {
                 era_info.rewards.stakers = era_info.rewards.stakers + (unit * 1_500_000_u32.into());
             }
