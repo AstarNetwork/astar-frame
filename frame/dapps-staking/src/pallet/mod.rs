@@ -913,15 +913,15 @@ pub mod pallet {
             // Set the reward for the previous era.
             era_info.rewards = rewards;
 
-            // TODO: remove this once Astar staking festival is reset and first era has passed
+            // TODO: remove this once Astar easter bonus eras have passed
             // Balance implements `AtLeast32BitUnsigned` so we need to work from 32 bits to get unit.
             let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
             let unit = halved_unit * halved_unit;
-            let first_era_and_has_funds = era == 1
+            let bonus_eras = vec![8, 9, 10];
+            let is_bonus_era_and_has_funds = bonus_eras.contains(&era)
                 && T::Currency::free_balance(&Self::account_id()) > (unit * 25_000_000_u32.into());
-            if first_era_and_has_funds {
-                era_info.rewards.stakers =
-                    era_info.rewards.stakers + (unit * 20_000_000_u32.into());
+            if is_bonus_era_and_has_funds {
+                era_info.rewards.stakers = era_info.rewards.stakers + (unit * 1_500_000_u32.into());
             }
 
             GeneralEraInfo::<T>::insert(era, era_info);
