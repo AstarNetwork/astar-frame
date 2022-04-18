@@ -1684,7 +1684,6 @@ pub fn extra_reward_for_the_first_era() {
         let unit = 1_000_000_000_000_000_000;
         Balances::resolve_creating(&account_id(), Balances::issue(10_000_000 * unit));
 
-        // Advance from era 1 to era 7
         advance_to_era(8);
 
         // Ensure that the staker rewards are increased by expected amount
