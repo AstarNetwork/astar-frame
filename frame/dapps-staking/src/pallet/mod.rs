@@ -275,6 +275,8 @@ pub mod pallet {
         RequiredContractPreApproval,
         /// Developer's account is already part of pre-approved list
         AlreadyPreApprovedDeveloper,
+        /// Account is not actively staking
+        NotActiveStaker,
     }
 
     #[pallet::hooks]
@@ -897,6 +899,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
+
+            ensure!(
+                Ledger::<T>::contains_key(&staker),
+                Error::<T>::NotActiveStaker
+            );
 
             Ledger::<T>::mutate(&staker, |ledger| {
                 ledger.reward_destination = reward_destination;

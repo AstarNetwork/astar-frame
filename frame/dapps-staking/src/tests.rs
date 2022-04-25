@@ -1567,6 +1567,21 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
 }
 
 #[test]
+fn changing_reward_destination_for_empty_ledger_is_not_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+        let staker = 1;
+        assert_noop!(
+            DappsStaking::set_reward_destination(
+                Origin::signed(staker),
+                RewardDestination::FreeBalance
+            ),
+            Error::<TestRuntime>::NotActiveStaker
+        );
+    });
+}
+
+#[test]
 fn claim_dapp_with_zero_stake_periods_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
