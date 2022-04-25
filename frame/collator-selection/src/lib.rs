@@ -26,12 +26,12 @@
 //! ## Terminology
 //!
 //! - Collator: A parachain block producer.
-//! - Bond: An amount of `Balance` _locked_ for candidate registration.
+//! - Bond: An amount of `Balance` _reserved_ for candidate registration.
 //! - Invulnerable: An account guaranteed to be in the collator set.
 //!
 //! ## Implementation
 //!
-//! The final [`Collators`] are aggregated from two individual lists:
+//! The final `Collators` are aggregated from two individual lists:
 //!
 //! 1. [`Invulnerables`]: a set of collators appointed by governance. These accounts will always be
 //!    collators.
@@ -85,21 +85,19 @@ pub mod pallet {
             RuntimeDebug,
         },
         traits::{
-            Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, LockIdentifier,
-            LockableCurrency, ValidatorRegistration, WithdrawReasons,
+            Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, ReservableCurrency,
+            ValidatorRegistration,
         },
         weights::DispatchClass,
         PalletId,
     };
     use frame_system::{pallet_prelude::*, Config as SystemConfig};
     use pallet_session::SessionManager;
-    use sp_runtime::traits::Convert;
+    use sp_runtime::{traits::Convert, Perbill};
     use sp_staking::SessionIndex;
 
     type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
-
-    const COLLATOR_STAKING_ID: LockIdentifier = *b"colstake";
 
     /// A convertor from collators id. Since this pallet does not have stash/controller, this is
     /// just identity.
@@ -117,7 +115,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// The currency mechanism.
-        type Currency: LockableCurrency<Self::AccountId>;
+        type Currency: ReservableCurrency<Self::AccountId>;
 
         /// Origin that can dictate updating parameters of this pallet.
         type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -154,6 +152,9 @@ pub mod pallet {
 
         /// Validate a user is registered
         type ValidatorRegistration: ValidatorRegistration<Self::ValidatorId>;
+
+        /// How many in perc kicked collators should be slashed (set 0 to disable)
+        type SlashRatio: Get<Perbill>;
 
         /// The weight information of this pallet.
         type WeightInfo: WeightInfo;
@@ -197,10 +198,17 @@ pub mod pallet {
     #[pallet::getter(fn desired_candidates)]
     pub type DesiredCandidates<T> = StorageValue<_, u32, ValueQuery>;
 
-    /// Fixed deposit bond for each candidate.
+    /// Fixed amount to deposit to become a collator.
+    ///
+    /// When a collator calls `leave_intent` they immediately receive the deposit back.
     #[pallet::storage]
     #[pallet::getter(fn candidacy_bond)]
     pub type CandidacyBond<T> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+    /// Destination account for slashed amount.
+    #[pallet::storage]
+    #[pallet::getter(fn slash_destination)]
+    pub type SlashDestination<T> = StorageValue<_, <T as frame_system::Config>::AccountId>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -255,6 +263,7 @@ pub mod pallet {
         NewCandidacyBond(BalanceOf<T>),
         CandidateAdded(T::AccountId, BalanceOf<T>),
         CandidateRemoved(T::AccountId),
+        CandidateSlashed(T::AccountId),
     }
 
     // Errors inform users that something went wrong.
@@ -278,8 +287,6 @@ pub mod pallet {
         NoAssociatedValidatorId,
         /// Validator ID is not yet registered
         ValidatorNotRegistered,
-        /// Free balance is too low for onboarding
-        TooLowFreeBalance,
     }
 
     #[pallet::hooks]
@@ -287,6 +294,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Set the list of invulnerable (fixed) collators.
         #[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
         pub fn set_invulnerables(
             origin: OriginFor<T>,
@@ -299,11 +307,25 @@ pub mod pallet {
                     "invulnerables > T::MaxInvulnerables; you might need to run benchmarks again"
                 );
             }
+
+            // check if the invulnerables have associated validator keys before they are set
+            for account_id in &new {
+                let validator_key = T::ValidatorIdOf::convert(account_id.clone())
+                    .ok_or(Error::<T>::NoAssociatedValidatorId)?;
+                ensure!(
+                    T::ValidatorRegistration::is_registered(&validator_key),
+                    Error::<T>::ValidatorNotRegistered
+                );
+            }
+
             <Invulnerables<T>>::put(&new);
             Self::deposit_event(Event::NewInvulnerables(new));
             Ok(().into())
         }
 
+        /// Set the ideal number of collators (not including the invulnerables).
+        /// If lowering this number, then the number of running collators could be higher than this figure.
+        /// Aside from that edge case, there should be no other way to have more collators than the desired number.
         #[pallet::weight(T::WeightInfo::set_desired_candidates())]
         pub fn set_desired_candidates(
             origin: OriginFor<T>,
@@ -319,6 +341,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Set the candidacy bond amount.
         #[pallet::weight(T::WeightInfo::set_candidacy_bond())]
         pub fn set_candidacy_bond(
             origin: OriginFor<T>,
@@ -330,6 +353,10 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Register this account as a collator candidate. The account must (a) already have
+        /// registered session keys and (b) be able to reserve the `CandidacyBond`.
+        ///
+        /// This call is not available to `Invulnerable` collators.
         #[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
         pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
@@ -353,10 +380,6 @@ pub mod pallet {
             );
 
             let deposit = Self::candidacy_bond();
-
-            let free_balance = T::Currency::free_balance(&who);
-            ensure!(free_balance > deposit, Error::<T>::TooLowFreeBalance);
-
             // First authored block is current block plus kick threshold to handle session delay
             let incoming = CandidateInfo {
                 who: who.clone(),
@@ -368,12 +391,7 @@ pub mod pallet {
                     if candidates.into_iter().any(|candidate| candidate.who == who) {
                         Err(Error::<T>::AlreadyCandidate)?
                     } else {
-                        T::Currency::set_lock(
-                            COLLATOR_STAKING_ID,
-                            &who,
-                            deposit,
-                            WithdrawReasons::all(),
-                        );
+                        T::Currency::reserve(&who, deposit)?;
                         candidates.push(incoming);
                         <LastAuthoredBlock<T>>::insert(
                             who.clone(),
@@ -387,6 +405,12 @@ pub mod pallet {
             Ok(Some(T::WeightInfo::register_as_candidate(current_count as u32)).into())
         }
 
+        /// Deregister `origin` as a collator candidate. Note that the collator can only leave on
+        /// session change. The `CandidacyBond` will be unreserved immediately.
+        ///
+        /// This call will fail if the total number of candidates would drop below `MinCandidates`.
+        ///
+        /// This call is not available to `Invulnerable` collators.
         #[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
         pub fn leave_intent(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
@@ -394,7 +418,7 @@ pub mod pallet {
                 Self::candidates().len() as u32 > T::MinCandidates::get(),
                 Error::<T>::TooFewCandidates
             );
-            let current_count = Self::try_remove_candidate(&who)?;
+            let current_count = Self::try_remove_candidate(&who, false)?;
 
             Ok(Some(T::WeightInfo::leave_intent(current_count as u32)).into())
         }
@@ -406,14 +430,31 @@ pub mod pallet {
             T::PotId::get().into_account()
         }
         /// Removes a candidate if they exist and sends them back their deposit
-        fn try_remove_candidate(who: &T::AccountId) -> Result<usize, DispatchError> {
+        /// If second argument is `true` then a candidate will be slashed
+        fn try_remove_candidate(who: &T::AccountId, slash: bool) -> Result<usize, DispatchError> {
             let current_count =
                 <Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
                     let index = candidates
                         .iter()
                         .position(|candidate| candidate.who == *who)
                         .ok_or(Error::<T>::NotCandidate)?;
-                    T::Currency::remove_lock(COLLATOR_STAKING_ID, &who);
+                    let deposit = candidates[index].deposit;
+
+                    if slash {
+                        let slash = T::SlashRatio::get() * deposit;
+                        let remain = deposit - slash;
+
+                        let (imbalance, _) = T::Currency::slash_reserved(&who, slash);
+                        T::Currency::unreserve(&who, remain);
+
+                        if let Some(dest) = Self::slash_destination() {
+                            T::Currency::resolve_creating(&dest, imbalance);
+                        }
+
+                        Self::deposit_event(Event::CandidateSlashed(who.clone()));
+                    } else {
+                        T::Currency::unreserve(&who, deposit);
+                    }
                     candidates.remove(index);
                     <LastAuthoredBlock<T>>::remove(who.clone());
                     Ok(candidates.len())
@@ -446,7 +487,7 @@ pub mod pallet {
                     {
                         Some(c.who)
                     } else {
-                        let outcome = Self::try_remove_candidate(&c.who);
+                        let outcome = Self::try_remove_candidate(&c.who, true);
                         if let Err(why) = outcome {
                             log::warn!("Failed to remove candidate {:?}", why);
                             debug_assert!(false, "failed to remove candidate {:?}", why);
