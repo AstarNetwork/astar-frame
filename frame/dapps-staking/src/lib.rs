@@ -466,7 +466,12 @@ pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
 
 impl<Balance: AtLeast32BitUnsigned + Default + Copy> AccountLedger<Balance> {
     /// `true` if ledger is empty (no locked funds, no unbonding chunks), `false` otherwise.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.locked.is_zero() && self.unbonding_info.is_empty()
+    }
+
+    /// Configured reward destination
+    pub fn reward_destination(&self) -> RewardDestination {
+        self.reward_destination
     }
 }

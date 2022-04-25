@@ -5,6 +5,7 @@ use crate::mock::{
 use codec::{Decode, Encode};
 use fp_evm::{PrecompileFailure, PrecompileOutput};
 use frame_support::{assert_ok, dispatch::Dispatchable};
+use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{ExitSucceed, PrecompileSet};
 use sha3::{Digest, Keccak256};
 use sp_core::H160;
@@ -404,6 +405,32 @@ fn bond_and_stake_ss58_is_ok() {
         });
 }
 
+#[test]
+fn set_reward_destination() {
+    ExternalityBuilder::default()
+        .with_balances(vec![
+            (TestAccount::Alex.into(), 200 * AST),
+            (TestAccount::Bobo.into(), 200 * AST),
+        ])
+        .build()
+        .execute_with(|| {
+            initialize_first_block();
+
+            // register contract and stake it
+            register_and_verify(TestAccount::Alex.into(), TEST_CONTRACT);
+
+            // bond & stake the origin contract
+            bond_stake_and_verify(TestAccount::Bobo, TEST_CONTRACT, 100 * AST);
+
+            // transfer nomination and ensure it was successful
+            set_reward_destination_verify(TestAccount::Bobo.into(), RewardDestination::FreeBalance);
+            set_reward_destination_verify(
+                TestAccount::Bobo.into(),
+                RewardDestination::StakeBalance,
+            );
+        });
+}
+
 // ****************************************************************************************************
 // Helper functions
 // ****************************************************************************************************
@@ -581,6 +608,27 @@ fn withdraw_unbonded_verify(staker: AccountId32) {
         <TestRuntime as pallet_evm::Config>::Currency::free_balance(&staker),
         <TestRuntime as pallet_evm::Config>::Currency::usable_balance(&staker)
     );
+}
+
+/// helper function to verify change of reward destination for a staker
+fn set_reward_destination_verify(staker: AccountId32, reward_destination: RewardDestination) {
+    let input_data = match reward_destination {
+        RewardDestination::FreeBalance => Keccak256::digest(b"free_balance_reward_destination()"),
+        RewardDestination::StakeBalance => Keccak256::digest(b"stake_balance_reward_destination()"),
+    };
+    let input_data = &input_data[0..4];
+
+    // Read staker's ledger
+    let init_ledger = DappsStaking::ledger(&staker);
+    // Ensure that something is staked or being unbonded
+    assert!(!init_ledger.is_empty());
+
+    assert_ok!(
+        Call::Evm(evm_call(staker.clone().into(), input_data.to_vec())).dispatch(Origin::root())
+    );
+
+    let final_ledger = DappsStaking::ledger(&staker);
+    assert_eq!(final_ledger.reward_destination(), reward_destination);
 }
 
 /// helper function to bond, stake and verify if result is OK
