@@ -1,19 +1,20 @@
 // Copyright 2019-2022 PureStake Inc.
-// This file is part of Moonbeam.
-
-// Moonbeam is free software: you can redistribute it and/or modify
+// Copyright 2022      Stake Technologies
+// This file is part of AssetsERC20 package, originally developed by Purestake Inc.
+// AssetsERC20 package used in Astar Network in terms of GPLv3.
+//
+// AssetsERC20 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Moonbeam is distributed in the hope that it will be useful,
+// AssetsERC20 is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
-
+// along with AssetsERC20.  If not, see <http://www.gnu.org/licenses/>.
 //! Testing utilities.
 
 use super::*;
@@ -88,19 +89,28 @@ impl AddressMapping<Account> for Account {
     }
 }
 
+pub const ASSET_PRECOMPILE_ADDRESS_PREFIX: &[u8] = &[255u8; 4];
+
 // Implement the trait, where we convert AccountId to AssetID
-impl AccountIdAssetIdConversion<AccountId, AssetId> for Runtime {
+impl AddressToAssetId<AssetId> for Runtime {
     /// The way to convert an account to assetId is by ensuring that the prefix is 0XFFFFFFFF
     /// and by taking the lowest 128 bits as the assetId
-    fn account_to_asset_id(account: AccountId) -> Option<AssetId> {
-        match account {
-            Account::AssetId(asset_id) => Some(asset_id),
-            _ => None,
+    fn address_to_asset_id(address: H160) -> Option<AssetId> {
+        let mut data = [0u8; 16];
+        let address_bytes: [u8; 20] = address.into();
+        if ASSET_PRECOMPILE_ADDRESS_PREFIX.eq(&address_bytes[0..4]) {
+            data.copy_from_slice(&address_bytes[4..20]);
+            Some(u128::from_be_bytes(data))
+        } else {
+            None
         }
     }
 
-    fn asset_id_to_account(asset_id: AssetId) -> AccountId {
-        Account::AssetId(asset_id)
+    fn asset_id_to_address(asset_id: AssetId) -> H160 {
+        let mut data = [0u8; 20];
+        data[0..4].copy_from_slice(ASSET_PRECOMPILE_ADDRESS_PREFIX);
+        data[4..20].copy_from_slice(&asset_id.to_be_bytes());
+        H160::from(data)
     }
 }
 
@@ -158,6 +168,7 @@ impl frame_system::Config for Runtime {
     type BlockLength = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -214,6 +225,7 @@ impl pallet_evm::Config for Runtime {
 // No deposit is substracted with those methods
 parameter_types! {
     pub const AssetDeposit: Balance = 0;
+    pub const AssetAccountDeposit: Balance = 0;
     pub const ApprovalDeposit: Balance = 0;
     pub const AssetsStringLimit: u32 = 50;
     pub const MetadataDepositBase: Balance = 0;
@@ -227,6 +239,7 @@ impl pallet_assets::Config for Runtime {
     type Currency = Balances;
     type ForceOrigin = EnsureRoot<AccountId>;
     type AssetDeposit = AssetDeposit;
+    type AssetAccountDeposit = AssetAccountDeposit;
     type MetadataDepositBase = MetadataDepositBase;
     type MetadataDepositPerByte = MetadataDepositPerByte;
     type ApprovalDeposit = ApprovalDeposit;

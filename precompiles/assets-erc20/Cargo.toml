@@ -1,9 +1,9 @@
 [package]
 name = "pallet-evm-precompile-assets-erc20"
-authors = [ "PureStake" ]
+authors = [ "Stake Technologies", "PureStake" ]
 description = "A Precompile to expose a Assets pallet through an ERC20-compliant interface."
 edition = "2018"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 log = "0.4"

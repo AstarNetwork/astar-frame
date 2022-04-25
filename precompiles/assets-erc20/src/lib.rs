@@ -1,18 +1,20 @@
 // Copyright 2019-2022 PureStake Inc.
-// This file is 	part of Moonbeam.
-
-// Moonbeam is free software: you can redistribute it and/or modify
+// Copyright 2022      Stake Technologies
+// This file is part of AssetsERC20 package, originally developed by Purestake Inc.
+// AssetsERC20 package used in Astar Network in terms of GPLv3.
+//
+// AssetsERC20 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Moonbeam is distributed in the hope that it will be useful,
+// AssetsERC20 is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
+// along with AssetsERC20.  If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
@@ -71,20 +73,20 @@ pub enum Action {
     Decimals = "decimals()",
 }
 
-/// This trait ensure we can convert AccountIds to AssetIds
+/// This trait ensure we can convert EVM address to AssetIds
 /// We will require Runtime to have this trait implemented
-pub trait AccountIdAssetIdConversion<Account, AssetId> {
-    // Get assetId from account
-    fn account_to_asset_id(account: Account) -> Option<AssetId>;
+pub trait AddressToAssetId<AssetId> {
+    // Get assetId from address
+    fn address_to_asset_id(address: H160) -> Option<AssetId>;
 
-    // Get AccountId from AssetId
-    fn asset_id_to_account(asset_id: AssetId) -> Account;
+    // Get address from AssetId
+    fn asset_id_to_address(asset_id: AssetId) -> H160;
 }
 
 /// The following distribution has been decided for the precompiles
 /// 0-1023: Ethereum Mainnet Precompiles
-/// 1024-2047 Precompiles that are not in Ethereum Mainnet but are neither Moonbeam specific
-/// 2048-4095 Moonbeam specific precompiles
+/// 1024-2047 Precompiles that are not in Ethereum Mainnet but are neither Astar specific
+/// 2048-4095 Astar specific precompiles
 /// Asset precompiles can only fall between
 /// 	0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 /// The precompile for AssetId X, where X is a u128 (i.e.16 bytes), if 0XFFFFFFFF + Bytes(AssetId)
@@ -107,7 +109,7 @@ where
     Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
     <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
-    Runtime: AccountIdAssetIdConversion<Runtime::AccountId, AssetIdOf<Runtime, Instance>>,
+    Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
     <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
 {
     fn execute(
@@ -118,9 +120,7 @@ where
         context: &Context,
         is_static: bool,
     ) -> Option<EvmResult<PrecompileOutput>> {
-        if let Some(asset_id) =
-            Runtime::account_to_asset_id(Runtime::AddressMapping::into_account_id(address))
-        {
+        if let Some(asset_id) = Runtime::address_to_asset_id(address) {
             // If the assetId has non-zero supply
             // "total_supply" returns both 0 if the assetId does not exist or if the supply is 0
             // The assumption I am making here is that a 0 supply asset is not interesting from
@@ -174,9 +174,7 @@ where
     }
 
     fn is_precompile(&self, address: H160) -> bool {
-        if let Some(asset_id) =
-            Runtime::account_to_asset_id(Runtime::AddressMapping::into_account_id(address))
-        {
+        if let Some(asset_id) = Runtime::address_to_asset_id(address) {
             // If the assetId has non-zero supply
             // "total_supply" returns both 0 if the assetId does not exist or if the supply is 0
             // The assumption I am making here is that a 0 supply asset is not interesting from
@@ -205,7 +203,7 @@ where
     Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
     <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
-    Runtime: AccountIdAssetIdConversion<Runtime::AccountId, AssetIdOf<Runtime, Instance>>,
+    Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
     <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
 {
     fn total_supply(
