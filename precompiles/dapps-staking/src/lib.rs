@@ -10,6 +10,7 @@ use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::{Currency, Get},
 };
+use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
     Address, Bytes, EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
@@ -363,6 +364,43 @@ where
         Ok((Some(origin).into(), call))
     }
 
+    /// Set claim reward destination for the caller
+    fn set_reward_destination(
+        input: &mut EvmDataReader,
+        gasometer: &mut Gasometer,
+        context: &Context,
+    ) -> EvmResult<(
+        <R::Call as Dispatchable>::Origin,
+        pallet_dapps_staking::Call<R>,
+    )> {
+        input.expect_arguments(gasometer, 1)?;
+        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        // raw solidity representation of enum
+        let reward_destination_raw = input.read::<u8>(gasometer)?;
+
+        // Transform raw value into dapps staking enum
+        let reward_destination = if reward_destination_raw == 0 {
+            RewardDestination::FreeBalance
+        } else if reward_destination_raw == 1 {
+            RewardDestination::StakeBalance
+        } else {
+            return Err(precompile_utils::error(
+                "Unexpected reward destination value.",
+            ));
+        };
+
+        // Build call with origin.
+        let origin = R::AddressMapping::into_account_id(context.caller);
+        log::trace!(target: "ds-precompile", "set_reward_destination {:?} {:?}", origin, reward_destination);
+
+        let call =
+            pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination }.into();
+
+        // Return call information
+        Ok((Some(origin).into(), call))
+    }
+
     /// Helper method to decode type SmartContract enum
     pub fn decode_smart_contract(
         gasometer: &mut Gasometer,
@@ -399,6 +437,7 @@ pub enum Action {
     WithdrawUnbounded = "withdraw_unbonded()",
     ClaimDapp = "claim_dapp(address,uint128)",
     ClaimStaker = "claim_staker(address)",
+    SetRewardDestination = "set_reward_destination(RewardDestination)",
 }
 
 impl<R> Precompile for DappsStakingWrapper<R>
@@ -453,6 +492,9 @@ where
             Action::WithdrawUnbounded => Self::withdraw_unbonded(gasometer, context)?,
             Action::ClaimDapp => Self::claim_dapp(input, gasometer, context)?,
             Action::ClaimStaker => Self::claim_staker(input, gasometer, context)?,
+            Action::SetRewardDestination => {
+                Self::set_reward_destination(input, gasometer, context)?
+            }
         };
 
         // Dispatch call (if enough gas).
