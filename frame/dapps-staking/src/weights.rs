@@ -258,7 +258,7 @@ impl WeightInfo for () {
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn claim_staker_with_restake() -> Weight {
-		(91_000_000 as Weight)
+		(78_506_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
@@ -270,7 +270,7 @@ impl WeightInfo for () {
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:0)
 	fn claim_staker_without_restake() -> Weight {
-		(56_000_000 as Weight)
+		(56_575_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
@@ -299,7 +299,7 @@ impl WeightInfo for () {
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
 	fn set_reward_destination() -> Weight {
-		(24_000_000 as Weight)
+		(15_489_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
