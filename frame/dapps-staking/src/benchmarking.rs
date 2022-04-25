@@ -266,8 +266,12 @@ benchmarks! {
     set_reward_destination {
         initialize::<T>();
 
-        let staker: T::AccountId = whitelisted_caller();
         let option = RewardDestination::FreeBalance;
+        let (_, contract_id) = register_contract::<T>()?;
+
+        let number_of_stakers = 1;
+        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
     }: _(RawOrigin::Signed(staker.clone()), option)
     verify {
         assert_last_event::<T>(Event::<T>::RewardDestination(staker, option).into());
