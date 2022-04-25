@@ -422,12 +422,13 @@ fn set_reward_destination() {
             // bond & stake the origin contract
             bond_stake_and_verify(TestAccount::Bobo, TEST_CONTRACT, 100 * AST);
 
-            // transfer nomination and ensure it was successful
+            // change destinations and verfiy it was successful
             set_reward_destination_verify(TestAccount::Bobo.into(), RewardDestination::FreeBalance);
             set_reward_destination_verify(
                 TestAccount::Bobo.into(),
                 RewardDestination::StakeBalance,
             );
+            set_reward_destination_verify(TestAccount::Bobo.into(), RewardDestination::FreeBalance);
         });
 }
 
@@ -612,11 +613,16 @@ fn withdraw_unbonded_verify(staker: AccountId32) {
 
 /// helper function to verify change of reward destination for a staker
 fn set_reward_destination_verify(staker: AccountId32, reward_destination: RewardDestination) {
-    let input_data = match reward_destination {
-        RewardDestination::FreeBalance => Keccak256::digest(b"free_balance_reward_destination()"),
-        RewardDestination::StakeBalance => Keccak256::digest(b"stake_balance_reward_destination()"),
+    let selector = &Keccak256::digest(b"set_reward_destination(RewardDestination)")[0..4];
+
+    let mut input_data = Vec::<u8>::from([0u8; 36]);
+    input_data[0..4].copy_from_slice(&selector);
+
+    let reward_destination_raw: u8 = match reward_destination {
+        RewardDestination::FreeBalance => 0,
+        RewardDestination::StakeBalance => 1,
     };
-    let input_data = &input_data[0..4];
+    input_data[35] = reward_destination_raw;
 
     // Read staker's ledger
     let init_ledger = DappsStaking::ledger(&staker);
