@@ -899,15 +899,17 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
+            let mut ledger = Self::ledger(&staker);
 
             ensure!(
-                Ledger::<T>::contains_key(&staker),
+                !ledger.is_empty(),
                 Error::<T>::NotActiveStaker
             );
 
-            Ledger::<T>::mutate(&staker, |ledger| {
-                ledger.reward_destination = reward_destination;
-            });
+            // this is done directly instead of using update_ledger helper
+            // because there's no need to interact with the Currency locks
+            ledger.reward_destination = reward_destination;
+            Ledger::<T>::insert(&staker, ledger);
 
             Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
             Ok(().into())
