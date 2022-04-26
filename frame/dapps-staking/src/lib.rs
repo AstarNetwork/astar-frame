@@ -245,12 +245,12 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     /// `stakes: [<5, 1000>, <7, 1300>]`
     /// * `unstake(7, 100)` will result in `[<5, 1000>, <7, 1200>]`
     /// * `unstake(9, 400)` will result in `[<5, 1000>, <7, 1200>, <9, 800>]`
-    /// * `unstake(10, 800)` will result in `[<5, 1000>, <7, 1200>, <9, 800>, <0, 10>]`
+    /// * `unstake(10, 800)` will result in `[<5, 1000>, <7, 1200>, <9, 800>, <10, 0>]`
     ///
     /// # Example 2
     ///
     /// `stakes: [<5, 1000>]`
-    /// * `unstake(1000, 0)` will result in `[]`
+    /// * `unstake(5, 1000)` will result in `[]`
     ///
     /// Note that if no unclaimed eras remain, vector will be cleared.
     ///
