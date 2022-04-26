@@ -14,8 +14,8 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use sp_runtime::{
-    traits::{AccountIdConversion, CheckedAdd, Saturating, Zero},
-    ArithmeticError, Perbill,
+    traits::{AccountIdConversion, Saturating, Zero},
+    Perbill,
 };
 use sp_std::convert::From;
 
@@ -135,7 +135,7 @@ pub mod pallet {
     #[pallet::getter(fn next_era_starting_block)]
     pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-    /// Registered developer accounts points to coresponding contract
+    /// Registered developer accounts points to corresponding contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
     pub(crate) type RegisteredDevelopers<T: Config> =
@@ -147,7 +147,7 @@ pub mod pallet {
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
 
-    /// Total staked, locked & rewarded for a paticular era
+    /// Total staked, locked & rewarded for a particular era
     #[pallet::storage]
     #[pallet::getter(fn general_era_info)]
     pub type GeneralEraInfo<T: Config> =
@@ -219,6 +219,8 @@ pub mod pallet {
         Reward(T::AccountId, T::SmartContract, EraIndex, BalanceOf<T>),
         /// Maintenance mode has been enabled or disabled
         MaintenanceMode(bool),
+        /// Reward handling modified
+        RewardDestination(T::AccountId, RewardDestination),
     }
 
     #[pallet::error]
@@ -273,6 +275,8 @@ pub mod pallet {
         RequiredContractPreApproval,
         /// Developer's account is already part of pre-approved list
         AlreadyPreApprovedDeveloper,
+        /// Account is not actively staking
+        NotActiveStaker,
     }
 
     #[pallet::hooks]
@@ -300,7 +304,7 @@ pub mod pallet {
                 NextEraStartingBlock::<T>::put(now + blocks_per_era);
 
                 let reward = BlockRewardAccumulator::<T>::take();
-                Self::reward_balance_snapshoot(previous_era, reward);
+                Self::reward_balance_snapshot(previous_era, reward);
                 let consumed_weight = Self::rotate_staking_info(previous_era);
 
                 if force_new_era {
@@ -506,15 +510,9 @@ pub mod pallet {
                 Error::<T>::InsufficientValue,
             );
 
-            // Increment ledger and total staker value for contract. Overflow shouldn't be possible but the check is here just for safety.
-            ledger.locked = ledger
-                .locked
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
-            staking_info.total = staking_info
-                .total
-                .checked_add(&value_to_stake)
-                .ok_or(ArithmeticError::Overflow)?;
+            // Increment ledger and total staker value for contract.
+            ledger.locked = ledger.locked.saturating_add(value_to_stake);
+            staking_info.total = staking_info.total.saturating_add(value_to_stake);
 
             // Update storage
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
@@ -664,7 +662,7 @@ pub mod pallet {
         // TODO: do we need to add force methods or at least methods that allow others to claim for someone else?
 
         /// Claim earned staker rewards for the oldest era.
-        #[pallet::weight(T::WeightInfo::claim_staker())]
+        #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
@@ -679,6 +677,7 @@ pub mod pallet {
 
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
+
             if let DAppState::Unregistered(unregister_era) = dapp_info.state {
                 ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
             }
@@ -686,7 +685,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let mut staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -694,6 +693,27 @@ pub mod pallet {
                 Self::dev_stakers_split(&staking_info, &reward_and_stake);
             let staker_reward =
                 Perbill::from_rational(staked, staking_info.total) * stakers_joint_reward;
+
+            let mut ledger = Self::ledger(&staker);
+
+            let should_restake_reward = Self::should_restake_reward(
+                ledger.reward_destination,
+                dapp_info.state,
+                staker_info.latest_staked_value(),
+            );
+
+            if should_restake_reward {
+                staker_info
+                    .stake(current_era, staker_reward)
+                    .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
+
+                // Restaking will, in the worst case, remove one, and add one record,
+                // so it's fine if the vector is full
+                ensure!(
+                    staker_info.len() <= T::MaxEraStakeValues::get(),
+                    Error::<T>::TooManyEraStakeValues
+                );
+            }
 
             // Withdraw reward funds from the dapps staking pot
             let reward_imbalance = T::Currency::withdraw(
@@ -703,17 +723,39 @@ pub mod pallet {
                 ExistenceRequirement::AllowDeath,
             )?;
 
+            if should_restake_reward {
+                ledger.locked = ledger.locked.saturating_add(staker_reward);
+                staking_info.total = staking_info.total.saturating_add(staker_reward);
+
+                // Update storage
+                GeneralEraInfo::<T>::mutate(&current_era, |value| {
+                    if let Some(x) = value {
+                        x.staked = x.staked.saturating_add(staker_reward);
+                        x.locked = x.locked.saturating_add(staker_reward);
+                    }
+                });
+
+                Self::update_ledger(&staker, ledger);
+
+                ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+
+                Self::deposit_event(Event::<T>::BondAndStake(
+                    staker.clone(),
+                    contract_id.clone(),
+                    staker_reward,
+                ));
+            }
+
             T::Currency::resolve_creating(&staker, reward_imbalance);
             Self::update_staker_info(&staker, &contract_id, staker_info);
+            Self::deposit_event(Event::<T>::Reward(staker, contract_id, era, staker_reward));
 
-            Self::deposit_event(Event::<T>::Reward(
-                staker.clone(),
-                contract_id.clone(),
-                era,
-                staker_reward,
-            ));
-
-            Ok(().into())
+            Ok(Some(if should_restake_reward {
+                T::WeightInfo::claim_staker_with_restake()
+            } else {
+                T::WeightInfo::claim_staker_without_restake()
+            })
+            .into())
         }
 
         /// Claim earned dapp rewards for the specified era.
@@ -845,7 +887,28 @@ pub mod pallet {
             PalletDisabled::<T>::put(enable_maintenance);
 
             Self::deposit_event(Event::<T>::MaintenanceMode(enable_maintenance));
+            Ok(().into())
+        }
 
+        /// `StakeBalance` (default) means claimed amount gets restaked,
+        /// `FreeBalance` sets claiming without restaking
+        #[pallet::weight(T::WeightInfo::set_reward_destination())]
+        pub fn set_reward_destination(
+            origin: OriginFor<T>,
+            reward_destination: RewardDestination,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let staker = ensure_signed(origin)?;
+            let mut ledger = Self::ledger(&staker);
+
+            ensure!(!ledger.is_empty(), Error::<T>::NotActiveStaker);
+
+            // this is done directly instead of using update_ledger helper
+            // because there's no need to interact with the Currency locks
+            ledger.reward_destination = reward_destination;
+            Ledger::<T>::insert(&staker, ledger);
+
+            Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
             Ok(().into())
         }
     }
@@ -856,7 +919,7 @@ pub mod pallet {
             T::PalletId::get().into_account()
         }
 
-        /// `Ok` if pallet disabled for maintenance, `Err` otherwise
+        /// `Err` if pallet disabled for maintenance, `Ok` otherwise
         pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
             if PalletDisabled::<T>::get() {
                 Err(Error::<T>::Disabled)
@@ -896,7 +959,7 @@ pub mod pallet {
         /// and stores it for future distribution
         ///
         /// This is called just at the beginning of an era.
-        fn reward_balance_snapshoot(era: EraIndex, rewards: RewardInfo<BalanceOf<T>>) {
+        fn reward_balance_snapshot(era: EraIndex, rewards: RewardInfo<BalanceOf<T>>) {
             // Get the reward and stake information for previous era
             let mut era_info = Self::general_era_info(era).unwrap_or_default();
 
@@ -976,6 +1039,17 @@ pub mod pallet {
         fn is_active(contract_id: &T::SmartContract) -> bool {
             RegisteredDapps::<T>::get(contract_id)
                 .map_or(false, |dapp_info| dapp_info.state == DAppState::Registered)
+        }
+
+        // `true` if all the conditions for restaking the reward have been met, `false` otherwise
+        pub(crate) fn should_restake_reward(
+            reward_destination: RewardDestination,
+            dapp_state: DAppState,
+            latest_staked_value: BalanceOf<T>,
+        ) -> bool {
+            reward_destination == RewardDestination::StakeBalance
+                && dapp_state == DAppState::Registered
+                && latest_staked_value > Zero::zero()
         }
 
         /// Calculate reward split between developer and stakers.

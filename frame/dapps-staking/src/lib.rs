@@ -60,7 +60,7 @@ impl<AccountId> DAppInfo<AccountId> {
     /// Create new `DAppInfo` struct instance with the given developer and state `Registered`
     fn new(developer: AccountId) -> Self {
         Self {
-            developer: developer,
+            developer,
             state: DAppState::Registered,
         }
     }
@@ -157,7 +157,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> EraStake<Balance> {
     }
 }
 
-/// Used to provide a compact and bounded storage for informatio about stakes in unclaimed eras.
+/// Used to provide a compact and bounded storage for information about stakes in unclaimed eras.
 ///
 /// In order to avoid creating a separate storage entry for each `(staker, contract, era)` triplet,
 /// this struct is used to provide a more memory efficient solution.
@@ -288,7 +288,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     /// `stakes: [<5, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
     ///
     /// 1. `claim()` will return `(5, 1000)`
-    ///     Interal vector is modified to `[<6, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
+    ///     Internal vector is modified to `[<6, 1000>, <7, 1300>, <8, 0>, <15, 3000>]`
     ///
     /// 2. `claim()` will return `(6, 1000)`.
     ///    Internal vector is modified to `[<7, 1300>, <8, 0>, <15, 3000>]`
@@ -329,7 +329,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
 
     /// Latest staked value.
     /// E.g. if staker is fully unstaked, this will return `Zero`.
-    /// Othwerise returns a non-zero balance.
+    /// Otherwise returns a non-zero balance.
     pub fn latest_staked_value(&self) -> Balance {
         self.stakes.last().map_or(Zero::zero(), |x| x.staked)
     }
@@ -439,9 +439,9 @@ where
 /// automatically restake anything they earn.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum RewardDestination {
-    /// Rewards are transfered to stakers free balance without any further action.
+    /// Rewards are transferred to stakers free balance without any further action.
     FreeBalance,
-    /// Rewards are transfered to stakers balance and are immediately re-staked
+    /// Rewards are transferred to stakers balance and are immediately re-staked
     /// on the contract from which the reward was received.
     StakeBalance,
 }
@@ -466,7 +466,12 @@ pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
 
 impl<Balance: AtLeast32BitUnsigned + Default + Copy> AccountLedger<Balance> {
     /// `true` if ledger is empty (no locked funds, no unbonding chunks), `false` otherwise.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.locked.is_zero() && self.unbonding_info.is_empty()
+    }
+
+    /// Configured reward destination
+    pub fn reward_destination(&self) -> RewardDestination {
+        self.reward_destination
     }
 }

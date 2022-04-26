@@ -54,4 +54,13 @@ interface DappsStaking {
 
     /// @notice Claim one era of unclaimed dapp rewards for the specified contract and era.
     function claim_dapp(address, uint128) external;
+
+    /// Instruction how to handle reward payout for staker.
+    /// `FreeBalance` - Reward will be paid out to the staker (free balance).
+    /// `StakeBalance` - Reward will be paid out to the staker and is immediately restaked (locked balance)
+    enum RewardDestination {FreeBalance, StakeBalance}
+
+    /// @notice Set reward destination for staker rewards
+    /// @param reward_destination instruction on how the reward payout should be handled
+    function set_reward_destination(RewardDestination reward_destination) external;
 }
