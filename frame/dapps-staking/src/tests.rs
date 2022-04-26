@@ -1815,26 +1815,28 @@ pub fn extra_reward_for_the_first_era() {
 
         // Issue the extra rewards balance and deposit it into pallet acc
         let unit = 1_000_000_000_000_000_000;
-        Balances::resolve_creating(&account_id(), Balances::issue(25_000_000 * unit));
+        Balances::resolve_creating(&account_id(), Balances::issue(10_000_000 * unit));
 
-        // Advance from era 1 to era 2
-        advance_to_era(2);
+        advance_to_era(8);
 
-        // Ensure that the staker rewards are increased by 20 Million
-        let extra_rewards = 20_000_000 * unit;
+        // Ensure that the staker rewards are increased by expected amount
+        let extra_rewards = 1_500_000 * unit;
         let standard_staker_era_rewards = STAKER_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
-        assert_eq!(
-            GeneralEraInfo::<TestRuntime>::get(1)
-                .unwrap()
-                .rewards
-                .stakers,
-            extra_rewards + standard_staker_era_rewards
-        );
+        for _bonus_era in 8..=10 {
+            advance_to_era(DappsStaking::current_era() + 1);
+            assert_eq!(
+                GeneralEraInfo::<TestRuntime>::get(DappsStaking::current_era() - 1)
+                    .unwrap()
+                    .rewards
+                    .stakers,
+                extra_rewards + standard_staker_era_rewards
+            );
+        }
 
         // Ensure that other eras aren't affected
-        advance_to_era(3);
+        advance_to_era(DappsStaking::current_era() + 1);
         assert_eq!(
-            GeneralEraInfo::<TestRuntime>::get(2)
+            GeneralEraInfo::<TestRuntime>::get(DappsStaking::current_era() - 1)
                 .unwrap()
                 .rewards
                 .stakers,
