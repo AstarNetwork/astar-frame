@@ -265,6 +265,8 @@ parameter_types! {
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
     pub const UnbondingPeriod: EraIndex = UNBONDING_PERIOD;
     pub const MaxEraStakeValues: u32 = MAX_ERA_STAKE_VALUES;
+    pub const MaxRotationsPerBlock: u32 = 3;
+
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
@@ -281,6 +283,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
+    type MaxRotationsPerBlock = MaxRotationsPerBlock;
 }
 
 pub struct ExternalityBuilder {

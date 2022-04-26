@@ -942,21 +942,10 @@ pub mod pallet {
             // Set the reward for the previous era.
             era_info.rewards = rewards;
 
-            // TODO: remove this once Astar easter bonus eras have passed
-            // Balance implements `AtLeast32BitUnsigned` so we need to work from 32 bits to get unit.
-            let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
-            let unit = halved_unit * halved_unit;
-            let bonus_eras = vec![8, 9, 10];
-            let is_bonus_era_and_has_funds = bonus_eras.contains(&era)
-                && T::Currency::free_balance(&Self::account_id()) > (unit * 10_000_000_u32.into());
-            if is_bonus_era_and_has_funds {
-                era_info.rewards.stakers = era_info.rewards.stakers + (unit * 1_500_000_u32.into());
-            }
-
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 
-        /// Used to copy all `ContractStakeInfo` from the ending era over to the next era.
+        /// Used to copy `ContractStakeInfo` entries from the ending era over to the next era.
         ///
         /// Since we don't have an upper limit on the number of dApps, we need to ensure copy process is scalable.
         /// Multi-staged rotation achieves this - we only copy a limited amount of dapps info to the next era in each block.
