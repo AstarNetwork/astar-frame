@@ -901,10 +901,7 @@ pub mod pallet {
             let staker = ensure_signed(origin)?;
             let mut ledger = Self::ledger(&staker);
 
-            ensure!(
-                !ledger.is_empty(),
-                Error::<T>::NotActiveStaker
-            );
+            ensure!(!ledger.is_empty(), Error::<T>::NotActiveStaker);
 
             // this is done directly instead of using update_ledger helper
             // because there's no need to interact with the Currency locks
