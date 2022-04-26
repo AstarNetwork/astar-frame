@@ -93,6 +93,10 @@ pub mod pallet {
         #[pallet::constant]
         type MaxEraStakeValues: Get<u32>;
 
+        /// Maximum amount of `ContractEraStake` entries that can be rotated per block.
+        #[pallet::constant]
+        type MaxRotationsPerBlock: Get<u32>;
+
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -155,7 +159,6 @@ pub mod pallet {
 
     /// Stores amount staked and stakers for a contract per era
     #[pallet::storage]
-    #[pallet::getter(fn contract_stake_info)]
     pub type ContractEraStake<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
@@ -176,6 +179,13 @@ pub mod pallet {
         StakerInfo<BalanceOf<T>>,
         ValueQuery,
     >;
+
+    /// Describes the staking info rotation state.
+    /// If empty, no rotation is ongoing.
+    /// If value exists, describes the last processed key in the `RegisteredDapps` map.
+    #[pallet::storage]
+    #[pallet::getter(fn staking_info_rotation)]
+    pub type StakingInfoRotation<T: Config> = StorageValue<_, Vec<u8>, OptionQuery>;
 
     /// Stores the current pallet storage version.
     #[pallet::storage]
@@ -290,8 +300,8 @@ pub mod pallet {
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
             let previous_era = Self::current_era();
             let next_era_starting_block = Self::next_era_starting_block();
+            let last_processed_rotation_key = Self::staking_info_rotation();
 
-            // Value is compared to 1 since genesis block is ignored
             if now >= next_era_starting_block || force_new_era || previous_era.is_zero() {
                 let blocks_per_era = T::BlockPerEra::get();
                 let next_era = previous_era + 1;
@@ -301,7 +311,8 @@ pub mod pallet {
 
                 let reward = BlockRewardAccumulator::<T>::take();
                 Self::reward_balance_snapshoot(previous_era, reward);
-                let consumed_weight = Self::rotate_staking_info(previous_era);
+                let consumed_weight =
+                    Self::rotate_staking_info(last_processed_rotation_key, previous_era);
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
@@ -309,9 +320,14 @@ pub mod pallet {
 
                 Self::deposit_event(Event::<T>::NewDappStakingEra(next_era));
 
-                consumed_weight + T::DbWeight::get().reads_writes(5, 3)
+                consumed_weight + T::DbWeight::get().reads_writes(6, 3)
+            } else if last_processed_rotation_key.is_some() {
+                Self::rotate_staking_info(
+                    last_processed_rotation_key,
+                    previous_era.saturating_sub(1),
+                )
             } else {
-                T::DbWeight::get().reads(4)
+                T::DbWeight::get().reads(5)
             }
         }
     }
@@ -480,8 +496,7 @@ pub mod pallet {
             );
 
             let current_era = Self::current_era();
-            let mut staking_info =
-                Self::contract_stake_info(&contract_id, current_era).unwrap_or_default();
+            let mut staking_info = Self::contract_stake_info(&contract_id, current_era);
             let mut staker_info = Self::staker_info(&staker, &contract_id);
 
             ensure!(
@@ -566,8 +581,7 @@ pub mod pallet {
             ensure!(staked_value > Zero::zero(), Error::<T>::NotStakedContract);
 
             let current_era = Self::current_era();
-            let mut contract_stake_info =
-                Self::contract_stake_info(&contract_id, current_era).unwrap_or_default();
+            let mut contract_stake_info = Self::contract_stake_info(&contract_id, current_era);
 
             // Calculate the value which will be unstaked.
             let remaining = staked_value.saturating_sub(value);
@@ -686,7 +700,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let staking_info = Self::contract_stake_info(&contract_id, era);
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -735,8 +749,7 @@ pub mod pallet {
             }
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut contract_stake_info =
-                Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let mut contract_stake_info = Self::contract_stake_info(&contract_id, era);
             ensure!(
                 !contract_stake_info.contract_reward_claimed,
                 Error::<T>::AlreadyClaimedInThisEra,
@@ -865,6 +878,22 @@ pub mod pallet {
             }
         }
 
+        /// Used to get `ContractStakeInfo` for the specified (contract Id, era) pairing.
+        ///
+        /// In case no entry for the specified era exists, additionaly (contract Id, era - 1) pairing will be checked.
+        /// This is to cover the scenario when staking info rotation hasn't been completed yet.
+        ///
+        /// In case neither `era` or `era - 1` contain any entries, default value is returned.
+        pub fn contract_stake_info(
+            contract_id: &T::SmartContract,
+            era: EraIndex,
+        ) -> ContractStakeInfo<BalanceOf<T>> {
+            ContractEraStake::<T>::try_get(contract_id, era).unwrap_or_else(|_| {
+                ContractEraStake::<T>::try_get(contract_id, era.saturating_sub(1))
+                    .unwrap_or_default()
+            })
+        }
+
         /// Update the ledger for a staker. This will also update the stash lock.
         /// This lock will lock the entire funds except paying for further transactions.
         fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
@@ -928,33 +957,73 @@ pub mod pallet {
         }
 
         /// Used to copy all `ContractStakeInfo` from the ending era over to the next era.
-        /// This is the most primitive solution since it scales with number of dApps.
-        /// It is possible to provide a hybrid solution which allows laziness but also prevents
-        /// a situation where we don't have access to the required data.
-        fn rotate_staking_info(current_era: EraIndex) -> u64 {
-            let next_era = current_era + 1;
-
+        ///
+        /// Since we don't have an upper limit on the number of dApps, we need to ensure copy process is scalable.
+        /// Multi-staged rotation achieves this - we only copy a limited amount of dapps info to the next era in each block.
+        ///
+        /// # Params
+        /// `last_processed_key` - last key of `RegisteredDapps` storage map that has been processed, or `None` if we should start from the beginning.
+        /// `copy_from_era` - era from which to copy. All entries are copied to `copy_from_era + 1`.
+        ///
+        /// # Return
+        /// Total consumed weight by the function call
+        ///
+        fn rotate_staking_info(
+            last_processed_key: Option<Vec<u8>>,
+            copy_from_era: EraIndex,
+        ) -> u64 {
+            let copy_to_era = copy_from_era + 1;
             let mut consumed_weight = 0;
 
-            for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
+            let dapps_iterator = if let Some(previous_key) = last_processed_key {
+                RegisteredDapps::<T>::iter_from(previous_key)
+            } else {
+                RegisteredDapps::<T>::iter()
+            };
+
+            let mut rotation_batch_size = T::MaxRotationsPerBlock::get();
+
+            for (contract_id, dapp_info) in dapps_iterator {
                 // Ignore dapp if it was unregistered
                 consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 if let DAppState::Unregistered(_) = dapp_info.state {
                     continue;
                 }
 
-                // Copy data from era `X` to era `X + 1`
-                if let Some(mut staking_info) = Self::contract_stake_info(&contract_id, current_era)
+                // TODO: UNIT TEST THIS
+                // Ignore if value has already been copied
+                consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                if ContractEraStake::<T>::contains_key(&contract_id, copy_to_era) {
+                    continue;
+                }
+
+                // Copy data from era `X` (if it exists) to era `X + 1`
+                if let Ok(mut staking_info) =
+                    ContractEraStake::<T>::try_get(&contract_id, copy_from_era)
                 {
                     staking_info.contract_reward_claimed = false;
-                    ContractEraStake::<T>::insert(&contract_id, next_era, staking_info);
+                    ContractEraStake::<T>::insert(&contract_id, copy_to_era, staking_info);
 
                     consumed_weight =
                         consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
                 } else {
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 }
+
+                rotation_batch_size = rotation_batch_size.saturating_sub(1);
+                if rotation_batch_size.is_zero() {
+                    use frame_support::storage::generator::StorageMap;
+
+                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(contract_id);
+                    StakingInfoRotation::<T>::put(key_as_vec);
+
+                    return consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+                }
             }
+
+            // TODO: maybe this can be written so we don't have 2 different returns?
+            StakingInfoRotation::<T>::kill();
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
 
             consumed_weight
         }

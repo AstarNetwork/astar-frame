@@ -295,7 +295,7 @@ fn general_staker_info_is_ok() {
         let mut third_staker_info = DappsStaking::staker_info(&staker_3, &first_contract_id);
 
         for era in starting_era..mid_era {
-            let contract_info = DappsStaking::contract_stake_info(&first_contract_id, era).unwrap();
+            let contract_info = DappsStaking::contract_stake_info(&first_contract_id, era);
             assert_eq!(2, contract_info.number_of_stakers);
 
             assert_eq!((era, amount), first_staker_info.claim());
@@ -309,17 +309,14 @@ fn general_staker_info_is_ok() {
 
         // Check second interval
         for era in mid_era..=final_era {
-            let first_contract_info =
-                DappsStaking::contract_stake_info(&first_contract_id, era).unwrap();
+            let first_contract_info = DappsStaking::contract_stake_info(&first_contract_id, era);
             assert_eq!(2, first_contract_info.number_of_stakers);
 
             assert_eq!((era, amount), first_staker_info.claim());
             assert_eq!((era, amount), third_staker_info.claim());
 
             assert_eq!(
-                DappsStaking::contract_stake_info(&second_contract_id, era)
-                    .unwrap()
-                    .number_of_stakers,
+                DappsStaking::contract_stake_info(&second_contract_id, era).number_of_stakers,
                 1
             );
         }
@@ -676,7 +673,10 @@ fn bond_and_stake_different_eras_is_ok() {
 
         // initially, storage values should be None
         let current_era = DappsStaking::current_era();
-        assert!(DappsStaking::contract_stake_info(&contract_id, current_era).is_none());
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            current_era
+        ));
 
         assert_bond_and_stake(staker_id, &contract_id, 100);
 
