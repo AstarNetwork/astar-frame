@@ -964,6 +964,10 @@ pub mod pallet {
             let copy_to_era = copy_from_era + 1;
             let mut consumed_weight = 0;
 
+            // TODO: disable register and unregister while rotation is ongoing
+
+            // TODO: make use of on-idle hooks
+
             let dapps_iterator = if let Some(previous_key) = last_processed_key {
                 RegisteredDapps::<T>::iter_from(previous_key)
             } else {
@@ -979,7 +983,6 @@ pub mod pallet {
                     continue;
                 }
 
-                // TODO: UNIT TEST THIS
                 // Ignore if value has already been copied
                 consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 if ContractEraStake::<T>::contains_key(&contract_id, copy_to_era) {

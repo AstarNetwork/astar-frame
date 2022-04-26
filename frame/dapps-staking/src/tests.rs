@@ -334,6 +334,169 @@ fn general_staker_info_is_ok() {
 }
 
 #[test]
+fn rotate_staking_info_distributed_over_two_blocks() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register max number of contracts that one block can handle + (max number of contracts - 1)
+        let staker = 1;
+        for c_id_seed in 1..=(2 * MAX_ROTATIONS_PER_BLOCK - 1) {
+            let developer = c_id_seed as u64;
+            let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
+
+            assert_register(developer, &contract_id);
+            assert_bond_and_stake(staker, &contract_id, MINIMUM_STAKING_AMOUNT);
+        }
+
+        // Ensure that entries for `ContractEraStake` exist for the CURRENT era and no entries exist for the future era
+        let current_era = DappsStaking::current_era();
+        for contract_id in RegisteredDapps::<TestRuntime>::iter_keys() {
+            assert!(ContractEraStake::<TestRuntime>::contains_key(
+                contract_id,
+                current_era
+            ));
+            assert!(!ContractEraStake::<TestRuntime>::contains_key(
+                contract_id,
+                current_era + 1
+            ));
+        }
+
+        // Ensure there's no DB entry for rotation state
+        assert!(!StakingInfoRotation::<TestRuntime>::exists());
+
+        // Advance by one era - this will trigger one rotation. Verify some contracts are copied, some aren't.
+        advance_to_era(DappsStaking::current_era() + 1);
+        let current_era = DappsStaking::current_era();
+        for contract_id in
+            RegisteredDapps::<TestRuntime>::iter_keys().take(MAX_ROTATIONS_PER_BLOCK as usize)
+        {
+            assert!(ContractEraStake::<TestRuntime>::contains_key(
+                contract_id,
+                current_era
+            ));
+        }
+        for contract_id in
+            RegisteredDapps::<TestRuntime>::iter_keys().skip(MAX_ROTATIONS_PER_BLOCK as usize)
+        {
+            assert!(!ContractEraStake::<TestRuntime>::contains_key(
+                contract_id,
+                current_era
+            ));
+        }
+        assert!(StakingInfoRotation::<TestRuntime>::exists());
+
+        // Advance one more block, except that the remainder of values have been copied
+        run_for_blocks(1);
+        for contract_id in
+            RegisteredDapps::<TestRuntime>::iter_keys().skip(MAX_ROTATIONS_PER_BLOCK as usize)
+        {
+            assert!(ContractEraStake::<TestRuntime>::contains_key(
+                contract_id,
+                current_era
+            ));
+        }
+        assert!(!StakingInfoRotation::<TestRuntime>::exists());
+    })
+}
+
+#[test]
+fn rotate_staking_info_for_unregistered_contract() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register and stake a contract
+        let staker = 1;
+        let developer = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, MINIMUM_STAKING_AMOUNT);
+
+        // Advance one era and verify that value was copied
+        advance_to_era(DappsStaking::current_era() + 1);
+        let current_era = DappsStaking::current_era();
+        assert!(ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            current_era
+        ));
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            current_era + 1
+        ));
+
+        // Unregister the contract, advance one era and verify staking info wasn't copied
+        assert_unregister(developer, &contract_id);
+        advance_to_era(DappsStaking::current_era() + 1);
+        let current_era = DappsStaking::current_era();
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            current_era
+        ));
+    })
+}
+
+#[test]
+fn rotate_staking_info_for_not_staked_contract() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register and stake a contract
+        let developer = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(developer, &contract_id);
+
+        // Advance one era and verify nothing is copied (or crashed)
+        advance_to_era(DappsStaking::current_era() + 1);
+
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            1
+        ));
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &contract_id,
+            2
+        ));
+    })
+}
+
+#[test]
+fn rotate_staking_info_with_existing_value() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register max number of contracts that one block can handle + one that won't be copied
+        let staker = 1;
+        for c_id_seed in 1..=MAX_ROTATIONS_PER_BLOCK + 1 {
+            let developer = c_id_seed as u64;
+            let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
+
+            assert_register(developer, &contract_id);
+            assert_bond_and_stake(staker, &contract_id, MINIMUM_STAKING_AMOUNT);
+        }
+
+        // Advance one era and verify that last contract Id hasn't been copied over
+        advance_to_era(DappsStaking::current_era() + 1);
+        let current_era = DappsStaking::current_era();
+        let last_contract_id = RegisteredDapps::<TestRuntime>::iter_keys().last().unwrap();
+        assert!(!ContractEraStake::<TestRuntime>::contains_key(
+            &last_contract_id,
+            current_era
+        ));
+
+        // Increase staked amount on the contract that wasn't copied
+        assert_bond_and_stake(staker, &last_contract_id, 7);
+        let init_contract_stake_info =
+            ContractEraStake::<TestRuntime>::get(&last_contract_id, current_era).unwrap();
+
+        // Advance by one block and ensure that existing value wasn't overriden
+        run_for_blocks(1);
+        let final_contract_stake_info =
+            ContractEraStake::<TestRuntime>::get(&last_contract_id, current_era).unwrap();
+        assert!(final_contract_stake_info.total > MINIMUM_STAKING_AMOUNT);
+        assert_eq!(init_contract_stake_info, final_contract_stake_info);
+    })
+}
+
+#[test]
 fn register_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
