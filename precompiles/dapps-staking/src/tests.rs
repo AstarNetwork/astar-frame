@@ -613,7 +613,7 @@ fn withdraw_unbonded_verify(staker: AccountId32) {
 
 /// helper function to verify change of reward destination for a staker
 fn set_reward_destination_verify(staker: AccountId32, reward_destination: RewardDestination) {
-    let selector = &Keccak256::digest(b"set_reward_destination(RewardDestination)")[0..4];
+    let selector = &Keccak256::digest(b"set_reward_destination(uint8)")[0..4];
 
     let mut input_data = Vec::<u8>::from([0u8; 36]);
     input_data[0..4].copy_from_slice(&selector);
