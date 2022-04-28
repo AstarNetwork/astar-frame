@@ -678,6 +678,51 @@ fn unregister_stake_and_unstake_is_not_ok() {
 }
 
 #[test]
+fn register_and_unregister_while_rotation_ongoing_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register max number of contracts that one block can handle + 1 extra
+        let staker = 1;
+        for c_id_seed in 1..=MAX_ROTATIONS_PER_BLOCK + 1 {
+            let developer = c_id_seed as u64;
+            let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
+
+            assert_register(developer, &contract_id);
+            assert_bond_and_stake(staker, &contract_id, MINIMUM_STAKING_AMOUNT);
+        }
+
+        // Advance to next era to trigger rotation
+        advance_to_era(DappsStaking::current_era() + 1);
+        assert!(StakingInfoRotation::<TestRuntime>::exists()); // sanity check
+
+        // Ensure it's not possible to register or unregister
+        let developer = MAX_ROTATIONS_PER_BLOCK as u64 + 2;
+        let existing_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let new_contract_id = MockSmartContract::Evm(H160::repeat_byte(developer as u8));
+        assert_noop!(
+            DappsStaking::register(Origin::signed(developer), new_contract_id.clone()),
+            Error::<TestRuntime>::StakingInfoRotationOngoing
+        );
+        assert_noop!(
+            DappsStaking::unregister(Origin::root(), existing_contract_id.clone()),
+            Error::<TestRuntime>::StakingInfoRotationOngoing
+        );
+
+        // Advance one more block, ensure rotation is finished and it's once again possible to register/unregister
+        run_for_blocks(1);
+        assert!(!StakingInfoRotation::<TestRuntime>::exists()); // sanity check
+        assert_register(developer, &new_contract_id);
+        assert_unregister(
+            RegisteredDapps::<TestRuntime>::get(&existing_contract_id)
+                .unwrap()
+                .developer,
+            &existing_contract_id,
+        );
+    })
+}
+
+#[test]
 fn withdraw_from_unregistered_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();

@@ -283,6 +283,8 @@ pub mod pallet {
         RequiredContractPreApproval,
         /// Developer's account is already part of pre-approved list
         AlreadyPreApprovedDeveloper,
+        /// Staking info rotation for the current era is ongoing. Usually takes a few blocks after new era starts.
+        StakingInfoRotationOngoing,
     }
 
     #[pallet::hooks]
@@ -298,21 +300,21 @@ pub mod pallet {
             }
 
             let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
-            let previous_era = Self::current_era();
+            let current_era = Self::current_era();
             let next_era_starting_block = Self::next_era_starting_block();
             let last_processed_rotation_key = Self::staking_info_rotation();
 
-            if now >= next_era_starting_block || force_new_era || previous_era.is_zero() {
+            if now >= next_era_starting_block || force_new_era || current_era.is_zero() {
                 let blocks_per_era = T::BlockPerEra::get();
-                let next_era = previous_era + 1;
+                let next_era = current_era + 1;
                 CurrentEra::<T>::put(next_era);
 
                 NextEraStartingBlock::<T>::put(now + blocks_per_era);
 
                 let reward = BlockRewardAccumulator::<T>::take();
-                Self::reward_balance_snapshoot(previous_era, reward);
+                Self::reward_balance_snapshoot(current_era, reward);
                 let consumed_weight =
-                    Self::rotate_staking_info(last_processed_rotation_key, previous_era);
+                    Self::rotate_staking_info(last_processed_rotation_key, current_era);
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
@@ -322,13 +324,16 @@ pub mod pallet {
 
                 consumed_weight + T::DbWeight::get().reads_writes(6, 3)
             } else if last_processed_rotation_key.is_some() {
-                Self::rotate_staking_info(
-                    last_processed_rotation_key,
-                    previous_era.saturating_sub(1),
-                )
+                T::DbWeight::get().reads(5)
+                    + Self::rotate_staking_info(
+                        last_processed_rotation_key,
+                        current_era.saturating_sub(1),
+                    )
             } else {
                 T::DbWeight::get().reads(5)
             }
+
+            // TODO: less duplication in weight calculation
         }
     }
 
@@ -345,6 +350,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
+            Self::ensure_rotation_finished()?;
             let developer = ensure_signed(origin)?;
 
             ensure!(
@@ -385,6 +391,7 @@ pub mod pallet {
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
+            Self::ensure_rotation_finished()?;
             ensure_root(origin)?;
 
             let mut dapp_info =
@@ -870,9 +877,18 @@ pub mod pallet {
         }
 
         /// `Ok` if pallet disabled for maintenance, `Err` otherwise
-        pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
+        pub(crate) fn ensure_pallet_enabled() -> Result<(), Error<T>> {
             if PalletDisabled::<T>::get() {
                 Err(Error::<T>::Disabled)
+            } else {
+                Ok(())
+            }
+        }
+
+        /// `Ok` if no staking info rotation is ongoing, `Err` otherwise
+        pub(crate) fn ensure_rotation_finished() -> Result<(), Error<T>> {
+            if StakingInfoRotation::<T>::exists() {
+                Err(Error::<T>::StakingInfoRotationOngoing)
             } else {
                 Ok(())
             }
