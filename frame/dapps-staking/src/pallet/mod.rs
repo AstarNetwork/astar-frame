@@ -93,27 +93,6 @@ pub mod pallet {
         #[pallet::constant]
         type MaxEraStakeValues: Get<u32>;
 
-        /// Number of blocks that need to pass after nomination transfer charge has been used before it can be used again.
-        #[pallet::constant]
-        type NominationTransferCooldown: Get<BlockNumberFor<Self>>;
-
-        /// Number of nomination transfer charges a staker can use. Using a charge triggers a cooldown period for it.
-        ///
-        /// # Example
-        /// ```nocompile
-        /// NominationTransferCharges = 2
-        ///
-        /// // One nomination transfer charge has been spent
-        /// nomination_transfer(alice_account, contract_A, contract_B, 100);
-        ///
-        /// // Second nomination transfer charge has been spent
-        /// nomination_transfer(alice_account, contract_A, contract_C, 30);
-        ///
-        /// // Alice needs to wait for the cooldown period until she can use nomination transfer again
-        /// ```
-        #[pallet::constant]
-        type NominationTransferCharges: Get<u32>;
-
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -219,17 +198,6 @@ pub mod pallet {
     pub(crate) type PreApprovedDevelopers<T: Config> =
         StorageMap<_, Twox64Concat, T::AccountId, (), ValueQuery>;
 
-    /// Nomination transfer charges cooldowns ending blocks.
-    #[pallet::storage]
-    #[pallet::getter(fn nomination_transfer_cooldowns)]
-    pub(crate) type NominationTransferCooldowns<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        BoundedVec<BlockNumberFor<T>, T::NominationTransferCharges>,
-        ValueQuery,
-    >;
-
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -318,9 +286,6 @@ pub mod pallet {
         AlreadyPreApprovedDeveloper,
         /// Account is not actively staking
         NotActiveStaker,
-        /// Max number of nomination transfers have been used.
-        /// It will be available once again after cooldown period.
-        MaxNumberOfNominationTransfersExceeded,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
     }
@@ -695,14 +660,6 @@ pub mod pallet {
                 Error::<T>::NotOperatedContract
             );
 
-            // Ensure we have a nomination transfer charge available
-            let current_block = frame_system::Pallet::<T>::block_number();
-            let mut cooldowns = NominationTransferCooldowns::<T>::get(&staker);
-            cooldowns.retain(|x| *x > current_block);
-            cooldowns
-                .try_push(current_block + T::NominationTransferCooldown::get())
-                .map_err(|_| Error::<T>::MaxNumberOfNominationTransfersExceeded)?;
-
             // Validate origin contract related data & update it
             let current_era = Self::current_era();
             let mut origin_staker_info = Self::staker_info(&staker, &origin_contract_id);
@@ -735,9 +692,6 @@ pub mod pallet {
             // Update target data
             ContractEraStake::<T>::insert(&target_contract_id, current_era, target_staking_info);
             Self::update_staker_info(&staker, &target_contract_id, target_staker_info);
-
-            // Update cooldowns
-            NominationTransferCooldowns::<T>::insert(&staker, cooldowns);
 
             Self::deposit_event(Event::<T>::NominationTransfer(
                 staker,

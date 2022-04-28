@@ -2,7 +2,7 @@ use crate::mock::{
     advance_to_era, default_context, evm_call, initialize_first_block, precompile_address, Call,
     DappsStaking, EraIndex, ExternalityBuilder, Origin, TestAccount, AST, UNBONDING_PERIOD, *,
 };
-use codec::Encode;
+use codec::{Decode, Encode};
 use fp_evm::{PrecompileFailure, PrecompileOutput};
 use frame_support::{assert_ok, dispatch::Dispatchable};
 use pallet_dapps_staking::RewardDestination;
@@ -865,4 +865,21 @@ pub fn argument_from_h160(value: H160) -> Vec<u8> {
     let mut buffer = [0u8; ARG_SIZE_BYTES];
     buffer[0..core::mem::size_of::<H160>()].copy_from_slice(&value.to_fixed_bytes());
     buffer.to_vec()
+}
+
+/// Helper method to decode type SmartContract enum from [u8; 20]
+fn decode_smart_contract_from_array(
+    contract_array: [u8; 20],
+) -> Result<<TestRuntime as pallet_dapps_staking::Config>::SmartContract, String> {
+    // Encode contract address to fit SmartContract enum.
+    let mut contract_enum_encoded: [u8; 21] = [0; 21];
+    contract_enum_encoded[0] = 0; // enum for EVM H160 address is 0
+    contract_enum_encoded[1..21].copy_from_slice(&contract_array);
+
+    let smart_contract = <TestRuntime as pallet_dapps_staking::Config>::SmartContract::decode(
+        &mut &contract_enum_encoded[..21],
+    )
+    .map_err(|_| "Error while decoding SmartContract")?;
+
+    Ok(smart_contract)
 }

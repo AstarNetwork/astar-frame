@@ -28,7 +28,6 @@ fn initialize<T: Config>() {
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
     PreApprovalIsEnabled::<T>::kill();
-    NominationTransferCooldowns::<T>::remove_all(None);
 
     // Initialize the first block.
     payout_block_rewards::<T>();

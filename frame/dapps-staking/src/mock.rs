@@ -31,8 +31,6 @@ pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
-pub(crate) const NOMINATION_TRANSFER_CHARGES: u32 = 3;
-pub(crate) const NOMINATION_TRANSFER_COOLDOWN: BlockNumber = BLOCKS_PER_ERA * 5;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -126,8 +124,6 @@ parameter_types! {
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
     pub const UnbondingPeriod: EraIndex = UNBONDING_PERIOD;
     pub const MaxEraStakeValues: u32 = MAX_ERA_STAKE_VALUES;
-    pub const NominationTransferCharges: u32 = NOMINATION_TRANSFER_CHARGES;
-    pub const NominationTransferCooldown: BlockNumber = NOMINATION_TRANSFER_COOLDOWN;
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
@@ -144,8 +140,6 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
-    type NominationTransferCharges = NominationTransferCharges;
-    type NominationTransferCooldown = NominationTransferCooldown;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]

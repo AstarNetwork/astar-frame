@@ -1237,11 +1237,6 @@ fn nomination_transfer_is_ok() {
         assert_register(target_developer, &target_contract_id);
         assert_bond_and_stake(staker, &origin_contract_id, MINIMUM_STAKING_AMOUNT * 2);
 
-        // Ensure that at the start, staker doesn't have any cooldowns
-        assert!(!NominationTransferCooldowns::<TestRuntime>::contains_key(
-            &staker
-        ));
-
         // The first transfer will ensure that both contracts are staked after operation is complete
         assert_nomination_transfer(
             staker,
@@ -1353,80 +1348,6 @@ fn nomination_transfer_to_inactive_contracts_is_not_ok() {
             ),
             Error::<TestRuntime>::NotOperatedContract
         );
-    })
-}
-
-#[test]
-fn nomination_transfer_exceeds_charges() {
-    ExternalityBuilder::build().execute_with(|| {
-        initialize_first_block();
-
-        let origin_developer = 1;
-        let target_developer = 2;
-        let staker = 3;
-        let origin_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
-        let target_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
-
-        // Register contracts and bond&stake some amount on both
-        assert_register(origin_developer, &origin_contract_id);
-        assert_register(target_developer, &target_contract_id);
-        assert_bond_and_stake(staker, &origin_contract_id, 1000);
-        assert_bond_and_stake(staker, &target_contract_id, 1000);
-
-        // Fill up the cooldown vector
-        for _ in 0..NOMINATION_TRANSFER_CHARGES {
-            // Small amount so we ensure we keep the origin nomination
-            assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
-            run_for_blocks(1);
-        }
-
-        // Assert that vector is full and that it's no longer possible to transfer nomination
-        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
-        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize);
-        assert_noop!(
-            DappsStaking::nomination_transfer(
-                Origin::signed(staker),
-                origin_contract_id.clone(),
-                3,
-                target_contract_id.clone()
-            ),
-            Error::<TestRuntime>::MaxNumberOfNominationTransfersExceeded
-        );
-
-        // Advance to block at which first cooldown should be expired and assert it's possible to transfer nomination once again
-        run_to_block(cooldowns[0]);
-        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
-
-        // Try to transfer again but it should fail since vector should be full
-        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
-        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize);
-        assert_noop!(
-            DappsStaking::nomination_transfer(
-                Origin::signed(staker),
-                origin_contract_id.clone(),
-                3,
-                target_contract_id.clone()
-            ),
-            Error::<TestRuntime>::MaxNumberOfNominationTransfersExceeded
-        );
-
-        // Advance to block at which first two cooldowns are expired. Expect that they should both be removed.
-        run_to_block(cooldowns[1]);
-        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
-        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
-        assert_eq!(cooldowns.len(), NOMINATION_TRANSFER_CHARGES as usize - 1);
-
-        // Do yet another nomination transfer but in the same block and assert that both are cleaned up
-        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
-        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
-        assert_eq!(
-            cooldowns[NOMINATION_TRANSFER_CHARGES as usize - 1],
-            cooldowns[NOMINATION_TRANSFER_CHARGES as usize - 2]
-        );
-        run_to_block(*cooldowns.last().unwrap());
-        assert_nomination_transfer(staker, &origin_contract_id, 3, &target_contract_id);
-        let cooldowns = NominationTransferCooldowns::<TestRuntime>::get(&staker);
-        assert_eq!(cooldowns.len(), 1);
     })
 }
 
