@@ -35,7 +35,7 @@ fn initialize<T: Config>() {
     DappsStaking::<T>::on_initialize(1u32.into());
 }
 
-/// Generate an unique smart contract using the provided index as sort-of indetifier
+/// Generate an unique smart contract using the provided index as a sort-of indetifier
 fn smart_contract<T: Config>(index: u8) -> T::SmartContract {
     // This is a hacky approach to provide different smart contracts without touching the smart contract trait.
     // In case this proves troublesome in the future, recommendation is to just replace it with
@@ -296,7 +296,7 @@ benchmarks! {
         initialize::<T>();
 
         let option = RewardDestination::FreeBalance;
-        let (_, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>(1)?;
 
         let number_of_stakers = 1;
         let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;

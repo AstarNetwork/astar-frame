@@ -431,6 +431,7 @@ fn set_reward_destination() {
         });
 }
 
+#[test]
 fn withdraw_from_unregistered() {
     ExternalityBuilder::default()
         .with_balances(vec![
