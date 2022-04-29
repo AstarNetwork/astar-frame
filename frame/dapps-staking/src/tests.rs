@@ -340,7 +340,7 @@ fn rotate_staking_info_distributed_over_two_blocks() {
 
         // Register max number of contracts that one block can handle + (max number of contracts - 1)
         let staker = 1;
-        for c_id_seed in 1..=(2 * ROTATION_WEIGHT_LIMIT - 1) {
+        for c_id_seed in 1..=(2 * MAX_NUMBER_OF_ROTATIONS - 1) {
             let developer = c_id_seed as u64;
             let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
 
@@ -368,7 +368,7 @@ fn rotate_staking_info_distributed_over_two_blocks() {
         advance_to_era(DappsStaking::current_era() + 1);
         let current_era = DappsStaking::current_era();
         for contract_id in
-            RegisteredDapps::<TestRuntime>::iter_keys().take(ROTATION_WEIGHT_LIMIT as usize)
+            RegisteredDapps::<TestRuntime>::iter_keys().take(MAX_NUMBER_OF_ROTATIONS as usize)
         {
             assert!(ContractEraStake::<TestRuntime>::contains_key(
                 contract_id,
@@ -376,7 +376,7 @@ fn rotate_staking_info_distributed_over_two_blocks() {
             ));
         }
         for contract_id in
-            RegisteredDapps::<TestRuntime>::iter_keys().skip(ROTATION_WEIGHT_LIMIT as usize)
+            RegisteredDapps::<TestRuntime>::iter_keys().skip(MAX_NUMBER_OF_ROTATIONS as usize)
         {
             assert!(!ContractEraStake::<TestRuntime>::contains_key(
                 contract_id,
@@ -388,7 +388,7 @@ fn rotate_staking_info_distributed_over_two_blocks() {
         // Advance one more block, except that the remainder of values have been copied
         run_for_blocks(1);
         for contract_id in
-            RegisteredDapps::<TestRuntime>::iter_keys().skip(ROTATION_WEIGHT_LIMIT as usize)
+            RegisteredDapps::<TestRuntime>::iter_keys().skip(MAX_NUMBER_OF_ROTATIONS as usize)
         {
             assert!(ContractEraStake::<TestRuntime>::contains_key(
                 contract_id,
@@ -465,7 +465,7 @@ fn rotate_staking_info_with_existing_value() {
 
         // Register max number of contracts that one block can handle + one that won't be copied
         let staker = 1;
-        for c_id_seed in 1..=ROTATION_WEIGHT_LIMIT + 1 {
+        for c_id_seed in 1..=MAX_NUMBER_OF_ROTATIONS + 1 {
             let developer = c_id_seed as u64;
             let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
 
@@ -684,7 +684,7 @@ fn register_and_unregister_while_rotation_ongoing_fails() {
 
         // Register max number of contracts that one block can handle + 1 extra
         let staker = 1;
-        for c_id_seed in 1..=ROTATION_WEIGHT_LIMIT + 1 {
+        for c_id_seed in 1..=MAX_NUMBER_OF_ROTATIONS + 1 {
             let developer = c_id_seed as u64;
             let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
 
@@ -697,7 +697,7 @@ fn register_and_unregister_while_rotation_ongoing_fails() {
         assert!(StakingInfoRotation::<TestRuntime>::exists()); // sanity check
 
         // Ensure it's not possible to register or unregister
-        let developer = ROTATION_WEIGHT_LIMIT as u64 + 2;
+        let developer = MAX_NUMBER_OF_ROTATIONS as u64 + 2;
         let existing_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
         let new_contract_id = MockSmartContract::Evm(H160::repeat_byte(developer as u8));
         assert_noop!(
@@ -1789,7 +1789,7 @@ fn maintenance_mode_is_ok() {
             Error::<TestRuntime>::Disabled
         );
         // shouldn't do anything since we're in maintenance mode
-        assert_eq!(DappsStaking::on_initialize(3), 0);
+        assert_eq!(DappsStaking::on_initialize(3), READ_WEIGHT);
 
         //
         // 4

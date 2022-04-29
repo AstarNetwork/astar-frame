@@ -3,8 +3,8 @@ use crate::{self as pallet_dapps_staking, weights};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
-    PalletId,
     weights::RuntimeDbWeight,
+    PalletId,
 };
 use sp_core::{H160, H256};
 
@@ -32,7 +32,8 @@ pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
-pub(crate) const ROTATION_WEIGHT_LIMIT: u64 = 3;
+pub(crate) const ROTATION_WEIGHT_LIMIT: u64 = 70;
+pub(crate) const MAX_NUMBER_OF_ROTATIONS: u32 = 3;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -55,14 +56,16 @@ construct_runtime!(
     }
 );
 
+pub const READ_WEIGHT: u64 = 5;
+pub const WRITE_WEIGHT: u64 = 10;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
         frame_system::limits::BlockWeights::simple_max(1024);
-        pub const RocksDbWeight: RuntimeDbWeight = RuntimeDbWeight {
-            read: 5,
-            write: 10,
-        };
+    pub const MockDbWeights: RuntimeDbWeight = RuntimeDbWeight {
+        read: READ_WEIGHT,
+        write: WRITE_WEIGHT,
+    };
 }
 
 impl frame_system::Config for TestRuntime {
@@ -80,7 +83,7 @@ impl frame_system::Config for TestRuntime {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
+    type DbWeight = MockDbWeights;
     type Version = ();
     type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<Balance>;

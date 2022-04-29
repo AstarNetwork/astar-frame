@@ -298,7 +298,7 @@ pub mod pallet {
 
             let current_era = Self::current_era();
 
-            let consumed_weight = T::DbWeight::get().reads(2);
+            let consumed_weight = T::DbWeight::get().reads(3);
             let remaining_weight = remaining_weight.saturating_sub(consumed_weight);
             let weight_limit = Self::rotation_weight_limit().min(remaining_weight);
 
@@ -351,10 +351,11 @@ pub mod pallet {
 
                 rotation_consumed_weight
                     + init_consumed_weight
-                    + T::DbWeight::get().reads_writes(1, 4)
+                    + T::DbWeight::get().reads_writes(2, 4)
             } else if last_processed_rotation_key.is_some() {
                 let weight_limit = Self::rotation_weight_limit();
                 init_consumed_weight
+                    + T::DbWeight::get().reads(1)
                     + Self::rotate_staking_info(
                         last_processed_rotation_key,
                         current_era.saturating_sub(1),
@@ -990,7 +991,7 @@ pub mod pallet {
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 
-        /// TODO
+        /// Rotation limit imposed by the configured limit and remaining block weight.
         fn rotation_weight_limit() -> u64 {
             T::BlockWeights::get()
                 .max_block
@@ -1019,24 +1020,16 @@ pub mod pallet {
             let copy_to_era = copy_from_era + 1;
             let mut consumed_weight = 0;
 
-            // TODO: make use of on-idle hooks
-
             let dapps_iterator = if let Some(previous_key) = last_processed_key {
                 RegisteredDapps::<T>::iter_from(previous_key)
             } else {
                 RegisteredDapps::<T>::iter()
             };
 
+            let mut last_processed_contract = None;
+            let mut all_dapps_processed = true; // to avoid DB reads
+
             for (contract_id, dapp_info) in dapps_iterator {
-                if consumed_weight >= weight_limit {
-                    use frame_support::storage::generator::StorageMap;
-
-                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(contract_id);
-                    StakingInfoRotation::<T>::put(key_as_vec);
-
-                    return consumed_weight.saturating_add(T::DbWeight::get().writes(1));
-                }
-
                 // Ignore dapp if it was unregistered
                 consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 if let DAppState::Unregistered(_) = dapp_info.state {
@@ -1061,13 +1054,32 @@ pub mod pallet {
                 } else {
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 }
+
+                // Check if we've consumed weight above the limit
+                last_processed_contract = Some(contract_id);
+                if consumed_weight >= weight_limit {
+                    // It's possible that this was the last dapp but it's more efficient to assume the opposite.
+                    // Worst case, next time rotation is called, it will just proceed to kill the storage item
+                    // with no extra reads needed.
+                    all_dapps_processed = false;
+                    break;
+                }
             }
 
-            // TODO: maybe this can be written so we don't have 2 different returns?
-            StakingInfoRotation::<T>::kill();
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+            if !all_dapps_processed {
+                use frame_support::storage::generator::StorageMap;
 
-            consumed_weight
+                if let Some(last_processed_contract_id) = last_processed_contract {
+                    let key_as_vec =
+                        RegisteredDapps::<T>::storage_map_final_key(last_processed_contract_id);
+                    StakingInfoRotation::<T>::put(key_as_vec);
+                }
+
+                consumed_weight.saturating_add(T::DbWeight::get().writes(1))
+            } else {
+                StakingInfoRotation::<T>::kill();
+                consumed_weight.saturating_add(T::DbWeight::get().writes(1))
+            }
         }
 
         /// Returns available staking balance for the potential staker
