@@ -93,9 +93,9 @@ pub mod pallet {
         #[pallet::constant]
         type MaxEraStakeValues: Get<u32>;
 
-        /// Maximum amount of `ContractEraStake` entries that can be rotated per block.
+        /// Maximum amount of weight that staking info rotation may consume
         #[pallet::constant]
-        type MaxRotationsPerBlock: Get<u32>;
+        type RotationWeightLimit: Get<u64>;
 
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -184,7 +184,7 @@ pub mod pallet {
     /// If empty, no rotation is ongoing.
     /// If value exists, describes the last processed key in the `RegisteredDapps` map.
     #[pallet::storage]
-    #[pallet::getter(fn staking_info_rotation)]
+    #[pallet::getter(fn last_rotated_key)]
     pub type StakingInfoRotation<T: Config> = StorageValue<_, Vec<u8>, OptionQuery>;
 
     /// Stores the current pallet storage version.
@@ -289,6 +289,27 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        // TODO: doc
+        fn on_idle(_block: T::BlockNumber, remaining_weight: Weight) -> Weight {
+            let last_processed_rotation_key = Self::last_rotated_key();
+            if last_processed_rotation_key.is_none() {
+                return T::DbWeight::get().reads(1);
+            }
+
+            let current_era = Self::current_era();
+
+            let consumed_weight = T::DbWeight::get().reads(2);
+            let remaining_weight = remaining_weight.saturating_sub(consumed_weight);
+            let weight_limit = Self::rotation_weight_limit().min(remaining_weight);
+
+            consumed_weight
+                + Self::rotate_staking_info(
+                    last_processed_rotation_key,
+                    current_era.saturating_sub(1),
+                    weight_limit,
+                )
+        }
+
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             // As long as pallet is disabled, we shouldn't allow any storage modifications.
             // This means we might prolong an era but it's acceptable.
@@ -299,10 +320,11 @@ pub mod pallet {
                 return T::DbWeight::get().reads(1);
             }
 
-            let force_new_era = Self::force_era().eq(&Forcing::ForceNew);
+            let force_new_era = Self::force_era() == Forcing::ForceNew;
             let current_era = Self::current_era();
             let next_era_starting_block = Self::next_era_starting_block();
-            let last_processed_rotation_key = Self::staking_info_rotation();
+            let last_processed_rotation_key = Self::last_rotated_key();
+            let init_consumed_weight = T::DbWeight::get().reads(5);
 
             if now >= next_era_starting_block || force_new_era || current_era.is_zero() {
                 let blocks_per_era = T::BlockPerEra::get();
@@ -313,8 +335,13 @@ pub mod pallet {
 
                 let reward = BlockRewardAccumulator::<T>::take();
                 Self::reward_balance_snapshoot(current_era, reward);
-                let consumed_weight =
-                    Self::rotate_staking_info(last_processed_rotation_key, current_era);
+
+                let weight_limit = Self::rotation_weight_limit();
+                let rotation_consumed_weight = Self::rotate_staking_info(
+                    last_processed_rotation_key,
+                    current_era,
+                    weight_limit,
+                );
 
                 if force_new_era {
                     ForceEra::<T>::put(Forcing::NotForcing);
@@ -322,18 +349,20 @@ pub mod pallet {
 
                 Self::deposit_event(Event::<T>::NewDappStakingEra(next_era));
 
-                consumed_weight + T::DbWeight::get().reads_writes(6, 3)
+                rotation_consumed_weight
+                    + init_consumed_weight
+                    + T::DbWeight::get().reads_writes(1, 4)
             } else if last_processed_rotation_key.is_some() {
-                T::DbWeight::get().reads(5)
+                let weight_limit = Self::rotation_weight_limit();
+                init_consumed_weight
                     + Self::rotate_staking_info(
                         last_processed_rotation_key,
                         current_era.saturating_sub(1),
+                        weight_limit,
                     )
             } else {
-                T::DbWeight::get().reads(5)
+                init_consumed_weight
             }
-
-            // TODO: less duplication in weight calculation
         }
     }
 
@@ -961,6 +990,14 @@ pub mod pallet {
             GeneralEraInfo::<T>::insert(era, era_info);
         }
 
+        /// TODO
+        fn rotation_weight_limit() -> u64 {
+            T::BlockWeights::get()
+                .max_block
+                .saturating_sub(frame_system::Pallet::<T>::block_weight().total())
+                .min(T::RotationWeightLimit::get())
+        }
+
         /// Used to copy `ContractStakeInfo` entries from the ending era over to the next era.
         ///
         /// Since we don't have an upper limit on the number of dApps, we need to ensure copy process is scalable.
@@ -969,6 +1006,7 @@ pub mod pallet {
         /// # Params
         /// `last_processed_key` - last key of `RegisteredDapps` storage map that has been processed, or `None` if we should start from the beginning.
         /// `copy_from_era` - era from which to copy. All entries are copied to `copy_from_era + 1`.
+        /// `weight_limit` - max weight that can be consumed by this operation. It is possible that slighly more will be consumed.
         ///
         /// # Return
         /// Total consumed weight by the function call
@@ -976,11 +1014,10 @@ pub mod pallet {
         fn rotate_staking_info(
             last_processed_key: Option<Vec<u8>>,
             copy_from_era: EraIndex,
+            weight_limit: u64,
         ) -> u64 {
             let copy_to_era = copy_from_era + 1;
             let mut consumed_weight = 0;
-
-            // TODO: disable register and unregister while rotation is ongoing
 
             // TODO: make use of on-idle hooks
 
@@ -990,9 +1027,16 @@ pub mod pallet {
                 RegisteredDapps::<T>::iter()
             };
 
-            let mut rotation_batch_size = T::MaxRotationsPerBlock::get();
-
             for (contract_id, dapp_info) in dapps_iterator {
+                if consumed_weight >= weight_limit {
+                    use frame_support::storage::generator::StorageMap;
+
+                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(contract_id);
+                    StakingInfoRotation::<T>::put(key_as_vec);
+
+                    return consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+                }
+
                 // Ignore dapp if it was unregistered
                 consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                 if let DAppState::Unregistered(_) = dapp_info.state {
@@ -1016,16 +1060,6 @@ pub mod pallet {
                         consumed_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
                 } else {
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
-                }
-
-                rotation_batch_size = rotation_batch_size.saturating_sub(1);
-                if rotation_batch_size.is_zero() {
-                    use frame_support::storage::generator::StorageMap;
-
-                    let key_as_vec = RegisteredDapps::<T>::storage_map_final_key(contract_id);
-                    StakingInfoRotation::<T>::put(key_as_vec);
-
-                    return consumed_weight.saturating_add(T::DbWeight::get().writes(1));
                 }
             }
 

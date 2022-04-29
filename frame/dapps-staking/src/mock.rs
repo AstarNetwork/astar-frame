@@ -4,6 +4,7 @@ use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
     PalletId,
+    weights::RuntimeDbWeight,
 };
 use sp_core::{H160, H256};
 
@@ -31,7 +32,7 @@ pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
-pub(crate) const MAX_ROTATIONS_PER_BLOCK: u32 = 3;
+pub(crate) const ROTATION_WEIGHT_LIMIT: u64 = 3;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -58,6 +59,10 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
         frame_system::limits::BlockWeights::simple_max(1024);
+        pub const RocksDbWeight: RuntimeDbWeight = RuntimeDbWeight {
+            read: 5,
+            write: 10,
+        };
 }
 
 impl frame_system::Config for TestRuntime {
@@ -125,7 +130,7 @@ parameter_types! {
     pub const MaxUnlockingChunks: u32 = MAX_UNLOCKING_CHUNKS;
     pub const UnbondingPeriod: EraIndex = UNBONDING_PERIOD;
     pub const MaxEraStakeValues: u32 = MAX_ERA_STAKE_VALUES;
-    pub const MaxRotationsPerBlock: u32 = MAX_ROTATIONS_PER_BLOCK;
+    pub const RotationWeightLimit: u64 = ROTATION_WEIGHT_LIMIT;
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
@@ -142,7 +147,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
-    type MaxRotationsPerBlock = MaxRotationsPerBlock;
+    type RotationWeightLimit = RotationWeightLimit;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
