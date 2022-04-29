@@ -289,7 +289,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        // TODO: doc
+        /// Used to rotate staking info if needed
         fn on_idle(_block: T::BlockNumber, remaining_weight: Weight) -> Weight {
             let last_processed_rotation_key = Self::last_rotated_key();
             if last_processed_rotation_key.is_none() {
@@ -301,6 +301,7 @@ pub mod pallet {
             let consumed_weight = T::DbWeight::get().reads(3);
             let remaining_weight = remaining_weight.saturating_sub(consumed_weight);
             let weight_limit = Self::rotation_weight_limit().min(remaining_weight);
+            println!(">>> Weight limit: {:?}", weight_limit);
 
             consumed_weight
                 + Self::rotate_staking_info(

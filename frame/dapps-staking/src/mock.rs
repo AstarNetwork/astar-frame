@@ -33,7 +33,7 @@ pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
 pub(crate) const ROTATION_WEIGHT_LIMIT: u64 = 70;
-pub(crate) const MAX_NUMBER_OF_ROTATIONS: u32 = 3;
+pub(crate) const MAX_NUMBER_OF_ROTATIONS: u32 = 3; // customed tuned to the above weight limit
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;

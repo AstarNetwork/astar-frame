@@ -1,5 +1,8 @@
 use super::{pallet::pallet::Error, Event, *};
-use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
+use frame_support::{
+    assert_noop, assert_ok,
+    traits::{OnIdle, OnInitialize},
+};
 use mock::{Balances, MockSmartContract, *};
 use sp_core::H160;
 use sp_runtime::{
@@ -493,6 +496,58 @@ fn rotate_staking_info_with_existing_value() {
             ContractEraStake::<TestRuntime>::get(&last_contract_id, current_era).unwrap();
         assert!(final_contract_stake_info.total > MINIMUM_STAKING_AMOUNT);
         assert_eq!(init_contract_stake_info, final_contract_stake_info);
+    })
+}
+
+#[test]
+fn rotate_staking_on_idle() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Register max number of contracts that one block can handle + one that won't be copied
+        let staker = 1;
+        for c_id_seed in 1..=MAX_NUMBER_OF_ROTATIONS * 3 {
+            let developer = c_id_seed as u64;
+            let contract_id = MockSmartContract::Evm(H160::repeat_byte(c_id_seed as u8));
+
+            assert_register(developer, &contract_id);
+            assert_bond_and_stake(staker, &contract_id, MINIMUM_STAKING_AMOUNT);
+        }
+
+        // Advance one era and verify that last contract Id hasn't been copied over
+        advance_to_era(DappsStaking::current_era() + 1);
+        let current_era = DappsStaking::current_era();
+        assert!(StakingInfoRotation::<TestRuntime>::exists());
+
+        /// Returns number of staking info for dapps which still need to be copied to the current era
+        fn remaining_dapps_count(current_era: u32) -> usize {
+            RegisteredDapps::<TestRuntime>::iter_keys()
+                .filter(|contract| {
+                    !ContractEraStake::<TestRuntime>::contains_key(contract, current_era)
+                })
+                .count()
+        }
+
+        let init_remainder_count = remaining_dapps_count(current_era);
+
+        // Do one iteration of rotation - weight limit is Zero so we enforce just one copy operation
+        let zero_weight_limit = 0;
+        DappsStaking::on_idle(0, zero_weight_limit);
+        assert!(StakingInfoRotation::<TestRuntime>::exists());
+        let post_zero_rotate_remainder_count = remaining_dapps_count(current_era);
+
+        // Assert that exactly one value was copied over
+        assert_eq!(init_remainder_count - post_zero_rotate_remainder_count, 1);
+
+        // Provide an excessive weight limit, but only up to 3 values should be copied
+        DappsStaking::on_idle(0, 10000000);
+        assert!(StakingInfoRotation::<TestRuntime>::exists());
+        assert!(!remaining_dapps_count(current_era).is_zero());
+
+        // Do yet another on_idle call and this time, all should be copied over
+        DappsStaking::on_idle(0, 10000000);
+        assert!(!StakingInfoRotation::<TestRuntime>::exists());
+        assert!(remaining_dapps_count(current_era).is_zero());
     })
 }
 
