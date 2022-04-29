@@ -301,7 +301,6 @@ pub mod pallet {
             let consumed_weight = T::DbWeight::get().reads(3);
             let remaining_weight = remaining_weight.saturating_sub(consumed_weight);
             let weight_limit = Self::rotation_weight_limit().min(remaining_weight);
-            println!(">>> Weight limit: {:?}", weight_limit);
 
             consumed_weight
                 + Self::rotate_staking_info(
