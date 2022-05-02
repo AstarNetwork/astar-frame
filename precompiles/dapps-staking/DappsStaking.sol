@@ -29,6 +29,12 @@ interface DappsStaking {
     /// @return amount, Staked amount by the staker
     function read_staked_amount(bytes calldata staker) external view returns (uint128);
 
+    /// @notice Read Staked amount on a given contract for the staker
+    /// @param contract_id contract evm address
+    /// @param staker in form of 20 or 32 hex bytes
+    /// @return amount, Staked amount by the staker
+    function read_staked_amount_on_contract(address contract_id, bytes calldata staker) external view returns (uint128);
+
     /// @notice Read the staked amount from the era when the amount was last staked/unstaked
     /// @return total, The most recent total staked amount on contract
     function read_contract_stake(address contract_id) external view returns (uint128);
