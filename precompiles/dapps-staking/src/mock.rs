@@ -222,6 +222,7 @@ impl pallet_evm::Config for TestRuntime {
     type BlockGasLimit = ();
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
+    type WeightInfo = ();
 }
 
 parameter_types! {
