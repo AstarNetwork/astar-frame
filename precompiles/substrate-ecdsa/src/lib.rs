@@ -6,6 +6,7 @@ use pallet_evm::Precompile;
 use sp_core::ecdsa;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
+use std::convert::TryFrom;
 
 use precompile_utils::{
     Bytes, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
@@ -77,7 +78,11 @@ impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
         };
 
         // Parse signature
-        if signature_bytes.len() != 65 {
+        let signature_opt = ecdsa::Signature::from_slice(&signature_bytes[..]);
+
+        let signature = if let Some(sig) = signature_opt {
+            sig
+        } else {
             // Return `false` if signature length is wrong
             return Ok(PrecompileOutput {
                 exit_status: ExitSucceed::Returned,
@@ -85,8 +90,7 @@ impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
                 output: EvmDataWriter::new().write(false).build(),
                 logs: Default::default(),
             });
-        }
-        let signature = ecdsa::Signature::from_slice(&signature_bytes[..]);
+        };
 
         log::trace!(
             target: "substrate-ecdsa-precompile",

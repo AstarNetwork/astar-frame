@@ -65,7 +65,11 @@ impl<Runtime: pallet_evm::Config> Sr25519Precompile<Runtime> {
         let message: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
 
         // Parse signature
-        if signature_bytes.len() != 64 {
+        let signature_opt = sr25519::Signature::from_slice(&signature_bytes[..]);
+
+        let signature = if let Some(sig) = signature_opt {
+            sig
+        } else {
             // Return `false` if signature length is wrong
             return Ok(PrecompileOutput {
                 exit_status: ExitSucceed::Returned,
@@ -73,8 +77,7 @@ impl<Runtime: pallet_evm::Config> Sr25519Precompile<Runtime> {
                 output: EvmDataWriter::new().write(false).build(),
                 logs: Default::default(),
             });
-        }
-        let signature = sr25519::Signature::from_slice(&signature_bytes[..]);
+        };
 
         log::trace!(
             target: "sr25519-precompile",
