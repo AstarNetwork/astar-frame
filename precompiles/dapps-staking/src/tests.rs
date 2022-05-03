@@ -2,7 +2,7 @@ use crate::mock::{
     advance_to_era, default_context, evm_call, initialize_first_block, precompile_address, Call,
     DappsStaking, EraIndex, ExternalityBuilder, Origin, TestAccount, AST, UNBONDING_PERIOD, *,
 };
-use codec::{Decode, Encode};
+use codec::Encode;
 use fp_evm::{PrecompileFailure, PrecompileOutput};
 use frame_support::{assert_ok, dispatch::Dispatchable};
 use pallet_dapps_staking::RewardDestination;
@@ -698,28 +698,36 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
 }
 
 /// helper function to verify latest staked amount
-fn verify_staked_amount(contract_array: [u8; 20], staker: AccountId32, amount: Balance) {
-    // check the storage
-    let smart_contract = decode_smart_contract_from_array(contract_array).unwrap();
-    let staker_info = DappsStaking::staker_info(staker, &smart_contract);
-    assert_eq!(staker_info.latest_staked_value(), amount);
-}
+fn verify_staked_amount(contract_array: [u8; 20], staker: TestAccount, amount: Balance) {
+    let selector = &Keccak256::digest(b"read_staked_amount_on_contract(address,bytes)")[0..4];
+    let mut input_data = Vec::<u8>::from([0u8; 132]);
+    input_data[0..4].copy_from_slice(&selector);
 
-/// Helper method to decode type SmartContract enum from [u8; 20]
-fn decode_smart_contract_from_array(
-    contract_array: [u8; 20],
-) -> Result<<TestRuntime as pallet_dapps_staking::Config>::SmartContract, String> {
-    // Encode contract address to fit SmartContract enum.
-    let mut contract_enum_encoded: [u8; 21] = [0; 21];
-    contract_enum_encoded[0] = 0; // enum for EVM H160 address is 0
-    contract_enum_encoded[1..21].copy_from_slice(&contract_array);
+    input_data[16..36].copy_from_slice(&contract_array);
 
-    let smart_contract = <TestRuntime as pallet_dapps_staking::Config>::SmartContract::decode(
-        &mut &contract_enum_encoded[..21],
-    )
-    .map_err(|_| "Error while decoding SmartContract")?;
+    input_data[67] = 64; // call data starting from position [36..68]
+    input_data[99] = 20; // size of call data in bytes [68..100]
 
-    Ok(smart_contract)
+    let staker_arg = argument_from_h160(staker.to_h160());
+    input_data[100..132].copy_from_slice(&staker_arg);
+
+    let expected = Some(Ok(PrecompileOutput {
+        exit_status: ExitSucceed::Returned,
+        output: argument_from_u128(amount),
+        cost: Default::default(),
+        logs: Default::default(),
+    }));
+
+    assert_eq!(
+        precompiles().execute(
+            precompile_address(),
+            &input_data,
+            None,
+            &default_context(),
+            false
+        ),
+        expected
+    );
 }
 
 /// Store u128 value in the 32 bytes vector as big endian
