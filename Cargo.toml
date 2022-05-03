@@ -10,8 +10,3 @@ members = [
     "precompiles/sr25519",
     "precompiles/utils",
 ]
-
-[patch.crates-io]
-evm = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.19" }
-evm-gasometer = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.19" }
-evm-runtime = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.19" }
