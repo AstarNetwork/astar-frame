@@ -4,7 +4,7 @@
 #![cfg_attr(test, feature(assert_matches))]
 
 use codec::{Decode, Encode};
-use fp_evm::{Context, ExitError, ExitSucceed, PrecompileFailure, PrecompileOutput};
+use fp_evm::{Context, ExitSucceed, PrecompileOutput};
 
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
@@ -143,28 +143,7 @@ where
 
         // parse input parameters for pallet-dapps-staking call
         let staker_vec: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
-        let staker: R::AccountId = match staker_vec.len() {
-            // public address of the ss58 account has 32 bytes
-            32 => {
-                let mut staker_bytes = [0_u8; 32];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..32]);
-
-                staker_bytes.into()
-            }
-            // public address of the H160 account has 20 bytes
-            20 => {
-                let mut staker_bytes = [0_u8; 20];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..20]);
-
-                R::AddressMapping::into_account_id(staker_bytes.into())
-            }
-            _ => {
-                // Return `false` if account length is wrong
-                return Err(PrecompileFailure::Error {
-                    exit_status: ExitError::Other("Bad input account, Use H160 or 32 bytes".into()),
-                });
-            }
-        };
+        let staker = Self::parse_input_address(gasometer, staker_vec)?;
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
@@ -172,6 +151,37 @@ where
 
         // compose output
         let output = EvmDataWriter::new().write(ledger.locked).build();
+
+        Ok(PrecompileOutput {
+            exit_status: ExitSucceed::Returned,
+            cost: gasometer.used_gas(),
+            output,
+            logs: Default::default(),
+        })
+    }
+
+    /// Read GeneralStakerInfo for account/contract
+    fn read_staked_amount_on_contract(
+        input: &mut EvmDataReader,
+        gasometer: &mut Gasometer,
+    ) -> EvmResult<PrecompileOutput> {
+        input.expect_arguments(gasometer, 2)?;
+
+        // parse contract address
+        let contract_h160 = input.read::<Address>(gasometer)?.0;
+        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+
+        // parse input parameters for pallet-dapps-staking call
+        let staker_vec: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
+        let staker = Self::parse_input_address(gasometer, staker_vec)?;
+
+        // call pallet-dapps-staking
+        let staking_info = pallet_dapps_staking::GeneralStakerInfo::<R>::get(&staker, &contract_id);
+        let staked_amount = staking_info.latest_staked_value();
+        log::trace!(target: "ds-precompile", "read_staked_amount_on_contract for account:{:?}, contract: {:?} => staked_amount:{:?}", staker, contract_id, staked_amount);
+
+        // compose output
+        let output = EvmDataWriter::new().write(staked_amount).build();
 
         Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
@@ -420,6 +430,35 @@ where
 
         Ok(smart_contract)
     }
+
+    /// Helper method to parse H160 or SS58 address
+    fn parse_input_address(
+        gasometer: &mut Gasometer,
+        staker_vec: Vec<u8>,
+    ) -> EvmResult<R::AccountId> {
+        let staker: R::AccountId = match staker_vec.len() {
+            // public address of the ss58 account has 32 bytes
+            32 => {
+                let mut staker_bytes = [0_u8; 32];
+                staker_bytes[..].clone_from_slice(&staker_vec[0..32]);
+
+                staker_bytes.into()
+            }
+            // public address of the H160 account has 20 bytes
+            20 => {
+                let mut staker_bytes = [0_u8; 20];
+                staker_bytes[..].clone_from_slice(&staker_vec[0..20]);
+
+                R::AddressMapping::into_account_id(staker_bytes.into())
+            }
+            _ => {
+                // Return err if account length is wrong
+                return Err(gasometer.revert("Error while parsing staker's address"));
+            }
+        };
+
+        Ok(staker)
+    }
 }
 
 #[precompile_utils::generate_function_selector]
@@ -430,6 +469,7 @@ pub enum Action {
     ReadEraReward = "read_era_reward(uint32)",
     ReadEraStaked = "read_era_staked(uint32)",
     ReadStakedAmount = "read_staked_amount(bytes)",
+    ReadStakedAmountOnContract = "read_staked_amount_on_contract(address,bytes)",
     ReadContractStake = "read_contract_stake(address)",
     Register = "register(address)",
     BondAndStake = "bond_and_stake(address,uint128)",
@@ -484,6 +524,9 @@ where
             Action::ReadEraReward => return Self::read_era_reward(input, gasometer),
             Action::ReadEraStaked => return Self::read_era_staked(input, gasometer),
             Action::ReadStakedAmount => return Self::read_staked_amount(input, gasometer),
+            Action::ReadStakedAmountOnContract => {
+                return Self::read_staked_amount_on_contract(input, gasometer)
+            }
             Action::ReadContractStake => return Self::read_contract_stake(input, gasometer),
             // Dispatchables
             Action::Register => Self::register(input, gasometer, context)?,
