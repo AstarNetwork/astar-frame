@@ -167,7 +167,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn staker_info)]
-    pub(crate) type GeneralStakerInfo<T: Config> = StorageDoubleMap<
+    pub type GeneralStakerInfo<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         T::AccountId,
