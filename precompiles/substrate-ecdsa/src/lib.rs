@@ -6,7 +6,6 @@ use pallet_evm::Precompile;
 use sp_core::ecdsa;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
-use std::convert::TryFrom;
 
 use precompile_utils::{
     Bytes, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
