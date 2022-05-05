@@ -512,6 +512,7 @@ where
                 | Action::ReadEraReward
                 | Action::ReadEraStaked
                 | Action::ReadStakedAmount
+                | Action::ReadStakedAmountOnContract
                 | Action::ReadContractStake => FunctionModifier::View,
                 _ => FunctionModifier::NonPayable,
             },
