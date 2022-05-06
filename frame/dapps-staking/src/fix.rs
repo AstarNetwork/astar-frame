@@ -30,6 +30,25 @@ pub mod restake_fix {
     pub fn restake_fix_migration<T: Config>(weight_limit: Weight) -> Weight {
         let mut restake_fix = RestakeFixAccumulator::<T>::get();
 
+        // read all_stakers_processed
+
+        // if false:
+
+        // read ledger from last_processed_staker or first if None
+
+        // for each record add to contract_staking info (amount and count)
+        // and add read weight
+
+        // when weight hits limit, write and return
+
+        // if true
+
+        // if contractStakeInfo is empty, we're done
+
+        // for each ContractStakeInfo in RestakeFix
+        // write to ContractEraStake until weight hits limit
+        // delete used records
+
         T::DbWeight::get().reads(1)
     }
 
