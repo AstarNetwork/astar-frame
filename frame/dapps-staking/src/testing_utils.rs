@@ -429,7 +429,6 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
-    let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // assert staked and free balances depending on restake check,
@@ -463,8 +462,8 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         calculated_reward,
     )));
 
-    let (new_era, _) = final_state_claim_era.staker_info.clone().claim();
-    if final_state_claim_era.staker_info.is_empty() {
+    let (new_era, _) = final_state_current_era.staker_info.clone().claim();
+    if final_state_current_era.staker_info.is_empty() {
         assert!(new_era.is_zero());
         assert!(!GeneralStakerInfo::<TestRuntime>::contains_key(
             &claimer,
@@ -478,38 +477,62 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     // Claim shouldn't mint new tokens, instead it should just transfer from the dapps staking pallet account
     let issuance_after_claim = <TestRuntime as Config>::Currency::total_issuance();
     assert_eq!(issuance_before_claim, issuance_after_claim);
+
+    // Old `claim_era` contract info should never be changed
+    let final_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
+    assert_eq!(
+        init_state_claim_era.contract_info,
+        final_state_claim_era.contract_info
+    );
 }
 
 // assert staked and locked states depending on should_restake_reward
 // returns should_restake_reward result so further checks can be made
 fn assert_restake_reward(
-    init_state: &MemorySnapshot,
-    final_state: &MemorySnapshot,
+    init_state_current_era: &MemorySnapshot,
+    final_state_current_era: &MemorySnapshot,
     reward: Balance,
 ) {
     if DappsStaking::should_restake_reward(
-        init_state.ledger.reward_destination,
-        init_state.dapp_info.state,
-        init_state.staker_info.latest_staked_value(),
+        init_state_current_era.ledger.reward_destination,
+        init_state_current_era.dapp_info.state,
+        init_state_current_era.staker_info.latest_staked_value(),
     ) {
         // staked values should increase
         assert_eq!(
-            init_state.staker_info.latest_staked_value() + reward,
-            final_state.staker_info.latest_staked_value()
+            init_state_current_era.staker_info.latest_staked_value() + reward,
+            final_state_current_era.staker_info.latest_staked_value()
         );
         assert_eq!(
-            init_state.era_info.staked + reward,
-            final_state.era_info.staked
+            init_state_current_era.era_info.staked + reward,
+            final_state_current_era.era_info.staked
         );
         assert_eq!(
-            init_state.era_info.locked + reward,
-            final_state.era_info.locked
+            init_state_current_era.era_info.locked + reward,
+            final_state_current_era.era_info.locked
+        );
+        assert_eq!(
+            init_state_current_era.contract_info.total + reward,
+            final_state_current_era.contract_info.total
         );
     } else {
         // staked values should remain the same, and free balance increase
-        assert_eq!(init_state.free_balance + reward, final_state.free_balance);
-        assert_eq!(init_state.era_info.staked, final_state.era_info.staked);
-        assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
+        assert_eq!(
+            init_state_current_era.free_balance + reward,
+            final_state_current_era.free_balance
+        );
+        assert_eq!(
+            init_state_current_era.era_info.staked,
+            final_state_current_era.era_info.staked
+        );
+        assert_eq!(
+            init_state_current_era.era_info.locked,
+            final_state_current_era.era_info.locked
+        );
+        assert_eq!(
+            init_state_current_era.contract_info,
+            final_state_current_era.contract_info
+        );
     }
 }
 
