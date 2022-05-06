@@ -17,6 +17,22 @@ pub mod restake_fix {
     use sp_runtime::traits::{Saturating, Zero};
     use sp_std::collections::btree_map::BTreeMap;
 
+    // Temp struct of corrected ContractStakeInfo records with progress data
+    #[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
+    pub struct RestakeFix<Balance: HasCompact> {
+        // store progress so iteration can continue in the next block
+        last_processed_staker: Option<Vec<u8>>,
+        contract_staking_info: BTreeMap<Vec<u8>, ContractStakeInfo<Balance>>,
+        // should be flipped once the process is complete
+        all_stakers_processed: bool,
+    }
+
+    pub fn restake_fix_migration<T: Config>(weight_limit: Weight) -> Weight {
+        let mut restake_fix = RestakeFixAccumulator::<T>::get();
+
+        T::DbWeight::get().reads(1)
+    }
+
     #[cfg(feature = "try-runtime")]
     pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
         // Pallet should be enabled after we finish
