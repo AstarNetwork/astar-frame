@@ -685,7 +685,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -725,7 +725,7 @@ pub mod pallet {
 
             if should_restake_reward {
                 ledger.locked = ledger.locked.saturating_add(staker_reward);
-                staking_info.total = staking_info.total.saturating_add(staker_reward);
+                Self::update_ledger(&staker, ledger);
 
                 // Update storage
                 GeneralEraInfo::<T>::mutate(&current_era, |value| {
@@ -735,9 +735,11 @@ pub mod pallet {
                     }
                 });
 
-                Self::update_ledger(&staker, ledger);
-
-                ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+                ContractEraStake::<T>::mutate(contract_id.clone(), current_era, |staking_info| {
+                    if let Some(x) = staking_info {
+                        x.total = x.total.saturating_add(staker_reward);
+                    }
+                });
 
                 Self::deposit_event(Event::<T>::BondAndStake(
                     staker.clone(),
