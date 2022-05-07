@@ -21,7 +21,8 @@ pub mod restake_fix {
     #[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
     pub struct RestakeFix<Balance: HasCompact> {
         // store progress so iteration can continue in the next block
-        last_processed_staker: Option<Vec<u8>>,
+        last_fully_processed_staker: Option<Vec<u8>>,
+        last_processed_staker_contract: Option<Vec<u8>>,
         contract_staking_info: BTreeMap<Vec<u8>, ContractStakeInfo<Balance>>,
         // should be flipped once the process is complete
         all_stakers_processed: bool,
@@ -34,22 +35,49 @@ pub mod restake_fix {
         // if false:
         if !restake_fix.all_stakers_processed {
             // read ledger from last_processed_staker or first if None
-            let staker_iter = if let Some(last_processed_staker) = restake_fix.last_processed_staker
+            let staker_iter = if let Some(last_processed_staker) =
+                restake_fix.last_fully_processed_staker.clone()
             {
-                Ledger::<T>::iter_keys_from(last_processed_staker);
+                Ledger::<T>::iter_keys_from(last_processed_staker)
             } else {
-                Ledger::<T>::iter_keys();
+                Ledger::<T>::iter_keys()
             };
             // for each record add to contract_staking info (amount and count)
             // and add read weight
-            for staker in staker_iter {
-                // for (contract, staking_info) in GeneralStakerInfo::<T>::prefix_iterstaker
-                // let staked_value = staking_info.latest_staked_value();
-                // restake_fix.contract_staking_info[contract].total += staked_value;
-                // restake_fix.contract_staking_info[contract].number_of_stakers += 1;
+            'staker_iter: for staker in staker_iter {
+                consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                let contract_iter = if let Some(last_processed_contract) =
+                    restake_fix.last_processed_staker_contract.clone()
+                {
+                    GeneralStakerInfo::<T>::iter_prefix_from(&staker, last_processed_contract)
+                } else {
+                    GeneralStakerInfo::<T>::iter_prefix(&staker)
+                };
+                for (contract, staking_info) in contract_iter {
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
+                    let staked_value = staking_info.latest_staked_value();
+                    let contract_address = Ledger::<T>::storage_map_final_key(contract);
+                    let mut contract_stake_info = restake_fix
+                        .contract_staking_info
+                        .entry(contract_address.clone())
+                        .or_default();
+
+                    contract_stake_info.total =
+                        contract_stake_info.total.saturating_add(staked_value);
+
+                    contract_stake_info.number_of_stakers += 1;
+                    if consumed_weight >= weight_limit {
+                        restake_fix.last_processed_staker_contract = Some(contract_address);
+                        break 'staker_iter;
+                    }
+                }
+                restake_fix.last_processed_staker_contract = None;
+                restake_fix.last_fully_processed_staker =
+                    Some(Ledger::<T>::storage_map_final_key(staker));
             }
 
-            // when weight hits limit, write and return
+            RestakeFixAccumulator::<T>::put(restake_fix);
+            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         } else {
             // if true
             // if contractStakeInfo is empty, we're done

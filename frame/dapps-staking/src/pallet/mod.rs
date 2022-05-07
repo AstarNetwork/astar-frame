@@ -3,6 +3,7 @@
 use super::*;
 use frame_support::{
     dispatch::DispatchResult,
+    dispatch::EncodeLike,
     ensure,
     pallet_prelude::*,
     traits::{
@@ -46,7 +47,12 @@ pub mod pallet {
             + ReservableCurrency<Self::AccountId>;
 
         // type used for Accounts on EVM and on Substrate
-        type SmartContract: IsContract + Parameter + Member;
+        type SmartContract: IsContract
+            + Parameter
+            + Member
+            // Added for mapping temp values in restake_fix_migration
+            // TODO: remove once the migration is finished
+            + EncodeLike<<Self as frame_system::Config>::AccountId>;
 
         /// Number of blocks per era.
         #[pallet::constant]
