@@ -6,7 +6,9 @@ pub mod restake_fix {
     use super::*;
     use codec::Encode;
     use frame_support::log;
-    use frame_support::{storage::generator::StorageMap, traits::Get, weights::Weight};
+    use frame_support::{
+        storage::generator::StorageMap, storage::PrefixIterator, traits::Get, weights::Weight,
+    };
     use sp_runtime::traits::Saturating;
     use sp_std::collections::btree_map::BTreeMap;
 
@@ -60,11 +62,11 @@ pub mod restake_fix {
                     consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
                     let staked_value = staking_info.latest_staked_value();
                     // get contract address as Vec<u8>
-                    let contract_address = Ledger::<T>::storage_map_final_key(contract);
+                    let contract_address = PrefixIterator::last_raw_key(&contract_iter);
                     // select staking_info for the contract
                     let mut contract_stake_info = restake_fix
                         .contract_staking_info
-                        .entry(contract_address.clone())
+                        .entry(contract_address.clone().to_vec())
                         .or_default();
 
                     // update total and number of stakers
@@ -78,7 +80,8 @@ pub mod restake_fix {
                             ">>> Ledger migration stopped after consuming {:?} weight.",
                             consumed_weight
                         );
-                        restake_fix.last_processed_staker_contract = Some(contract_address);
+                        restake_fix.last_processed_staker_contract =
+                            Some(contract_address.clone().to_vec());
                         break 'staker_iter;
                     }
                 }
