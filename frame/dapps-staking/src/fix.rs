@@ -29,27 +29,36 @@ pub mod restake_fix {
 
     pub fn restake_fix_migration<T: Config>(weight_limit: Weight) -> Weight {
         let mut restake_fix = RestakeFixAccumulator::<T>::get();
-
+        let mut consumed_weight = T::DbWeight::get().reads(1);
         // read all_stakers_processed
-
         // if false:
+        if !restake_fix.all_stakers_processed {
+            // read ledger from last_processed_staker or first if None
+            let staker_iter = if let Some(last_processed_staker) = restake_fix.last_processed_staker
+            {
+                Ledger::<T>::iter_keys_from(last_processed_staker);
+            } else {
+                Ledger::<T>::iter_keys();
+            };
+            // for each record add to contract_staking info (amount and count)
+            // and add read weight
+            for staker in staker_iter {
+                // for (contract, staking_info) in GeneralStakerInfo::<T>::prefix_iterstaker
+                // let staked_value = staking_info.latest_staked_value();
+                // restake_fix.contract_staking_info[contract].total += staked_value;
+                // restake_fix.contract_staking_info[contract].number_of_stakers += 1;
+            }
 
-        // read ledger from last_processed_staker or first if None
+            // when weight hits limit, write and return
+        } else {
+            // if true
+            // if contractStakeInfo is empty, we're done
+            // for each ContractStakeInfo in RestakeFix
+            // write to ContractEraStake until weight hits limit
+            // delete used records
+        }
 
-        // for each record add to contract_staking info (amount and count)
-        // and add read weight
-
-        // when weight hits limit, write and return
-
-        // if true
-
-        // if contractStakeInfo is empty, we're done
-
-        // for each ContractStakeInfo in RestakeFix
-        // write to ContractEraStake until weight hits limit
-        // delete used records
-
-        T::DbWeight::get().reads(1)
+        consumed_weight
     }
 
     #[cfg(feature = "try-runtime")]
