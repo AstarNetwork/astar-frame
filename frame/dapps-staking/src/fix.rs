@@ -1,20 +1,13 @@
 use super::*;
-use codec::{Decode, FullCodec};
-use frame_support::storage::unhashed;
-use pallet::pallet::*;
-use sp_std::fmt::Debug;
+use codec::Decode;
 
 pub mod restake_fix {
 
     use super::*;
     use codec::Encode;
     use frame_support::log;
-    use frame_support::{
-        storage::generator::{StorageDoubleMap, StorageMap},
-        traits::Get,
-        weights::Weight,
-    };
-    use sp_runtime::traits::{Saturating, Zero};
+    use frame_support::{storage::generator::StorageMap, traits::Get, weights::Weight};
+    use sp_runtime::traits::Saturating;
     use sp_std::collections::btree_map::BTreeMap;
 
     // Temp struct of corrected ContractStakeInfo records with progress data
