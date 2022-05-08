@@ -918,8 +918,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// `StakeBalance` (default) means claimed amount gets restaked,
-        /// `FreeBalance` sets claiming without restaking
+        /// Used to set reward destination for staker rewards
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
@@ -937,6 +936,22 @@ pub mod pallet {
             Ledger::<T>::insert(&staker, ledger);
 
             Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
+            Ok(().into())
+        }
+
+        /// Used to force set `ContractEraStake` storage values.
+        /// The purpose of this call is only for fixing one of the issues detected with dapps-staking.
+        #[pallet::weight(T::DbWeight::get().writes(1))]
+        pub fn set_contract_stake_info(
+            origin: OriginFor<T>,
+            contract: T::SmartContract,
+            era: EraIndex,
+            contract_stake_info: ContractStakeInfo<BalanceOf<T>>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            ContractEraStake::<T>::insert(contract, era, contract_stake_info);
+
             Ok(().into())
         }
     }
@@ -1003,17 +1018,6 @@ pub mod pallet {
 
             // Set the reward for the previous era.
             era_info.rewards = rewards;
-
-            // TODO: remove this once Astar easter bonus eras have passed
-            // Balance implements `AtLeast32BitUnsigned` so we need to work from 32 bits to get unit.
-            let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
-            let unit = halved_unit * halved_unit;
-            let bonus_eras = vec![8, 9, 10];
-            let is_bonus_era_and_has_funds = bonus_eras.contains(&era)
-                && T::Currency::free_balance(&Self::account_id()) > (unit * 10_000_000_u32.into());
-            if is_bonus_era_and_has_funds {
-                era_info.rewards.stakers = era_info.rewards.stakers + (unit * 1_500_000_u32.into());
-            }
 
             GeneralEraInfo::<T>::insert(era, era_info);
         }
