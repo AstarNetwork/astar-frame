@@ -83,6 +83,7 @@ pub mod restake {
 
         if !restake_fix.all_stakers_processed {
             restake_fix.all_stakers_processed = true;
+            restake_fix.last_processed_staker = None;
             log::info!(
                 ">>> Number of contract staking infos prepared: {:?}",
                 restake_fix.contract_staking_info.len()
@@ -172,6 +173,10 @@ pub mod restake {
 
             let on_chain_contract_staking_info =
                 ContractEraStake::<T>::get(&contract_id, current_era).unwrap();
+            log::info!(">>> OnChain: contract: {:?}, total_stakers: {:?} total staked: {:?} is_reward_claimed: {:?}", 
+                contract_id, on_chain_contract_staking_info.number_of_stakers,
+                on_chain_contract_staking_info.total, on_chain_contract_staking_info.contract_reward_claimed);
+
             assert_eq!(
                 restake_fix[&contract_id.encode()],
                 on_chain_contract_staking_info
