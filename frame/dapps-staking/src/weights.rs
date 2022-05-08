@@ -118,7 +118,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: System Account (r:1 w:1)
 	fn claim_staker_with_restake() -> Weight {
 		(78_506_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
@@ -259,7 +259,7 @@ impl WeightInfo for () {
 	// Storage: System Account (r:1 w:1)
 	fn claim_staker_with_restake() -> Weight {
 		(78_506_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
+			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)

@@ -1807,40 +1807,49 @@ pub fn tvl_util_test() {
     })
 }
 
-// TODO: remove this UT once Astar staking festival has been reset
 #[test]
-pub fn extra_reward_for_the_first_era() {
+pub fn set_contract_stake_info() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
 
-        // Issue the extra rewards balance and deposit it into pallet acc
-        let unit = 1_000_000_000_000_000_000;
-        Balances::resolve_creating(&account_id(), Balances::issue(10_000_000 * unit));
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(10, &contract_id);
 
-        advance_to_era(8);
+        let staker_id = 1;
+        assert_bond_and_stake(staker_id, &contract_id, 1000);
 
-        // Ensure that the staker rewards are increased by expected amount
-        let extra_rewards = 1_500_000 * unit;
-        let standard_staker_era_rewards = STAKER_BLOCK_REWARD * BLOCKS_PER_ERA as Balance;
-        for _bonus_era in 8..=10 {
-            advance_to_era(DappsStaking::current_era() + 1);
-            assert_eq!(
-                GeneralEraInfo::<TestRuntime>::get(DappsStaking::current_era() - 1)
-                    .unwrap()
-                    .rewards
-                    .stakers,
-                extra_rewards + standard_staker_era_rewards
-            );
-        }
+        // Read current contract stake info, then overwrite it with different value
+        let original_contract_stake_info =
+            DappsStaking::contract_stake_info(&contract_id, 1).unwrap();
+        let mut modified_info = original_contract_stake_info.clone();
+        modified_info.total = modified_info.total + 17;
+        ContractEraStake::<TestRuntime>::insert(&contract_id, 1, modified_info);
 
-        // Ensure that other eras aren't affected
-        advance_to_era(DappsStaking::current_era() + 1);
+        // Ensure only root can call it
+        assert_noop!(
+            DappsStaking::set_contract_stake_info(
+                Origin::signed(1),
+                contract_id.clone(),
+                1,
+                original_contract_stake_info.clone()
+            ),
+            BadOrigin
+        );
+
+        // Verify we can fix the corrupted stroage
+        assert_ne!(
+            ContractEraStake::<TestRuntime>::get(&contract_id, 1).unwrap(),
+            original_contract_stake_info
+        );
+        assert_ok!(DappsStaking::set_contract_stake_info(
+            Origin::root(),
+            contract_id.clone(),
+            1,
+            original_contract_stake_info.clone()
+        ));
         assert_eq!(
-            GeneralEraInfo::<TestRuntime>::get(DappsStaking::current_era() - 1)
-                .unwrap()
-                .rewards
-                .stakers,
-            standard_staker_era_rewards
+            ContractEraStake::<TestRuntime>::get(&contract_id, 1).unwrap(),
+            original_contract_stake_info
         );
     })
 }

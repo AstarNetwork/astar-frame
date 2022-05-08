@@ -13,6 +13,7 @@ use sp_runtime::{
 };
 use sp_std::{ops::Add, prelude::*};
 
+pub mod fix;
 pub mod pallet;
 pub mod traits;
 pub mod weights;

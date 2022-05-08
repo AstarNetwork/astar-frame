@@ -101,6 +101,11 @@ pub mod pallet {
     }
 
     #[pallet::storage]
+    #[pallet::getter(fn restake_fix_accumulator)]
+    pub type RestakeFixAccumulator<T: Config> =
+        StorageValue<_, fix::restake::RestakeFix<BalanceOf<T>>, ValueQuery>;
+
+    #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -322,6 +327,27 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::weight(T::BlockWeights::get().max_block / 5 * 3)]
+        pub fn run_restake_fix(
+            origin: OriginFor<T>,
+            weight_limit: Option<Weight>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_signed(origin)?;
+
+            let max_allowed_weight = T::BlockWeights::get().max_block / 5 * 3; // e.g. 60%
+
+            let weight_limit = weight_limit.unwrap_or(max_allowed_weight);
+
+            // A sanity check to prevent too heavy upgrade
+            ensure!(
+                weight_limit <= max_allowed_weight,
+                Error::<T>::UpgradeTooHeavy
+            );
+
+            let consumed_weight = fix::restake::restake_fix_migration::<T>(weight_limit);
+
+            Ok(Some(consumed_weight).into())
+        }
         /// register contract into staking targets.
         /// contract_id should be ink! or evm contract.
         ///
@@ -685,7 +711,7 @@ pub mod pallet {
             let current_era = Self::current_era();
             ensure!(era < current_era, Error::<T>::EraOutOfBounds);
 
-            let mut staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+            let staking_info = Self::contract_stake_info(&contract_id, era).unwrap_or_default();
             let reward_and_stake =
                 Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
 
@@ -725,7 +751,7 @@ pub mod pallet {
 
             if should_restake_reward {
                 ledger.locked = ledger.locked.saturating_add(staker_reward);
-                staking_info.total = staking_info.total.saturating_add(staker_reward);
+                Self::update_ledger(&staker, ledger);
 
                 // Update storage
                 GeneralEraInfo::<T>::mutate(&current_era, |value| {
@@ -735,9 +761,11 @@ pub mod pallet {
                     }
                 });
 
-                Self::update_ledger(&staker, ledger);
-
-                ContractEraStake::<T>::insert(contract_id.clone(), current_era, staking_info);
+                ContractEraStake::<T>::mutate(contract_id.clone(), current_era, |staking_info| {
+                    if let Some(x) = staking_info {
+                        x.total = x.total.saturating_add(staker_reward);
+                    }
+                });
 
                 Self::deposit_event(Event::<T>::BondAndStake(
                     staker.clone(),
@@ -890,8 +918,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// `StakeBalance` (default) means claimed amount gets restaked,
-        /// `FreeBalance` sets claiming without restaking
+        /// Used to set reward destination for staker rewards
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
@@ -909,6 +936,22 @@ pub mod pallet {
             Ledger::<T>::insert(&staker, ledger);
 
             Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
+            Ok(().into())
+        }
+
+        /// Used to force set `ContractEraStake` storage values.
+        /// The purpose of this call is only for fixing one of the issues detected with dapps-staking.
+        #[pallet::weight(T::DbWeight::get().writes(1))]
+        pub fn set_contract_stake_info(
+            origin: OriginFor<T>,
+            contract: T::SmartContract,
+            era: EraIndex,
+            contract_stake_info: ContractStakeInfo<BalanceOf<T>>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            ContractEraStake::<T>::insert(contract, era, contract_stake_info);
+
             Ok(().into())
         }
     }
@@ -975,17 +1018,6 @@ pub mod pallet {
 
             // Set the reward for the previous era.
             era_info.rewards = rewards;
-
-            // TODO: remove this once Astar easter bonus eras have passed
-            // Balance implements `AtLeast32BitUnsigned` so we need to work from 32 bits to get unit.
-            let halved_unit: BalanceOf<T> = 1_000_000_000_u32.into();
-            let unit = halved_unit * halved_unit;
-            let bonus_eras = vec![8, 9, 10];
-            let is_bonus_era_and_has_funds = bonus_eras.contains(&era)
-                && T::Currency::free_balance(&Self::account_id()) > (unit * 10_000_000_u32.into());
-            if is_bonus_era_and_has_funds {
-                era_info.rewards.stakers = era_info.rewards.stakers + (unit * 1_500_000_u32.into());
-            }
 
             GeneralEraInfo::<T>::insert(era, era_info);
         }
