@@ -91,19 +91,38 @@ pub mod restake_fix {
                 restake_fix.last_fully_processed_staker =
                     Some(Ledger::<T>::storage_map_final_key(staker));
             }
-
-            // store updated accumulator and update total weight for that write
-            RestakeFixAccumulator::<T>::put(restake_fix);
-            consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         } else {
             log::info!(">>> Starting to empty the accumulator");
-            // if true
             // if contractStakeInfo is empty, we're done
-            // for each ContractStakeInfo in RestakeFix
-            // write to ContractEraStake until weight hits limit
-            // delete used records
-        }
+            if restake_fix.contract_staking_info.is_empty() {
+                log::info!(">>> Accumulator empty, all done.");
+            } else {
+                // get current era and weight for that read
+                let current_era = Pallet::<T>::current_era();
+                consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().reads(1));
 
+                let staking_info_iter = restake_fix.contract_staking_info.iter();
+
+                for (contract, contract_stake_info) in staking_info_iter {
+                    // write new ContractEraStake from corrected records in contract_staking_info
+                    // and remove that record afterwards
+                    // break out when the weight hits the limit
+                    ContractEraStake::<T>::insert(&contract, current_era, contract_stake_info);
+                    restake_fix.contract_staking_info.remove(contract);
+                    consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
+                    if consumed_weight >= weight_limit {
+                        log::info!(
+                            ">>> Contract info migration stopped after consuming {:?} weight.",
+                            consumed_weight
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+        // store updated accumulator and update total weight for that write
+        RestakeFixAccumulator::<T>::put(restake_fix);
+        consumed_weight = consumed_weight.saturating_add(T::DbWeight::get().writes(1));
         consumed_weight
     }
 
