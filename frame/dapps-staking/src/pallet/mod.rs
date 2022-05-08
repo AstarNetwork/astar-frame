@@ -103,7 +103,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn restake_fix_accumulator)]
     pub type RestakeFixAccumulator<T: Config> =
-        StorageValue<_, fix::restake_fix::RestakeFix<BalanceOf<T>>, ValueQuery>;
+        StorageValue<_, fix::restake::RestakeFix<BalanceOf<T>>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
@@ -344,7 +344,7 @@ pub mod pallet {
                 Error::<T>::UpgradeTooHeavy
             );
 
-            let consumed_weight = fix::restake_fix::restake_fix_migration::<T>(weight_limit);
+            let consumed_weight = fix::restake::restake_fix_migration::<T>(weight_limit);
 
             Ok(Some(consumed_weight).into())
         }

@@ -1,21 +1,17 @@
 use super::*;
-use codec::{Decode, FullCodec};
-use frame_support::storage::unhashed;
 use pallet::pallet::*;
-use sp_std::fmt::Debug;
 
-pub mod restake_fix {
+pub mod restake {
 
     use super::*;
-    use codec::Encode;
+    use codec::{Encode, Decode};
     use frame_support::log;
     use frame_support::{
-        storage::generator::{StorageDoubleMap, StorageMap},
+        storage::generator::StorageMap,
         traits::Get,
         weights::Weight,
     };
-    use sp_runtime::traits::{Saturating, Zero};
-    use sp_std::collections::btree_map::BTreeMap;
+    use sp_std::{vec::Vec, collections::btree_map::BTreeMap};
 
     // Temp struct of corrected ContractStakeInfo records with progress data
     #[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -29,34 +25,90 @@ pub mod restake_fix {
 
     pub fn restake_fix_migration<T: Config>(weight_limit: Weight) -> Weight {
         let mut restake_fix = RestakeFixAccumulator::<T>::get();
-        let mut consumed_weight = T::DbWeight::get().reads(1);
-        // read all_stakers_processed
-        // if false:
+        let mut consumed_weight = T::DbWeight::get().reads_writes(1, 1);
+
         if !restake_fix.all_stakers_processed {
             // read ledger from last_processed_staker or first if None
-            let staker_iter = if let Some(last_processed_staker) = restake_fix.last_processed_staker
-            {
-                Ledger::<T>::iter_keys_from(last_processed_staker);
+            let staker_iter = if let Some(x) = restake_fix.last_processed_staker {
+                Ledger::<T>::iter_keys_from(x)
             } else {
-                Ledger::<T>::iter_keys();
+                Ledger::<T>::iter_keys()
             };
-            // for each record add to contract_staking info (amount and count)
-            // and add read weight
+
+            // We always process the staker entirely
             for staker in staker_iter {
-                // for (contract, staking_info) in GeneralStakerInfo::<T>::prefix_iterstaker
-                // let staked_value = staking_info.latest_staked_value();
-                // restake_fix.contract_staking_info[contract].total += staked_value;
-                // restake_fix.contract_staking_info[contract].number_of_stakers += 1;
+                consumed_weight += T::DbWeight::get().reads(1);
+
+                // Process all stakes related to staker, even though we might overshoot the weight limit a bit
+                for (contract, staking_info) in GeneralStakerInfo::<T>::iter_prefix(&staker) {
+                    consumed_weight += T::DbWeight::get().reads(1);
+
+                    let staked_value = staking_info.latest_staked_value();
+
+                    let entry = restake_fix.contract_staking_info.entry(contract.encode()).or_default();
+                    entry.total += staked_value;
+                    entry.number_of_stakers += 1;
+                }
+
+                if consumed_weight >= weight_limit {
+                    let last_processed_key = Ledger::<T>::storage_map_final_key(staker);
+                    restake_fix.last_processed_staker = Some(last_processed_key);
+                    RestakeFixAccumulator::<T>::put(restake_fix);
+
+                    log::info!(
+                        ">>> Re-stake fix stopped after consuming {:?} weight.",
+                        consumed_weight
+                    );
+
+                    if cfg!(feature = "try-runtime") {
+                        return restake_fix_migration::<T>(weight_limit);
+                    } else {
+                        return consumed_weight;
+                    }
+                }
+            }
+        }
+
+        // At this point, all data has been read
+        restake_fix.all_stakers_processed = true;
+
+        let current_era = Pallet::<T>::current_era();
+        consumed_weight += T::DbWeight::get().reads(1);
+
+
+        // Need to create a copy of this data since we also need to delete
+        let raw_contracts = restake_fix.contract_staking_info
+            .keys().map(|x| (*x).clone()).collect::<Vec<_>>();
+        
+        for raw_contract in raw_contracts.iter() {
+            let contract = T::SmartContract::decode(&mut &raw_contract[..]).unwrap();
+
+            // Will always execute
+            if let Some(info) = restake_fix.contract_staking_info.remove(raw_contract) {
+                ContractEraStake::<T>::insert(contract, current_era, info);
+                consumed_weight += T::DbWeight::get().writes(1);
+            } else {
+                log::error!("Raw key not found when iterating `restake fix` map! Should be impossible");
             }
 
-            // when weight hits limit, write and return
-        } else {
-            // if true
-            // if contractStakeInfo is empty, we're done
-            // for each ContractStakeInfo in RestakeFix
-            // write to ContractEraStake until weight hits limit
-            // delete used records
+            if consumed_weight >= weight_limit {
+                // map is being drained
+                restake_fix.last_processed_staker = None;
+                RestakeFixAccumulator::<T>::put(restake_fix);
+                log::info!(
+                    ">>> Re-stake fix stopped after consuming {:?} weight.",
+                    consumed_weight
+                );
+
+                if cfg!(feature = "try-runtime") {
+                    return restake_fix_migration::<T>(weight_limit);
+                } else {
+                    return consumed_weight;
+                }
+            }
         }
+
+        RestakeFixAccumulator::<T>::kill();
 
         consumed_weight
     }
@@ -66,7 +118,7 @@ pub mod restake_fix {
         // Pallet should be enabled after we finish
         assert!(PalletDisabled::<T>::get());
 
-        // TODO: add check that storage for migration stuff was cleaned up
+        assert!(!RestakeFixAccumulator::<T>::exists());
 
         let current_era = Pallet::<T>::current_era();
         let general_era_info = GeneralEraInfo::<T>::get(current_era).unwrap();
