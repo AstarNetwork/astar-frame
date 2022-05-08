@@ -4,14 +4,10 @@ use pallet::pallet::*;
 pub mod restake {
 
     use super::*;
-    use codec::{Encode, Decode};
-    use frame_support::log;
-    use frame_support::{
-        storage::generator::StorageMap,
-        traits::Get,
-        weights::Weight,
-    };
-    use sp_std::{vec::Vec, collections::btree_map::BTreeMap};
+    use codec::{Decode, Encode};
+    use frame_support::{log, storage::generator::StorageMap, traits::Get, weights::Weight};
+    use sp_runtime::traits::Zero;
+    use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
     // Temp struct of corrected ContractStakeInfo records with progress data
     #[derive(Clone, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -24,8 +20,13 @@ pub mod restake {
     }
 
     pub fn restake_fix_migration<T: Config>(weight_limit: Weight) -> Weight {
+        if !PalletDisabled::<T>::get() {
+            log::info!(">>> Restake fix migration shouldn't be executed if pallet isn't in maintenance mode!");
+            return T::DbWeight::get().reads(1);
+        }
+
         let mut restake_fix = RestakeFixAccumulator::<T>::get();
-        let mut consumed_weight = T::DbWeight::get().reads_writes(1, 1);
+        let mut consumed_weight = T::DbWeight::get().reads_writes(2, 1);
 
         if !restake_fix.all_stakers_processed {
             // read ledger from last_processed_staker or first if None
@@ -35,6 +36,10 @@ pub mod restake {
                 Ledger::<T>::iter_keys()
             };
 
+            log::info!(
+                ">>> Number of contract staking infos prepared so far: {:?}",
+                restake_fix.contract_staking_info.len()
+            );
             // We always process the staker entirely
             for staker in staker_iter {
                 consumed_weight += T::DbWeight::get().reads(1);
@@ -44,8 +49,15 @@ pub mod restake {
                     consumed_weight += T::DbWeight::get().reads(1);
 
                     let staked_value = staking_info.latest_staked_value();
+                    if staked_value.is_zero() {
+                        // this means that contract has been fully unstaked by the staker
+                        continue;
+                    }
 
-                    let entry = restake_fix.contract_staking_info.entry(contract.encode()).or_default();
+                    let entry = restake_fix
+                        .contract_staking_info
+                        .entry(contract.encode())
+                        .or_default();
                     entry.total += staked_value;
                     entry.number_of_stakers += 1;
                 }
@@ -69,17 +81,24 @@ pub mod restake {
             }
         }
 
-        // At this point, all data has been read
-        restake_fix.all_stakers_processed = true;
+        if !restake_fix.all_stakers_processed {
+            restake_fix.all_stakers_processed = true;
+            log::info!(
+                ">>> Number of contract staking infos prepared: {:?}",
+                restake_fix.contract_staking_info.len()
+            );
+        }
 
         let current_era = Pallet::<T>::current_era();
         consumed_weight += T::DbWeight::get().reads(1);
 
+        // Need to create a copy of this data since we also need to delete and `pop_first` isn't available
+        let raw_contracts = restake_fix
+            .contract_staking_info
+            .keys()
+            .map(|x| (*x).clone())
+            .collect::<Vec<_>>();
 
-        // Need to create a copy of this data since we also need to delete
-        let raw_contracts = restake_fix.contract_staking_info
-            .keys().map(|x| (*x).clone()).collect::<Vec<_>>();
-        
         for raw_contract in raw_contracts.iter() {
             let contract = T::SmartContract::decode(&mut &raw_contract[..]).unwrap();
 
@@ -88,7 +107,9 @@ pub mod restake {
                 ContractEraStake::<T>::insert(contract, current_era, info);
                 consumed_weight += T::DbWeight::get().writes(1);
             } else {
-                log::error!("Raw key not found when iterating `restake fix` map! Should be impossible");
+                log::error!(
+                    "Raw key not found when iterating `restake fix` map! Should be impossible"
+                );
             }
 
             if consumed_weight >= weight_limit {
@@ -109,6 +130,7 @@ pub mod restake {
         }
 
         RestakeFixAccumulator::<T>::kill();
+        PalletDisabled::<T>::put(false);
 
         consumed_weight
     }
@@ -116,7 +138,7 @@ pub mod restake {
     #[cfg(feature = "try-runtime")]
     pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
         // Pallet should be enabled after we finish
-        assert!(PalletDisabled::<T>::get());
+        assert!(!PalletDisabled::<T>::get());
 
         assert!(!RestakeFixAccumulator::<T>::exists());
 
@@ -130,6 +152,10 @@ pub mod restake {
         for staker in Ledger::<T>::iter_keys() {
             for (contract_id, staking_info) in GeneralStakerInfo::<T>::iter_prefix(staker) {
                 let staked_value = staking_info.latest_staked_value();
+                if staked_value.is_zero() {
+                    // ignore unstaked contract
+                    continue;
+                }
 
                 let entry = restake_fix.entry(contract_id.encode()).or_default();
                 entry.total += staked_value;
