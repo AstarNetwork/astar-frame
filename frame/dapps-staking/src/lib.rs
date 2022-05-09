@@ -340,9 +340,18 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
 mod staker_info_tests {
     use super::*;
     use crate::mock::*;
+    use Action::*;
     use rstest::rstest;
 
     type EraStakedTuple = (mock::EraIndex, mock::Balance);
+
+    enum Action {
+        Claim(EraStakedTuple /*result*/),
+        Stake(mock::EraIndex, mock::Balance, bool /*current era, stake value, is successful*/),
+        Unstake(mock::EraIndex,  mock::Balance, bool /*current era, unstake value, is successful*/),
+    }
+
+    type ActionResultState = (Action, Vec<EraStakedTuple>);
 
     impl From<EraStakedTuple> for EraStake<mock::Balance> {
         fn from(x: EraStakedTuple) -> Self {
@@ -359,6 +368,9 @@ mod staker_info_tests {
             .collect()
     }
 
+    fn str_res_from_bool(should_success: bool) -> &'static str {
+        if should_success { "Ok" } else { "Err" }
+    }
 
     #[rstest]
     #[case(
@@ -391,17 +403,78 @@ mod staker_info_tests {
     )]
     fn claim_test(
         #[case] initial_state: Vec<EraStakedTuple>,
-        #[case] action_result_state: Vec<(EraStakedTuple, Vec<EraStakedTuple>)>,
+        #[case] claim_result_state: Vec<(EraStakedTuple, Vec<EraStakedTuple>)>,
     ) {
         let mut staker_info = StakerInfo::<mock::Balance> {
             stakes: create_era_staked_vec(initial_state),
         };
 
-        for (i, (expected_result, expected_state)) in action_result_state.into_iter().enumerate() {
+        for (i, (expected_result, expected_state)) in claim_result_state.into_iter().enumerate() {
             let expected_state = create_era_staked_vec(expected_state);
             let result = staker_info.claim();
             assert_eq!(result, expected_result, "expected_result is wrong in action {}", i);
             assert_eq!(staker_info.stakes, expected_state, "expected_state is wrong in action {}", i);
+        }
+    }
+
+
+    #[rstest]
+    #[case(
+        vec![(5, 1000), (6, 1500), (8, 2100), (9, 0), (11, 500)],
+        vec![
+            (Stake(1, 1000, false), vec![(5, 1000), (6, 1500), (8, 2100), (9, 0), (11, 500)]),
+            (Stake(5, 1000, false), vec![(5, 1000), (6, 1500), (8, 2100), (9, 0), (11, 500)]),
+            (Stake(10, 1000, false), vec![(5, 1000), (6, 1500), (8, 2100), (9, 0), (11, 500)]),
+            (Stake(11, 1000, true), vec![(5, 1000), (6, 1500), (8, 2100), (9, 0), (11, 1500)]),
+            (Claim((5, 1000)), vec![(6, 1500), (8, 2100), (9, 0), (11, 1500)]),
+            (Unstake(6, 1000, false), vec![(6, 1500), (8, 2100), (9, 0), (11, 1500)]),
+            (Unstake(11, 1000, true), vec![(6, 1500), (8, 2100), (9, 0), (11, 500)]),
+            (Claim((6, 1500)), vec![(7, 1500), (8, 2100), (9, 0), (11, 500)]),
+            (Claim((7, 1500)), vec![(8, 2100), (9, 0), (11, 500)]),
+            (Claim((8, 2100)), vec![(11, 500)]),
+            (Stake(20, 1234, true), vec![(11, 500), (20, 1734)]),
+        ],
+    )]
+    fn test(
+        #[case] initial_state: Vec<EraStakedTuple>,
+        #[case] action_result_state: Vec<ActionResultState>,
+    ) {
+        let mut staker_info = StakerInfo::<mock::Balance> {
+            stakes: create_era_staked_vec(initial_state),
+        };
+
+        for (i, (action, expected_state)) in action_result_state.into_iter().enumerate() {
+            match action {
+                Claim(expected_result) => {
+                    let res = staker_info.claim();
+                    assert_eq!(
+                        res,
+                        expected_result,
+                        "action #{}: claim() should result in {:?}, but {:?} was found", i, expected_result, res,
+                    );
+                },
+                Stake(current_era, value, should_success) => {
+                    let res = staker_info.stake(current_era, value);
+                    assert_eq!(
+                        res.is_ok(),
+                        should_success,
+                        "action #{}: stake({:?}, {:?}) should result in {} but {:?} was found", i, current_era, value, str_res_from_bool(should_success), res,
+                    );
+                },
+                Unstake(current_era, value, should_success) => {
+                    let res = staker_info.unstake(current_era, value);
+                    assert_eq!(
+                        res.is_ok(),
+                        should_success,
+                        "action #{}: unstake({:?}, {:?}) should result in {} but {:?} was found", i, current_era, value, str_res_from_bool(should_success), res,
+                    );
+                },
+            }
+            assert_eq!(
+                staker_info.stakes,
+                create_era_staked_vec(expected_state),
+                "expected_state is wrong in action {}", i,
+            );
         }
     }
 }
