@@ -336,6 +336,76 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     }
 }
 
+#[cfg(test)]
+mod staking_state_tests {
+    use super::*;
+    use crate::mock::*;
+    use rstest::rstest;
+
+    type EraStakedTuple = (mock::EraIndex, mock::Balance);
+
+    impl From<EraStakedTuple> for EraStake<mock::Balance> {
+        fn from(x: EraStakedTuple) -> Self {
+            EraStake {
+                era: x.0,
+                staked: x.1,
+            }
+        }
+    }
+
+    fn create_era_staked_vec(vec: Vec<EraStakedTuple>) -> Vec<EraStake<mock::Balance>> {
+        vec.into_iter()
+            .map(|(era, staked)| EraStake { era, staked })
+            .collect()
+    }
+
+
+    #[rstest]
+    #[case(
+        vec![(5, 1000), (7, 1300), (8, 0), (15, 3000)],
+        vec![
+            ((5,1000), vec![(6, 1000), (7, 1300), (8, 0), (15, 3000)]),
+            ((6,1000), vec![(7, 1300), (8, 0), (15, 3000)]),
+            ((7,1300), vec![(15, 3000)]),
+            ((15,3000), vec![(16, 3000)]),
+        ],
+    )]
+    #[case(
+        vec![(34, 1000), (36, 500), (40, 0), (150, 3000), (155, 0)],
+        vec![
+            ((34,1000), vec![(35, 1000), (36, 500), (40, 0), (150, 3000), (155, 0)]),
+            ((35, 1000), vec![(36, 500), (40, 0), (150, 3000), (155, 0)]),
+            ((36, 500), vec![(37, 500), (40, 0), (150, 3000), (155, 0)]),
+            ((37, 500), vec![(38, 500), (40, 0), (150, 3000), (155, 0)]),
+            ((38, 500), vec![(39, 500), (40, 0), (150, 3000), (155, 0)]),
+            ((39, 500), vec![(150, 3000), (155, 0)]),
+            ((150, 3000), vec![(151, 3000), (155, 0)]),
+            ((151, 3000), vec![(152, 3000), (155, 0)]),
+            ((152, 3000), vec![(153, 3000), (155, 0)]),
+            ((153, 3000), vec![(154, 3000), (155, 0)]),
+            ((154, 3000), vec![]),
+            ((0,0), vec![]),
+            ((0,0), vec![]),
+            ((0,0), vec![]),
+        ],
+    )]
+    fn claim_test(
+        #[case] initial_state: Vec<EraStakedTuple>,
+        #[case] action_result_state: Vec<(EraStakedTuple, Vec<EraStakedTuple>)>,
+    ) {
+        let mut staker_info = StakerInfo::<mock::Balance> {
+            stakes: create_era_staked_vec(initial_state),
+        };
+
+        for (i, (expected_result, expected_state)) in action_result_state.into_iter().enumerate() {
+            let expected_state = create_era_staked_vec(expected_state);
+            let result = staker_info.claim();
+            assert_eq!(result, expected_result, "expected_result is wrong in action {}", i);
+            assert_eq!(staker_info.stakes, expected_state, "expected_state is wrong in action {}", i);
+        }
+    }
+}
+
 /// Represents an balance amount undergoing the unbonding process.
 /// Since unbonding takes time, it's important to keep track of when and how much was unbonded.
 #[derive(Clone, Copy, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
