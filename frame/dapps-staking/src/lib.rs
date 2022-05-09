@@ -337,7 +337,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
 }
 
 #[cfg(test)]
-mod staking_state_tests {
+mod staker_info_tests {
     use super::*;
     use crate::mock::*;
     use rstest::rstest;
