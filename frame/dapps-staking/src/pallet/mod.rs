@@ -101,11 +101,6 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn restake_fix_accumulator)]
-    pub type RestakeFixAccumulator<T: Config> =
-        StorageValue<_, fix::restake::RestakeFix<BalanceOf<T>>, ValueQuery>;
-
-    #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -327,27 +322,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::BlockWeights::get().max_block / 5 * 3)]
-        pub fn run_restake_fix(
-            origin: OriginFor<T>,
-            weight_limit: Option<Weight>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_signed(origin)?;
-
-            let max_allowed_weight = T::BlockWeights::get().max_block / 5 * 3; // e.g. 60%
-
-            let weight_limit = weight_limit.unwrap_or(max_allowed_weight);
-
-            // A sanity check to prevent too heavy upgrade
-            ensure!(
-                weight_limit <= max_allowed_weight,
-                Error::<T>::UpgradeTooHeavy
-            );
-
-            let consumed_weight = fix::restake::restake_fix_migration::<T>(weight_limit);
-
-            Ok(Some(consumed_weight).into())
-        }
         /// register contract into staking targets.
         /// contract_id should be ink! or evm contract.
         ///
