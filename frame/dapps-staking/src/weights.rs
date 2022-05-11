@@ -124,14 +124,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDapps (r:2 w:0)
-	// Storage: DappsStaking NominationTransferCooldowns (r:1 w:1)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking GeneralStakerInfo (r:2 w:2)
 	// Storage: DappsStaking ContractEraStake (r:2 w:2)
 	fn nomination_transfer() -> Weight {
-		(57_436_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		(56_495_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
@@ -262,14 +261,13 @@ impl WeightInfo for () {
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDapps (r:2 w:0)
-	// Storage: DappsStaking NominationTransferCooldowns (r:1 w:1)
 	// Storage: DappsStaking CurrentEra (r:1 w:0)
 	// Storage: DappsStaking GeneralStakerInfo (r:2 w:2)
 	// Storage: DappsStaking ContractEraStake (r:2 w:2)
 	fn nomination_transfer() -> Weight {
-		(57_436_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		(56_495_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
