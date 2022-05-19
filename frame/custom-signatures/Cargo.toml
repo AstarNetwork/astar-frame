@@ -4,7 +4,7 @@ version = "4.3.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
 license = "Apache-2.0"
-homepage = "https://docs.plasmnet.io/"
+homepage = "https://astar.network/"
 repository = "https://github.com/staketechnologies/Plasm/"
 description = "FRAME pallet for user defined extrinsic signatures"
 

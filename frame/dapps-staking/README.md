@@ -19,7 +19,7 @@ Table of Contents:
 - `contract`: short for smart contract
 - `EVM`: Ethereum Virtual Machine. Solidity Smart contract runs on it.
 - `ink!`: Smart Contract written in Rust, compiled to WASM.
-- `era`: Period of time. After it ends, rewards can be claimed. It is defined by the number of produced blocks. Duration of an era for this pallet is around 1 day. The exact duration depends on block production duration.
+- `era`: Period of time. After it ends, rewards can be claimed. It is defined by the number of produced blocks. Duration of an era for this pallet is configurable. The exact duration depends on block production duration.
 - `claim`: Claim ownership of the rewards from the contract's reward pool.
 - `bond`: Freeze funds to gain rewards.
 - `stake`: In this pallet a staker stakes bonded funds on a smart contract .
@@ -29,7 +29,6 @@ Table of Contents:
 
 ---
 
-
 ---
 ## Referent API implementation
 https://github.com/AstarNetwork/astar-apps
@@ -37,11 +36,26 @@ https://github.com/AstarNetwork/astar-apps
 ---
 ## FAQ
 
-### When do the projects/developers get their rewards?
-The earned rewards need to be claimed by calling claim() function. Once the claim() function is called all stakers on the contract and the developer of the contract get their rewards. This function can be called from any account. Recommended is that it is called by the projects/developers on a daily or at most weekly basis.
+### Does it matter which project I stake on?
+It matters because this means you're supporting that project.
+Project reward is calculated based on how much stakers have staked on that project.
+You want to support good projects which bring value to the ecosystem since that will make
+the ecosystem more valuable, increasing the value of your tokens as a result.
 
-### What happens if nobody calls the claim function for longer than 'history_depth' days?
-The un-claimed rewards older than 'history_depth' days will be burnt.
+Use the power you have and make sure to stake on projects you support and find beneficial.
+
+### Does my reward depend on the project I stake on?
+No, the reward you get only depends on the total amount you have staked, invariant of dapp(s) on which you staked.
+This allows you to select the dapp you like and want to support, without having to worry if you'll be earning less rewards than you
+would if you staked on another dapp.
+
+### When do the projects/developers get their rewards?
+Rewards will be deposited to beneficiaries once either `claim_staker` or `claim_dapp` is called.
+We advise users to use our official portal for claiming rewards since the complexity of the protocol is hidden there.
+
+### What happens if nobody calls the claim function for a long time?
+At the moment, there is no history depth limit and your reward will be waiting for you.
+However, this will be changed in the future.
 
 ### When developers register their dApp, which has no contract yet, what kind of address do they need to input?
 There has to be a contract. Registration can’t be done without the contract.
@@ -50,10 +64,9 @@ There has to be a contract. Registration can’t be done without the contract.
 The contract address can't be changed for the dApps staking. However, if the project needs to deploy new version of the contract, they can still use old (registered) contract address for dApp staking purposes.
 
 ### How do projects/developers (who joins dApps staking) get their stakers' address and the amount staked?
-```
-ContractEraStake(contract_id, era).stakers
-```
-This will give the vector of all staker' accounts and how much they have staked.
+`GeneralStakerInfo` storage item can be checked.
+This would require developer to fetch all values from the map and find the ones where second key equals that of the contract they are interested in.
+If the last staked value is greater than `Zero`, it means staker (first key) is staking on that contract.
 
 ### What is the maximum numbers of stakers per dapps?
 Please check in the source code constant `MaxNumberOfStakersPerContract`.
