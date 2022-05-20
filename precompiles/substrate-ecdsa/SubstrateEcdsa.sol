@@ -9,7 +9,7 @@ interface ISubstrateEcdsa {
      * @return A boolean confirming whether the public key is signer for the message. 
      */
     function verify(
-        bytes32 public_key,
+        bytes calldata public_key,
         bytes calldata signature,
         bytes calldata message
     ) external view returns (bool);
