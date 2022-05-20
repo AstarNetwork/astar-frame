@@ -45,14 +45,14 @@ pub mod pallet {
         type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>
             + ReservableCurrency<Self::AccountId>;
 
-        // type used for Accounts on EVM and on Substrate
+        /// Describes smart contract in the context required by dapps staking.
         type SmartContract: IsContract + Parameter + Member;
 
         /// Number of blocks per era.
         #[pallet::constant]
         type BlockPerEra: Get<BlockNumberFor<Self>>;
 
-        /// Minimum bonded deposit for new contract registration.
+        /// Deposit that will be reserved as part of new contract registration.
         #[pallet::constant]
         type RegisterDeposit: Get<BalanceOf<Self>>;
 
@@ -60,7 +60,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxNumberOfStakersPerContract: Get<u32>;
 
-        /// Minimum amount user must stake on contract.
+        /// Minimum amount user must have staked on contract.
         /// User can stake less if they already have the minimum staking amount staked on that particular contract.
         #[pallet::constant]
         type MinimumStakingAmount: Get<BalanceOf<Self>>;
@@ -70,6 +70,7 @@ pub mod pallet {
         type PalletId: Get<PalletId>;
 
         /// Minimum amount that should be left on staker account after staking.
+        /// Serves as a safeguard to prevent users from locking their entire free balance.
         #[pallet::constant]
         type MinimumRemainingAmount: Get<BalanceOf<Self>>;
 
@@ -100,11 +101,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// Denotes whether pallet is disabled (in maintenance mode) or not
     #[pallet::storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
-    /// Bonded amount for the staker
+    /// General information about the staker (non-smart-contract specific).
     #[pallet::storage]
     #[pallet::getter(fn ledger)]
     pub type Ledger<T: Config> =
@@ -135,25 +137,25 @@ pub mod pallet {
     #[pallet::getter(fn next_era_starting_block)]
     pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-    /// Registered developer accounts points to corresponding contract
+    /// Simple map where developer account points to their smart contract
     #[pallet::storage]
     #[pallet::getter(fn registered_contract)]
     pub(crate) type RegisteredDevelopers<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, T::SmartContract>;
 
-    /// Registered dapp points to the developer who registered it
+    /// Simple map where smart contract points to basic info about it (e.g. developer address, state)
     #[pallet::storage]
     #[pallet::getter(fn dapp_info)]
     pub(crate) type RegisteredDapps<T: Config> =
         StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId>>;
 
-    /// Total staked, locked & rewarded for a particular era
+    /// General information about an era like TVL, total staked value, rewards.
     #[pallet::storage]
     #[pallet::getter(fn general_era_info)]
     pub type GeneralEraInfo<T: Config> =
         StorageMap<_, Twox64Concat, EraIndex, EraInfo<BalanceOf<T>>>;
 
-    /// Stores amount staked and stakers for a contract per era
+    /// Staking information about contract in a particular era.
     #[pallet::storage]
     #[pallet::getter(fn contract_stake_info)]
     pub type ContractEraStake<T: Config> = StorageDoubleMap<
@@ -165,6 +167,7 @@ pub mod pallet {
         ContractStakeInfo<BalanceOf<T>>,
     >;
 
+    /// Info about stakers stakes on particular contracts.
     #[pallet::storage]
     #[pallet::getter(fn staker_info)]
     pub type GeneralStakerInfo<T: Config> = StorageDoubleMap<
@@ -192,7 +195,7 @@ pub mod pallet {
     #[pallet::getter(fn pre_approval_is_enabled)]
     pub(crate) type PreApprovalIsEnabled<T> = StorageValue<_, bool, ValueQuery, PreApprovalOnEmpty>;
 
-    /// List of pre-approved developers
+    /// List of pre-approved developers who can register contracts.
     #[pallet::storage]
     #[pallet::getter(fn pre_approved_developers)]
     pub(crate) type PreApprovedDevelopers<T: Config> =
@@ -333,11 +336,12 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// register contract into staking targets.
-        /// contract_id should be ink! or evm contract.
+        /// Used to register contract for dapps staking.
+        /// The origin account used is treated as the `developer` account.
         ///
-        /// Any user can call this function.
-        /// However, caller have to have deposit amount.
+        /// Depending on the pallet configuration/state it is possible that developer needs to be whitelisted prior to registration.
+        ///
+        /// As part of this call, `RegisterDeposit` will be reserved from devs account.
         #[pallet::weight(T::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
@@ -373,11 +377,12 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Unregister existing contract from dapps staking
+        /// Unregister existing contract from dapps staking, making it ineligible for rewards from current era onwards.
+        /// This must be called by the root (at the moment).
         ///
-        /// This must be called by the developer who registered the contract.
+        /// Deposit is returned to the developer but existing stakers should manually call `withdraw_from_unregistered` if they wish to to unstake.
         ///
-        /// Warning: After this action contract can not be assigned again.
+        /// **Warning**: After this action ,contract can not be registered for dapps staking again.
         #[pallet::weight(T::WeightInfo::unregister())]
         pub fn unregister(
             origin: OriginFor<T>,
@@ -406,7 +411,8 @@ pub mod pallet {
         }
 
         /// Withdraw locked funds from a contract that was unregistered.
-        /// Funds don't need to undergo the unbonding period - they are returned immediately.
+        ///
+        /// Funds don't need to undergo the unbonding period - they are returned immediately to the staker's free balance.
         #[pallet::weight(T::WeightInfo::withdraw_from_unregistered())]
         pub fn withdraw_from_unregistered(
             origin: OriginFor<T>,
@@ -463,13 +469,10 @@ pub mod pallet {
 
         /// Lock up and stake balance of the origin account.
         ///
-        /// `value` must be more than the `minimum_balance` specified by `T::Currency`
+        /// `value` must be more than the `minimum_balance` specified by `MinimumStakingAmount`
         /// unless account already has bonded value equal or more than 'minimum_balance'.
         ///
         /// The dispatch origin for this call must be _Signed_ by the staker's account.
-        ///
-        /// Effects of staking will be felt at the beginning of the next era.
-        ///
         #[pallet::weight(T::WeightInfo::bond_and_stake())]
         pub fn bond_and_stake(
             origin: OriginFor<T>,
@@ -536,7 +539,6 @@ pub mod pallet {
         ///
         /// In case remaining staked balance on contract is below minimum staking amount,
         /// entire stake for that contract will be unstaked.
-        ///
         #[pallet::weight(T::WeightInfo::unbond_and_unstake())]
         pub fn unbond_and_unstake(
             origin: OriginFor<T>,
@@ -600,7 +602,6 @@ pub mod pallet {
         ///
         /// If there are unbonding chunks which will be fully unbonded in future eras,
         /// they will remain and can be withdrawn later.
-        ///
         #[pallet::weight(T::WeightInfo::withdraw_unbonded())]
         pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
@@ -705,7 +706,11 @@ pub mod pallet {
 
         // TODO: do we need to add force methods or at least methods that allow others to claim for someone else?
 
-        /// Claim earned staker rewards for the oldest era.
+        /// Claim earned staker rewards for the oldest unclaimed era.
+        /// In order to claim multiple eras, this call has to be called multiple times.
+        ///
+        /// The rewards are always added to the staker's free balance (account) but depending on the reward destination configuration,
+        /// they might be immediately re-staked.
         #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
@@ -805,6 +810,8 @@ pub mod pallet {
         }
 
         /// Claim earned dapp rewards for the specified era.
+        ///
+        /// Call must ensure that the specified era is eligible for reward payout and that it hasn't already been paid out for the dapp.
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn claim_dapp(
             origin: OriginFor<T>,
@@ -863,17 +870,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Force there to be a new era at the end of the next block. After this, it will be
-        /// reset to normal (non-forced) behaviour.
+        /// Force a new era at the start of the next block.
         ///
         /// The dispatch origin must be Root.
-        ///
-        ///
-        /// # <weight>
-        /// - No arguments.
-        /// - Weight: O(1)
-        /// - Write ForceEra
-        /// # </weight>
         #[pallet::weight(T::WeightInfo::force_new_era())]
         pub fn force_new_era(origin: OriginFor<T>) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
@@ -882,10 +881,9 @@ pub mod pallet {
             Ok(())
         }
 
-        /// add contract address to the pre-approved list.
-        /// contract_id should be ink! or evm contract.
+        /// Adds developer account to the list of whitelisted dev accounts which can register their dapp for dApp staking.
         ///
-        /// Sudo call is required
+        /// The dispatch origin must be Root.
         #[pallet::weight(T::WeightInfo::developer_pre_approval())]
         pub fn developer_pre_approval(
             origin: OriginFor<T>,
@@ -903,9 +901,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Enable or disable adding new contracts to the pre-approved list
+        /// Enable or disable _pre-approval_ check.
+        /// If disabled, dApp registration is fully permisionless.
         ///
-        /// Sudo call is required
+        /// The dispatch origin must be Root.
         #[pallet::weight(T::WeightInfo::enable_developer_pre_approval())]
         pub fn enable_developer_pre_approval(
             origin: OriginFor<T>,
@@ -918,6 +917,8 @@ pub mod pallet {
         }
 
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
+        ///
+        /// The dispatch origin must be Root.
         #[pallet::weight(T::WeightInfo::maintenance_mode())]
         pub fn maintenance_mode(
             origin: OriginFor<T>,
@@ -936,7 +937,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Used to set reward destination for staker rewards
+        /// Used to set reward destination for staker rewards.
+        ///
+        /// User must be an active staker in order to use this call.
+        /// This will apply to all existing unclaimed rewards.
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
@@ -959,6 +963,8 @@ pub mod pallet {
 
         /// Used to force set `ContractEraStake` storage values.
         /// The purpose of this call is only for fixing one of the issues detected with dapps-staking.
+        ///
+        /// The dispatch origin must be Root.
         #[pallet::weight(T::DbWeight::get().writes(1))]
         pub fn set_contract_stake_info(
             origin: OriginFor<T>,
@@ -1241,7 +1247,9 @@ pub mod pallet {
             T::Currency::resolve_creating(&Self::account_id(), stakers.merge(dapps));
         }
 
-        /// Returns total value locked by dapps-staking
+        /// Returns total value locked by dapps-staking.
+        ///
+        /// Note that this can differ from _total staked value_ since some funds might be undergoing the unbonding period.
         pub fn tvl() -> BalanceOf<T> {
             let current_era = Self::current_era();
             if let Some(era_info) = Self::general_era_info(current_era) {
