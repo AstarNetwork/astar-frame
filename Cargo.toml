@@ -4,6 +4,7 @@ members = [
     "frame/collator-selection",
     "frame/custom-signatures",
     "frame/dapps-staking",
+    "frame/pallet-xcm",
     "precompiles/assets-erc20",
     "precompiles/dapps-staking",
     "precompiles/substrate-ecdsa",
