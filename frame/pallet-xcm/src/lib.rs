@@ -820,6 +820,53 @@ pub mod pallet {
                 Some(weight_limit),
             )
         }
+
+        /// Transfer some assets from sovereign account to reserve holder chain and
+        /// forward a notification XCM.
+        ///
+        /// Fee payment on the destination side is made from the asset in the `assets` vector of
+        /// index `fee_asset_item`. The weight limit for fees is not provided and thus is unlimited,
+        /// with all fees taken as needed from the asset.
+        ///
+        /// - `origin`: Must be capable of withdrawing the `assets` and executing XCM.
+        /// - `dest`: Destination context for the assets. Will typically be `X2(Parent, Parachain(..))` to send
+        ///   from parachain to parachain, or `X1(Parachain(..))` to send from relay to parachain.
+        /// - `beneficiary`: A beneficiary location for the assets in the context of `dest`. Will generally be
+        ///   an `AccountId32` value.
+        /// - `assets`: The assets to be withdrawn. This should include the assets used to pay the fee on the
+        ///   `dest` side.
+        /// - `fee_asset_item`: The index into `assets` of the item which should be used to pay
+        ///   fees.
+        /// - `weight_limit`: The remote-side weight limit, if any, for the XCM fee purchase.
+        #[pallet::weight({
+			match ((*assets.clone()).try_into(), (*dest.clone()).try_into()) {
+				(Ok(assets), Ok(dest)) => {
+					use sp_std::vec;
+					let mut message = Xcm(vec![
+						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
+					]);
+					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+				},
+				_ => Weight::max_value(),
+			}
+		})]
+        pub fn limited_reserve_withdraw_assets(
+            origin: OriginFor<T>,
+            dest: Box<VersionedMultiLocation>,
+            beneficiary: Box<VersionedMultiLocation>,
+            assets: Box<VersionedMultiAssets>,
+            fee_asset_item: u32,
+            weight_limit: WeightLimit,
+        ) -> DispatchResult {
+            Self::do_reserve_withdraw_assets(
+                origin,
+                dest,
+                beneficiary,
+                assets,
+                fee_asset_item,
+                Some(weight_limit),
+            )
+        }
     }
 
     impl<T: Config> Pallet<T> {
