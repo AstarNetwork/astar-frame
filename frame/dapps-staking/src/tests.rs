@@ -1092,6 +1092,45 @@ fn unbond_and_unstake_with_no_chunks_allowed() {
 }
 
 #[test]
+fn withdraw_unbonded_astar_farm_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        assert_register(10, &contract_id);
+
+        let staker_id = 1;
+        <TestRuntime as Config>::Currency::make_free_balance_be(&staker_id, 200000000000000000000000);
+        advance_to_era(7);
+        assert_bond_and_stake(staker_id, &contract_id, 174000000000000000000000);
+
+        let first_unbond_value = 27500000000000000000000;
+        let second_unbond_value = 32500000000000000000000;
+        let third_unbond_value = 34500000000000000000000;
+
+        // First unbond op
+        advance_to_era(27);
+        assert_unbond_and_unstake(staker_id, &contract_id, first_unbond_value);
+
+        // Second unbond op
+        advance_to_era(28);
+        assert_unbond_and_unstake(staker_id, &contract_id, second_unbond_value);
+
+        // Third unbond op
+        advance_to_era(29);
+        assert_unbond_and_unstake(staker_id, &contract_id, third_unbond_value);
+
+        // Advance past era 40
+        advance_to_era(42);
+
+        println!("Ledger: {:?}", DappsStaking::ledger(&staker_id));
+        println!("Staker info: {:?}", DappsStaking::staker_info(&staker_id, &contract_id));
+
+        assert_withdraw_unbonded(staker_id);
+    })
+}
+
+#[test]
 fn withdraw_unbonded_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();

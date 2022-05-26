@@ -29,7 +29,7 @@ pub(crate) const MAX_NUMBER_OF_STAKERS: u32 = 4;
 pub(crate) const MINIMUM_STAKING_AMOUNT: Balance = 10;
 pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
-pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
+pub(crate) const UNBONDING_PERIOD: EraIndex = 10;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
