@@ -10,4 +10,5 @@ members = [
     "precompiles/substrate-ecdsa",
     "precompiles/sr25519",
     "precompiles/utils",
+    "precompiles/xcm",
 ]
