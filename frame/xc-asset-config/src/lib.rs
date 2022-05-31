@@ -46,17 +46,17 @@ pub mod pallet {
 
     impl<T: Config> AssetLocationGetter<T::AssetId, MultiLocation> for Pallet<T> {
         fn get_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
-            AssetIdToLocation::<T>::get(asset_id)
+            AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
         }
 
         fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
-            AssetLocationToId::<T>::get(asset_location)
+            AssetLocationToId::<T>::get(asset_location.versioned())
         }
     }
 
     impl<T: Config> UnitsToWeightRatio<MultiLocation> for Pallet<T> {
         fn get_units_per_second(asset_location: MultiLocation) -> Option<u128> {
-            AssetLocationUnitsPerSecond::<T>::get(asset_location)
+            AssetLocationUnitsPerSecond::<T>::get(asset_location.versioned())
         }
     }
 
@@ -86,27 +86,29 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Registed mapping between asset type and asset Id.
         AssetRegistered {
-            asset_location: MultiLocation,
+            asset_location: VersionedMultiLocation,
             asset_id: T::AssetId,
         },
         /// Changed the amount of units we are charging per execution second for an asset
         UnitsPerSecondChanged {
-            asset_location: MultiLocation,
+            asset_location: VersionedMultiLocation,
             units_per_second: u128,
         },
         /// Changed the asset type mapping for a given asset id
         AssetLocationChanged {
-            previous_asset_location: MultiLocation,
+            previous_asset_location: VersionedMultiLocation,
             asset_id: T::AssetId,
-            new_asset_location: MultiLocation,
+            new_asset_location: VersionedMultiLocation,
         },
         /// Removed all information related to an asset Id
         AssetRemoved {
             asset_id: T::AssetId,
-            asset_location: MultiLocation,
+            asset_location: VersionedMultiLocation,
         },
         /// Supported asset type for fee payment removed.
-        SupportedAssetRemoved { asset_location: MultiLocation },
+        SupportedAssetRemoved {
+            asset_location: VersionedMultiLocation,
+        },
     }
 
     /// Mapping from an asset id to asset type.
@@ -115,7 +117,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_id_to_type)]
     pub type AssetIdToLocation<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, MultiLocation>;
+        StorageMap<_, Blake2_128Concat, T::AssetId, VersionedMultiLocation>;
 
     /// Mapping from an asset type to an asset id.
     /// Can be used when receiving a multilocation XCM message to retrieve
@@ -123,7 +125,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_location_to_id)]
     pub type AssetLocationToId<T: Config> =
-        StorageMap<_, Blake2_128Concat, MultiLocation, T::AssetId>;
+        StorageMap<_, Blake2_128Concat, VersionedMultiLocation, T::AssetId>;
 
     /// Stores the units per second for local execution for a AssetLocation.
     /// This is used to know how to charge for XCM execution in a particular asset.
@@ -132,11 +134,12 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_location_units_per_second)]
     pub type AssetLocationUnitsPerSecond<T: Config> =
-        StorageMap<_, Blake2_128Concat, MultiLocation, u128>;
+        StorageMap<_, Blake2_128Concat, VersionedMultiLocation, u128>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Register new asset type to asset Id mapping.
+        ///
         #[pallet::weight(T::WeightInfo::register_asset_location())]
         pub fn register_asset_location(
             origin: OriginFor<T>,
@@ -144,10 +147,6 @@ pub mod pallet {
             asset_id: T::AssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
-
-            let asset_location: MultiLocation = (*asset_location)
-                .try_into()
-                .map_err(|()| Error::<T>::InvalidAssetLocation)?;
 
             // Ensure such an assetId does not exist
             ensure!(
@@ -158,8 +157,10 @@ pub mod pallet {
             // TODO: check if this asset Id is actually registered? Will need a special type for this.
             // T::SomeType::contains(...);
 
-            AssetIdToLocation::<T>::insert(&asset_id, &asset_location);
-            AssetLocationToId::<T>::insert(&asset_location, &asset_id);
+            let asset_location = *asset_location;
+
+            AssetIdToLocation::<T>::insert(&asset_id, asset_location.clone());
+            AssetLocationToId::<T>::insert(&asset_location, asset_id.clone());
 
             Self::deposit_event(Event::AssetRegistered {
                 asset_location,
@@ -178,16 +179,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_root(origin)?;
 
-            let asset_location: MultiLocation = (*asset_location)
-                .try_into()
-                .map_err(|()| Error::<T>::InvalidAssetLocation)?;
+            let asset_location = *asset_location;
 
             ensure!(
                 AssetLocationToId::<T>::contains_key(&asset_location),
                 Error::<T>::AssetDoesNotExist
             );
 
-            AssetLocationUnitsPerSecond::<T>::insert(&asset_location, &units_per_second);
+            AssetLocationUnitsPerSecond::<T>::insert(&asset_location, units_per_second);
 
             Self::deposit_event(Event::UnitsPerSecondChanged {
                 asset_location,
@@ -201,21 +200,19 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::change_existing_asset_location())]
         pub fn change_existing_asset_location(
             origin: OriginFor<T>,
-            asset_id: T::AssetId,
             new_asset_location: Box<VersionedMultiLocation>,
+            asset_id: T::AssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
-            let new_asset_location: MultiLocation = (*new_asset_location)
-                .try_into()
-                .map_err(|()| Error::<T>::InvalidAssetLocation)?;
+            let new_asset_location = *new_asset_location;
 
             let previous_asset_location =
                 AssetIdToLocation::<T>::get(&asset_id).ok_or(Error::<T>::AssetDoesNotExist)?;
 
             // Insert new asset type info
-            AssetIdToLocation::<T>::insert(&asset_id, &new_asset_location);
-            AssetLocationToId::<T>::insert(&new_asset_location, &asset_id);
+            AssetIdToLocation::<T>::insert(&asset_id, new_asset_location.clone());
+            AssetLocationToId::<T>::insert(&new_asset_location, asset_id.clone());
 
             // Remove previous asset type info
             AssetLocationToId::<T>::remove(&previous_asset_location);
@@ -240,9 +237,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_root(origin)?;
 
-            let asset_location: MultiLocation = (*asset_location)
-                .try_into()
-                .map_err(|()| Error::<T>::InvalidAssetLocation)?;
+            let asset_location = *asset_location;
 
             AssetLocationUnitsPerSecond::<T>::remove(&asset_location);
 
@@ -252,7 +247,7 @@ pub mod pallet {
 
         /// Remove a given assetId -> AssetLocation association
         #[pallet::weight(T::WeightInfo::remove_existing_asset_location())]
-        pub fn remove_asset_location(origin: OriginFor<T>, asset_id: T::AssetId) -> DispatchResult {
+        pub fn remove_asset_info(origin: OriginFor<T>, asset_id: T::AssetId) -> DispatchResult {
             ensure_root(origin)?;
 
             let asset_location =

@@ -13,13 +13,13 @@ type BlockNumber = u64;
 type Balance = u128;
 type AccountId = u64;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
-type Block = frame_system::mocking::MockBlock<TestRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
 
 const EXISTENTIAL_DEPOSIT: Balance = 2;
 
 construct_runtime!(
-    pub enum TestRuntime where
+    pub enum Test where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
@@ -36,7 +36,7 @@ parameter_types! {
         frame_system::limits::BlockWeights::simple_max(1024);
 }
 
-impl frame_system::Config for TestRuntime {
+impl frame_system::Config for Test {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
@@ -68,7 +68,7 @@ parameter_types! {
     pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
 }
 
-impl pallet_balances::Config for TestRuntime {
+impl pallet_balances::Config for Test {
     type MaxLocks = MaxLocks;
     type MaxReserves = ();
     type ReserveIdentifier = [u8; 8];
@@ -80,7 +80,7 @@ impl pallet_balances::Config for TestRuntime {
     type WeightInfo = ();
 }
 
-impl pallet_xc_asset_config::Config for TestRuntime {
+impl pallet_xc_asset_config::Config for Test {
     type Event = Event;
     type AssetId = u128;
     type WeightInfo = ();
@@ -91,7 +91,7 @@ pub struct ExternalityBuilder;
 impl ExternalityBuilder {
     pub fn build() -> TestExternalities {
         let storage = frame_system::GenesisConfig::default()
-            .build_storage::<TestRuntime>()
+            .build_storage::<Test>()
             .unwrap();
 
         let mut ext = TestExternalities::from(storage);
