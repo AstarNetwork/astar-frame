@@ -59,21 +59,21 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     /// Defines conversion between asset Id and asset type
-    pub trait AssetLocationGetter<AssetId, AssetLocation> {
+    pub trait AssetLocationGetter<AssetId> {
         /// Get asset type from assetId
-        fn get_asset_location(asset_id: AssetId) -> Option<AssetLocation>;
+        fn get_asset_location(asset_id: AssetId) -> Option<MultiLocation>;
 
         /// Get assetId from AssetLocation
-        fn get_asset_id(asset_location: AssetLocation) -> Option<AssetId>;
+        fn get_asset_id(asset_location: MultiLocation) -> Option<AssetId>;
     }
 
     /// Used to fetch `units per second` if asset is applicable for local execution payment.
-    pub trait ExecutionPaymentRate<AssetLocation> {
+    pub trait ExecutionPaymentRate {
         /// returns units per second from asset type or `None` if asset type isn't a supported payment asset.
-        fn get_units_per_second(asset_location: AssetLocation) -> Option<u128>;
+        fn get_units_per_second(asset_location: MultiLocation) -> Option<u128>;
     }
 
-    impl<T: Config> AssetLocationGetter<T::AssetId, MultiLocation> for Pallet<T> {
+    impl<T: Config> AssetLocationGetter<T::AssetId> for Pallet<T> {
         fn get_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
             AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
         }
@@ -83,7 +83,7 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> ExecutionPaymentRate<MultiLocation> for Pallet<T> {
+    impl<T: Config> ExecutionPaymentRate for Pallet<T> {
         fn get_units_per_second(asset_location: MultiLocation) -> Option<u128> {
             AssetLocationUnitsPerSecond::<T>::get(asset_location.versioned())
         }
