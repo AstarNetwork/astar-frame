@@ -6,6 +6,7 @@ use crate::Pallet as XcAssetConfig;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use xcm::v1::MultiLocation;
+use sp_std::boxed::Box;
 
 benchmarks! {
 
