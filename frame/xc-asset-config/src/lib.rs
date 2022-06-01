@@ -54,7 +54,7 @@ pub mod pallet {
     use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
     #[pallet::pallet]
-    #[pallet::without_storage_info] // TODO: MultiLocation could be problematic? We might need storage migrations.
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     /// Defines conversion between asset Id and asset type
