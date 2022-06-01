@@ -73,8 +73,6 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Asset location isn't recognized
-        InvalidAssetLocation,
         /// Asset is already registered.
         AssetAlreadyRegistered,
         /// Asset does not exist (hasn't been registered).
@@ -100,14 +98,14 @@ pub mod pallet {
             asset_id: T::AssetId,
             new_asset_location: VersionedMultiLocation,
         },
-        /// Removed all information related to an asset Id
-        AssetRemoved {
-            asset_id: T::AssetId,
-            asset_location: VersionedMultiLocation,
-        },
         /// Supported asset type for fee payment removed.
         SupportedAssetRemoved {
             asset_location: VersionedMultiLocation,
+        },
+        /// Removed all information related to an asset Id
+        AssetRemoved {
+            asset_location: VersionedMultiLocation,
+            asset_id: T::AssetId,
         },
     }
 
@@ -153,9 +151,6 @@ pub mod pallet {
                 !AssetIdToLocation::<T>::contains_key(&asset_id),
                 Error::<T>::AssetAlreadyRegistered
             );
-
-            // TODO: check if this asset Id is actually registered? Will need a special type for this.
-            // T::SomeType::contains(...);
 
             let asset_location = *asset_location;
 
@@ -230,8 +225,8 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(T::WeightInfo::remove_supported_asset())]
-        pub fn remove_supported_asset(
+        #[pallet::weight(T::WeightInfo::remove_payment_asset())]
+        pub fn remove_payment_asset(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
         ) -> DispatchResult {
@@ -246,8 +241,8 @@ pub mod pallet {
         }
 
         /// Remove a given assetId -> AssetLocation association
-        #[pallet::weight(T::WeightInfo::remove_existing_asset_location())]
-        pub fn remove_asset_info(origin: OriginFor<T>, asset_id: T::AssetId) -> DispatchResult {
+        #[pallet::weight(T::WeightInfo::remove_asset())]
+        pub fn remove_asset(origin: OriginFor<T>, asset_id: T::AssetId) -> DispatchResult {
             ensure_root(origin)?;
 
             let asset_location =

@@ -13,8 +13,8 @@ pub trait WeightInfo {
 	fn register_asset_location() -> Weight;
 	fn set_asset_units_per_second() -> Weight;
 	fn change_existing_asset_location() -> Weight;
-	fn remove_supported_asset() -> Weight;
-	fn remove_existing_asset_location() -> Weight;
+	fn remove_payment_asset() -> Weight;
+	fn remove_asset() -> Weight;
 }
 
 /// Weights for pallet_asset_manager using the Substrate node and recommended hardware.
@@ -50,7 +50,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	// Storage: AssetManager SupportedFeePaymentAssets (r:1 w:1)
 	// Storage: AssetManager AssetTypeUnitsPerSecond (r:0 w:1)
-	fn remove_supported_asset() -> Weight {
+	fn remove_payment_asset() -> Weight {
 		(25_700_000 as Weight)
 			// Standard Error: 3_000
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
@@ -60,7 +60,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: AssetManager AssetIdType (r:1 w:1)
 	// Storage: AssetManager AssetTypeUnitsPerSecond (r:0 w:1)
 	// Storage: AssetManager AssetTypeId (r:0 w:1)
-	fn remove_existing_asset_location() -> Weight {
+	fn remove_asset() -> Weight {
 		(32_359_000 as Weight)
 			// Standard Error: 3_000
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
@@ -100,7 +100,7 @@ impl WeightInfo for () {
 	}
 	// Storage: AssetManager SupportedFeePaymentAssets (r:1 w:1)
 	// Storage: AssetManager AssetTypeUnitsPerSecond (r:0 w:1)
-	fn remove_supported_asset() -> Weight {
+	fn remove_payment_asset() -> Weight {
 		(25_700_000 as Weight)
 			// Standard Error: 3_000
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
@@ -110,7 +110,7 @@ impl WeightInfo for () {
 	// Storage: AssetManager AssetIdType (r:1 w:1)
 	// Storage: AssetManager AssetTypeUnitsPerSecond (r:0 w:1)
 	// Storage: AssetManager AssetTypeId (r:0 w:1)
-	fn remove_existing_asset_location() -> Weight {
+	fn remove_asset() -> Weight {
 		(32_359_000 as Weight)
 			// Standard Error: 3_000
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
