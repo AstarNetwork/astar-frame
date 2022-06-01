@@ -144,7 +144,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_id_to_location)]
     pub type AssetIdToLocation<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, VersionedMultiLocation>;
+        StorageMap<_, Twox64Concat, T::AssetId, VersionedMultiLocation>;
 
     /// Mapping from an asset type to an asset id.
     /// Can be used when receiving a multilocation XCM message to retrieve
@@ -152,7 +152,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_location_to_id)]
     pub type AssetLocationToId<T: Config> =
-        StorageMap<_, Blake2_128Concat, VersionedMultiLocation, T::AssetId>;
+        StorageMap<_, Twox64Concat, VersionedMultiLocation, T::AssetId>;
 
     /// Stores the units per second for local execution for a AssetLocation.
     /// This is used to know how to charge for XCM execution in a particular asset.
@@ -161,7 +161,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_location_units_per_second)]
     pub type AssetLocationUnitsPerSecond<T: Config> =
-        StorageMap<_, Blake2_128Concat, VersionedMultiLocation, u128>;
+        StorageMap<_, Twox64Concat, VersionedMultiLocation, u128>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
