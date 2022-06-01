@@ -52,6 +52,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use parity_scale_codec::HasCompact;
     use xcm::{v1::MultiLocation, VersionedMultiLocation};
+    use sp_std::boxed::Box;
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
