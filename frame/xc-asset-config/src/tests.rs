@@ -4,7 +4,7 @@ use mock::*;
 use sp_runtime::traits::BadOrigin;
 use xcm::latest::prelude::*;
 
-use xcm::v1::MultiLocation; // The one we use ATM
+use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 #[test]
 fn only_root_as_origin() {
@@ -299,6 +299,71 @@ fn not_registered_asset_is_not_ok() {
         assert_noop!(
             XcAssetConfig::remove_asset(Origin::root(), asset_id,),
             Error::<Test>::AssetDoesNotExist
+        );
+    })
+}
+
+#[test]
+fn public_interfaces_are_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        // Prepare location, Id and units
+        let asset_location = MultiLocation::parent();
+        let asset_id = 17;
+        let units: u128 = 3 * 11 * 13 * 17;
+
+        // Initially, expect `None` to be returned for all
+        assert!(XcAssetConfig::get_asset_location(asset_id).is_none());
+        assert!(XcAssetConfig::get_asset_id(asset_location.clone()).is_none());
+        assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());
+
+        // Register asset and expect values to be returned but UPS should still be `None`
+        assert_ok!(XcAssetConfig::register_asset_location(
+            Origin::root(),
+            Box::new(asset_location.clone().versioned()),
+            asset_id
+        ));
+        assert_eq!(
+            XcAssetConfig::get_asset_location(asset_id),
+            Some(asset_location.clone())
+        );
+        assert_eq!(
+            XcAssetConfig::get_asset_id(asset_location.clone()),
+            Some(asset_id)
+        );
+        assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());
+
+        // Register ups and expect value value to be returned
+        assert_ok!(XcAssetConfig::set_asset_units_per_second(
+            Origin::root(),
+            Box::new(asset_location.clone().versioned()),
+            units
+        ));
+        assert_eq!(
+            XcAssetConfig::get_units_per_second(asset_location.clone()),
+            Some(units)
+        );
+    })
+}
+
+#[test]
+fn different_xcm_versions_are_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        // Prepare location, Id and units
+        let legacy_asset_location = xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parent);
+        let new_asset_location = MultiLocation::parent();
+        let asset_id = 17;
+
+        // Register asset using legacy multilocation
+        assert_ok!(XcAssetConfig::register_asset_location(
+            Origin::root(),
+            Box::new(VersionedMultiLocation::V0(legacy_asset_location.clone())),
+            asset_id
+        ));
+
+        // Ensure that the new format is properly returned
+        assert_eq!(
+            XcAssetConfig::get_asset_location(asset_id),
+            Some(new_asset_location.clone())
         );
     })
 }

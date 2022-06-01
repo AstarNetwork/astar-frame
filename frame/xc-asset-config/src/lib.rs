@@ -1,13 +1,41 @@
-// TODO: docs
+//! # Cross-chain Asset Config Pallet
+//!
+//! ## Overview
+//!
+//! This pallet provides mappings between local asset Id and remove asset location.
+//! E.g. a multilocation like `{parents: 0, interior: X1::(Junction::Parachain(1000))}` could ba mapped to local asset Id `789`.
+//!
+//! Additionally, it stores information whether a foreign asset is supported as a payment currency for execution on local network.
+//!
+//! ## Interface
+//!
+//! ### Dispatchable Function
+//!
+//! - `register_asset_location` - used to register mapping between local asset Id and remote asset location
+//! - `set_asset_units_per_second` - registers asset as payment currency and sets the desired payment per second of execution time
+//! - `change_existing_asset_location` - changes the remote location of an existing local asset Id
+//! - `remove_payment_asset` - removes asset from the set of supported payment assets
+//! - `remove_asset` - removes all information related to this asset
+//!
+//! User is encouraged to refer to specific function implementations for more comprehensive documentation.
+//!
+//! ### Other
+//!
+//! `AssetLocationGetter` interface for mapping asset Id to asset location and vice versa
+//! - `get_asset_location`
+//! - `get_asset_id`
+//!
+//! `ExecutionPaymentRate` interface for fetching `units per second` if asset is supported payment asset
+//! - `get_units_per_second`
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::pallet;
 pub use pallet::*;
 
-// TODO
-// #[cfg(any(test, feature = "runtime-benchmarks"))]
-// mod benchmarks;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+mod benchmarking;
 
 #[cfg(test)]
 pub mod mock;
@@ -39,7 +67,7 @@ pub mod pallet {
     }
 
     /// Used to fetch `units per second` if asset is applicable for local execution payment.
-    pub trait UnitsToWeightRatio<AssetLocation> {
+    pub trait ExecutionPaymentRate<AssetLocation> {
         /// returns units per second from asset type or `None` if asset type isn't a supported payment asset.
         fn get_units_per_second(asset_location: AssetLocation) -> Option<u128>;
     }
@@ -54,7 +82,7 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> UnitsToWeightRatio<MultiLocation> for Pallet<T> {
+    impl<T: Config> ExecutionPaymentRate<MultiLocation> for Pallet<T> {
         fn get_units_per_second(asset_location: MultiLocation) -> Option<u128> {
             AssetLocationUnitsPerSecond::<T>::get(asset_location.versioned())
         }
@@ -113,7 +141,7 @@ pub mod pallet {
     /// Can be used when receiving transaction specifying an asset directly,
     /// like transferring an asset from this chain to another.
     #[pallet::storage]
-    #[pallet::getter(fn asset_id_to_type)]
+    #[pallet::getter(fn asset_id_to_location)]
     pub type AssetIdToLocation<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AssetId, VersionedMultiLocation>;
 
@@ -136,13 +164,14 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Register new asset type to asset Id mapping.
+        /// Register new asset location to asset Id mapping.
         ///
+        /// This makes the asset eligible for XCM interaction.
         #[pallet::weight(T::WeightInfo::register_asset_location())]
         pub fn register_asset_location(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
-            asset_id: T::AssetId,
+            #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -165,12 +194,12 @@ pub mod pallet {
         }
 
         /// Change the amount of units we are charging per execution second
-        /// for a given AssetLocation
+        /// for a given AssetLocation.
         #[pallet::weight(T::WeightInfo::set_asset_units_per_second())]
         pub fn set_asset_units_per_second(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
-            units_per_second: u128,
+            #[pallet::compact] units_per_second: u128,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -196,7 +225,7 @@ pub mod pallet {
         pub fn change_existing_asset_location(
             origin: OriginFor<T>,
             new_asset_location: Box<VersionedMultiLocation>,
-            asset_id: T::AssetId,
+            #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -225,6 +254,9 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Removes asset from the set of supported payment assets.
+        ///
+        /// The asset can still be interacted with via XCM but it cannot be used to pay for execution time.
         #[pallet::weight(T::WeightInfo::remove_payment_asset())]
         pub fn remove_payment_asset(
             origin: OriginFor<T>,
@@ -240,9 +272,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Remove a given assetId -> AssetLocation association
+        /// Removes all information related to asset, removing it from XCM support.
         #[pallet::weight(T::WeightInfo::remove_asset())]
-        pub fn remove_asset(origin: OriginFor<T>, asset_id: T::AssetId) -> DispatchResult {
+        pub fn remove_asset(
+            origin: OriginFor<T>,
+            #[pallet::compact] asset_id: T::AssetId,
+        ) -> DispatchResult {
             ensure_root(origin)?;
 
             let asset_location =
