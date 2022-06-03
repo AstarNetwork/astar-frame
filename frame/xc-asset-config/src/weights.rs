@@ -3,6 +3,9 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2022-06-01, STEPS: `20`, REPEAT: 10, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("shibuya-dev"), DB CACHE: 1024
+//! 
+//! It is recommended to re-run this per chain since the callbacks might incur additional overhead.
+//! 
 
 // Executed Command:
 // ./target/release/astar-collator
