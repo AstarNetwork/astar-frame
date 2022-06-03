@@ -43,6 +43,7 @@ pub mod mock;
 pub mod tests;
 
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[pallet]
 pub mod pallet {
