@@ -312,8 +312,8 @@ fn public_interfaces_are_ok() {
         let units: u128 = 3 * 11 * 13 * 17;
 
         // Initially, expect `None` to be returned for all
-        assert!(XcAssetConfig::get_asset_location(asset_id).is_none());
-        assert!(XcAssetConfig::get_asset_id(asset_location.clone()).is_none());
+        assert!(XcAssetConfig::get_xc_asset_location(asset_id).is_none());
+        assert!(XcAssetConfig::get_xc_asset_id(asset_location.clone()).is_none());
         assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());
 
         // Register asset and expect values to be returned but UPS should still be `None`
@@ -323,11 +323,11 @@ fn public_interfaces_are_ok() {
             asset_id
         ));
         assert_eq!(
-            XcAssetConfig::get_asset_location(asset_id),
+            XcAssetConfig::get_xc_asset_location(asset_id),
             Some(asset_location.clone())
         );
         assert_eq!(
-            XcAssetConfig::get_asset_id(asset_location.clone()),
+            XcAssetConfig::get_xc_asset_id(asset_location.clone()),
             Some(asset_id)
         );
         assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());
@@ -362,7 +362,7 @@ fn different_xcm_versions_are_ok() {
 
         // Ensure that the new format is properly returned
         assert_eq!(
-            XcAssetConfig::get_asset_location(asset_id),
+            XcAssetConfig::get_xc_asset_location(asset_id),
             Some(new_asset_location.clone())
         );
     })

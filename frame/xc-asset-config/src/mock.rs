@@ -82,7 +82,7 @@ impl pallet_balances::Config for Test {
 
 type AssetId = u128;
 
-impl pallet_xc_asset_config::XcAssetChangedCallback<Test> for () {
+impl pallet_xc_asset_config::XcAssetChanged<Test> for () {
     fn xc_asset_registered(_asset_id: AssetId) {}
     fn xc_asset_unregistered(_asset_id: AssetId) {}
 }
@@ -90,7 +90,7 @@ impl pallet_xc_asset_config::XcAssetChangedCallback<Test> for () {
 impl pallet_xc_asset_config::Config for Test {
     type Event = Event;
     type AssetId = AssetId;
-    type XcAssetChangedCallback = ();
+    type XcAssetChanged = ();
     type WeightInfo = ();
 }
 

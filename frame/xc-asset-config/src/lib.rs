@@ -22,7 +22,7 @@
 //! ### Other
 //!
 //! `AssetLocationGetter` interface for mapping asset Id to asset location and vice versa
-//! - `get_asset_location`
+//! - `get_xc_asset_location`
 //! - `get_asset_id`
 //!
 //! `ExecutionPaymentRate` interface for fetching `units per second` if asset is supported payment asset
@@ -60,7 +60,7 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     /// Callback definition trait for cross-chain asset registration/deregistration notifications.
-    pub trait XcAssetChangedCallback<T: Config> {
+    pub trait XcAssetChanged<T: Config> {
         /// Will be called by pallet when new asset Id has been registered
         fn xc_asset_registered(asset_id: T::AssetId);
 
@@ -68,27 +68,27 @@ pub mod pallet {
         fn xc_asset_unregistered(asset_id: T::AssetId);
     }
 
-    /// Defines conversion between asset Id and asset type
-    pub trait AssetLocationGetter<AssetId> {
+    /// Defines conversion between asset Id and cross-chain asset location
+    pub trait XcAssetLocation<AssetId> {
         /// Get asset type from assetId
-        fn get_asset_location(asset_id: AssetId) -> Option<MultiLocation>;
+        fn get_xc_asset_location(asset_id: AssetId) -> Option<MultiLocation>;
 
-        /// Get assetId from AssetLocation
-        fn get_asset_id(asset_location: MultiLocation) -> Option<AssetId>;
+        /// Get assetId from asset location
+        fn get_xc_asset_id(asset_location: MultiLocation) -> Option<AssetId>;
     }
 
-    /// Used to fetch `units per second` if asset is applicable for local execution payment.
+    /// Used to fetch `units per second` if cross-chain asset is applicable for local execution payment.
     pub trait ExecutionPaymentRate {
         /// returns units per second from asset type or `None` if asset type isn't a supported payment asset.
         fn get_units_per_second(asset_location: MultiLocation) -> Option<u128>;
     }
 
-    impl<T: Config> AssetLocationGetter<T::AssetId> for Pallet<T> {
-        fn get_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
+    impl<T: Config> XcAssetLocation<T::AssetId> for Pallet<T> {
+        fn get_xc_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
             AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
         }
 
-        fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
+        fn get_xc_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
             AssetLocationToId::<T>::get(asset_location.versioned())
         }
     }
@@ -107,8 +107,8 @@ pub mod pallet {
         /// a AssetLocation
         type AssetId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 
-        /// Callback config
-        type XcAssetChangedCallback: XcAssetChangedCallback<Self>;
+        /// Callback handling for cross-chain asset registration or unregistration.
+        type XcAssetChanged: XcAssetChanged<Self>;
 
         type WeightInfo: WeightInfo;
     }
@@ -200,7 +200,7 @@ pub mod pallet {
             AssetIdToLocation::<T>::insert(&asset_id, asset_location.clone());
             AssetLocationToId::<T>::insert(&asset_location, asset_id.clone());
 
-            T::XcAssetChangedCallback::xc_asset_registered(asset_id);
+            T::XcAssetChanged::xc_asset_registered(asset_id);
 
             Self::deposit_event(Event::AssetRegistered {
                 asset_location,
@@ -302,7 +302,7 @@ pub mod pallet {
             AssetIdToLocation::<T>::remove(&asset_id);
             AssetLocationToId::<T>::remove(&asset_location);
             AssetLocationUnitsPerSecond::<T>::remove(&asset_location);
-            T::XcAssetChangedCallback::xc_asset_unregistered(asset_id);
+            T::XcAssetChanged::xc_asset_unregistered(asset_id);
 
             Self::deposit_event(Event::AssetRemoved {
                 asset_id,
