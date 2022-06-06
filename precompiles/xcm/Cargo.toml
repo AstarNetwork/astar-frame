@@ -31,7 +31,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "relea
 
 [dev-dependencies]
 serde = "1.0.100"
-scale-info = "2.0"
+scale-info = "2.1.0"
 derive_more = "0.99"
 hex-literal = "0.3.4"
 
