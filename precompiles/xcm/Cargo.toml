@@ -38,6 +38,7 @@ hex-literal = "0.3.4"
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19" }
 
 [features]
 default = [ "std" ]

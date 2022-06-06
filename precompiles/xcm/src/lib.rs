@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use fp_evm::{Context, ExitSucceed, PrecompileOutput};
-use pallet_evm::{Precompile, AddressMapping};
+use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
+use pallet_evm::{AddressMapping, Precompile};
 use sp_core::{H256, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -28,18 +28,17 @@ pub enum Action {
 }
 
 /// A precompile that expose XCM related functions.
-pub struct XCMPrecompile<T, C>(PhantomData<(T, C)>);
+pub struct XcmPrecompile<T, C>(PhantomData<(T, C)>);
 
-impl<R, C> Precompile for XCMPrecompile<R, C> 
+impl<R, C> Precompile for XcmPrecompile<R, C>
 where
     R: pallet_evm::Config
         + pallet_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call: From<pallet_xcm::Call<R>>
-        + Dispatchable<PostInfo = PostDispatchInfo>
-        + GetDispatchInfo,
+    <R as frame_system::Config>::Call:
+        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
     fn execute(
@@ -65,16 +64,15 @@ where
     }
 }
 
-impl<R, C> XCMPrecompile<R, C> 
+impl<R, C> XcmPrecompile<R, C>
 where
     R: pallet_evm::Config
         + pallet_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call: From<pallet_xcm::Call<R>>
-        + Dispatchable<PostInfo = PostDispatchInfo>
-        + GetDispatchInfo,
+    <R as frame_system::Config>::Call:
+        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
     fn assets_withdraw(
@@ -86,16 +84,18 @@ where
         input.expect_arguments(gasometer, 6)?;
 
         // Read arguments and check it
-        let assets: Vec<MultiLocation> = input.read::<Vec<Address>>(gasometer)?
+        let assets: Vec<MultiLocation> = input
+            .read::<Vec<Address>>(gasometer)?
             .iter()
             .cloned()
-            .filter_map(|address| 
+            .filter_map(|address| {
                 R::address_to_asset_id(address.into())
                     .map(|x| C::reverse_ref(x).ok())
                     .flatten()
-            )
+            })
             .collect();
-        let amounts: Vec<u128> = input.read::<Vec<U256>>(gasometer)?
+        let amounts: Vec<u128> = input
+            .read::<Vec<U256>>(gasometer)?
             .iter()
             .map(|x| x.low_u128())
             .collect();
@@ -103,14 +103,18 @@ where
         // Check that assets list is valid:
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
-        if assets.len() != amounts.len() {
-            return Err(precompile_utils::error("bad assets list") )
+        if assets.len() != amounts.len() || assets.len() == 0 {
+            return Err(gasometer.revert("assets resolution failure"));
         }
 
         let recipient: [u8; 32] = input.read::<H256>(gasometer)?.into();
         let is_relay = input.read::<bool>(gasometer)?;
         let parachain_id: u32 = input.read::<U256>(gasometer)?.low_u32();
         let fee_asset_item: u32 = input.read::<U256>(gasometer)?.low_u32();
+
+        if fee_asset_item as usize > assets.len() {
+            return Err(gasometer.revert("bad fee index"));
+        }
 
         // Prepare pallet-xcm call arguments
         let dest = if is_relay {
@@ -122,7 +126,8 @@ where
         let beneficiary: MultiLocation = X1(Junction::AccountId32 {
             network: Any,
             id: recipient,
-        }).into();
+        })
+        .into();
 
         let assets: MultiAssets = assets
             .iter()
@@ -139,7 +144,8 @@ where
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
             fee_asset_item,
-        }.into();
+        }
+        .into();
 
         // Dispatch a call.
         RuntimeHelper::<R>::try_dispatch(origin, call, gasometer)?;

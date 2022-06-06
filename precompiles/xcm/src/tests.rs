@@ -1,4 +1,3 @@
-use hex_literal::hex;
 use std::assert_matches::assert_matches;
 
 use crate::mock::*;
@@ -6,8 +5,8 @@ use crate::*;
 
 use fp_evm::PrecompileFailure;
 use pallet_evm::PrecompileSet;
-use precompile_utils::{Bytes, EvmDataWriter};
-use sp_core::{sr25519, Pair, H256, U256};
+use precompile_utils::EvmDataWriter;
+use sp_core::H160;
 
 fn precompiles() -> TestPrecompileSet<Runtime> {
     PrecompilesValue::get()
@@ -31,10 +30,8 @@ fn wrong_argument_count_reverts() {
                 if output == b"tried to parse selector out of bounds",
         );
 
-        let pair = sr25519::Pair::from_seed(b"12345678901234567890123456789012");
-        let public = pair.public();
-        let input = EvmDataWriter::new_with_selector(Action::Verify)
-            .write(H256::from(public))
+        let input = EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
+            .write(sp_core::H256::repeat_byte(0xF1))
             .build();
 
         assert_matches!(
@@ -52,27 +49,18 @@ fn wrong_argument_count_reverts() {
 }
 
 #[test]
-fn wrong_signature_length_returns_false() {
+fn wrong_assets_len_or_fee_index_reverts() {
     ExtBuilder::default().build().execute_with(|| {
-        let pair = sr25519::Pair::from_seed(b"12345678901234567890123456789012");
-        let public = pair.public();
-        let signature = hex!["0042"];
-        let message = hex!["00"];
-
-        let input = EvmDataWriter::new_with_selector(Action::Verify)
-            .write(H256::from(public))
-            .write(Bytes::from(&signature[..]))
-            .write(Bytes::from(&message[..]))
+        let input = EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
+            .write(vec![Address::from(H160::repeat_byte(0xF1))])
+            .write(Vec::<U256>::new())
+            .write(H256::repeat_byte(0xF1))
+            .write(true)
+            .write(U256::from(0))
+            .write(U256::from(0))
             .build();
 
-        let output = PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            output: EvmDataWriter::new().write(U256::from(0u64)).build(),
-            cost: Default::default(),
-            logs: Default::default(),
-        };
-
-        assert_eq!(
+        assert_matches!(
             precompiles().execute(
                 TestAccount::Precompile.into(),
                 &input,
@@ -80,36 +68,46 @@ fn wrong_signature_length_returns_false() {
                 &evm_test_context(),
                 false,
             ),
-            Some(Ok(output)),
+            Some(Err(PrecompileFailure::Revert {output, ..}))
+                if output == b"assets resolution failure"
+        );
+
+        let input2 = EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
+            .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
+            .write(vec![U256::from(42000u64)])
+            .write(H256::repeat_byte(0xF1))
+            .write(true)
+            .write(U256::from(0))
+            .write(U256::from(2))
+            .build();
+
+        assert_matches!(
+            precompiles().execute(
+                TestAccount::Precompile.into(),
+                &input2,
+                None,
+                &evm_test_context(),
+                false,
+            ),
+            Some(Err(PrecompileFailure::Revert {output, ..}))
+                if output == b"bad fee index"
         );
     });
 }
 
 #[test]
-fn bad_signature_returns_false() {
+fn correct_arguments_works() {
     ExtBuilder::default().build().execute_with(|| {
-        let pair = sr25519::Pair::from_seed(b"12345678901234567890123456789012");
-        let public = pair.public();
-        let message = hex!("2f8c6129d816cf51c374bc7f08c3e63ed156cf78aefb4a6550d97b87997977ee00000000000000000200d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a4500000000000000");
-        let signature = pair.sign(&message[..]);
-        assert!(sr25519::Pair::verify(&signature, &message[..], &public));
-
-        let bad_message = hex!["00"];
-
-        let input = EvmDataWriter::new_with_selector(Action::Verify)
-            .write(H256::from(public))
-            .write(Bytes::from(<sr25519::Signature as AsRef<[u8]>>::as_ref(&signature)))
-            .write(Bytes::from(&bad_message[..]))
+        let input = EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
+            .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
+            .write(vec![U256::from(42000u64)])
+            .write(H256::repeat_byte(0xF1))
+            .write(true)
+            .write(U256::from(0))
+            .write(U256::from(0))
             .build();
 
-        let output = PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            output: EvmDataWriter::new().write(U256::from(0u64)).build(),
-            cost: Default::default(),
-            logs: Default::default(),
-        };
-
-        assert_eq!(
+        assert_matches!(
             precompiles().execute(
                 TestAccount::Precompile.into(),
                 &input,
@@ -117,48 +115,8 @@ fn bad_signature_returns_false() {
                 &evm_test_context(),
                 false,
             ),
-            Some(Ok(output)),
-        );
-    });
-}
-
-#[test]
-fn substrate_test_vector_works() {
-    ExtBuilder::default().build().execute_with(|| {
-        let pair = sr25519::Pair::from_seed(b"12345678901234567890123456789012");
-        let public = pair.public();
-        assert_eq!(
-            public,
-            sr25519::Public::from_raw(hex!(
-                "741c08a06f41c596608f6774259bd9043304adfa5d3eea62760bd9be97634d63"
-            ))
-        );
-        let message = hex!("2f8c6129d816cf51c374bc7f08c3e63ed156cf78aefb4a6550d97b87997977ee00000000000000000200d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a4500000000000000");
-        let signature = pair.sign(&message[..]);
-        assert!(sr25519::Pair::verify(&signature, &message[..], &public));
-
-        let input = EvmDataWriter::new_with_selector(Action::Verify)
-            .write(H256::from(public))
-            .write(Bytes::from(<sr25519::Signature as AsRef<[u8]>>::as_ref(&signature)))
-            .write(Bytes::from(&message[..]))
-            .build();
-
-        let output = PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            output: EvmDataWriter::new().write(U256::from(1u64)).build(),
-            cost: Default::default(),
-            logs: Default::default(),
-        };
-
-        assert_eq!(
-            precompiles().execute(
-                TestAccount::Precompile.into(),
-                &input,
-                None,
-                &evm_test_context(),
-                false,
-            ),
-            Some(Ok(output)),
+            Some(Ok(PrecompileOutput { exit_status, ..}))
+                if exit_status == pallet_evm::ExitSucceed::Returned
         );
     });
 }
