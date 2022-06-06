@@ -313,7 +313,7 @@ fn public_interfaces_are_ok() {
 
         // Initially, expect `None` to be returned for all
         assert!(XcAssetConfig::get_xc_asset_location(asset_id).is_none());
-        assert!(XcAssetConfig::get_xc_asset_id(asset_location.clone()).is_none());
+        assert!(XcAssetConfig::get_asset_id(asset_location.clone()).is_none());
         assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());
 
         // Register asset and expect values to be returned but UPS should still be `None`
@@ -327,7 +327,7 @@ fn public_interfaces_are_ok() {
             Some(asset_location.clone())
         );
         assert_eq!(
-            XcAssetConfig::get_xc_asset_id(asset_location.clone()),
+            XcAssetConfig::get_asset_id(asset_location.clone()),
             Some(asset_id)
         );
         assert!(XcAssetConfig::get_units_per_second(asset_location.clone()).is_none());

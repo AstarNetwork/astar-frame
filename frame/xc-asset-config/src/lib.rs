@@ -73,8 +73,8 @@ pub mod pallet {
         /// Get asset type from assetId
         fn get_xc_asset_location(asset_id: AssetId) -> Option<MultiLocation>;
 
-        /// Get assetId from asset location
-        fn get_xc_asset_id(asset_location: MultiLocation) -> Option<AssetId>;
+        /// Get local asset Id from asset location
+        fn get_asset_id(xc_asset_location: MultiLocation) -> Option<AssetId>;
     }
 
     /// Used to fetch `units per second` if cross-chain asset is applicable for local execution payment.
@@ -88,7 +88,7 @@ pub mod pallet {
             AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
         }
 
-        fn get_xc_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
+        fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
             AssetLocationToId::<T>::get(asset_location.versioned())
         }
     }
