@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use fp_evm::{Context, ExitSucceed, PrecompileOutput};
+use fp_evm::{Context, ExitSucceed, PrecompileHandle, PrecompileOutput};
 use pallet_evm::Precompile;
 use sp_core::{crypto::UncheckedFrom, sr25519, H256};
 use sp_std::marker::PhantomData;
@@ -27,12 +27,16 @@ pub struct Sr25519Precompile<Runtime>(PhantomData<Runtime>);
 
 impl<Runtime: pallet_evm::Config> Precompile for Sr25519Precompile<Runtime> {
     fn execute(
-        input: &[u8], //Reminder this is big-endian
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
+        // input: &[u8], //Reminder this is big-endian
+        // target_gas: Option<u64>,
+        // context: &Context,
+        // is_static: bool,
+        handle: &mut impl PrecompileHandle,
     ) -> EvmResult<PrecompileOutput> {
         log::trace!(target: "sr25519-precompile", "In sr25519 precompile");
+
+        let input = handle.input();
+        let target_gas = handle.gas_limit();
 
         let mut gasometer = Gasometer::new(target_gas);
         let gasometer = &mut gasometer;

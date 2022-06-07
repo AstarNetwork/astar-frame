@@ -69,8 +69,6 @@ fn current_era_is_ok() {
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             output: expected_era.clone(),
-            cost: Default::default(),
-            logs: Default::default(),
         }));
 
         assert_eq!(
@@ -90,8 +88,6 @@ fn current_era_is_ok() {
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             output: expected_era,
-            cost: Default::default(),
-            logs: Default::default(),
         }));
         assert_eq!(
             precompiles().execute(
@@ -118,8 +114,6 @@ fn read_unbonding_period_is_ok() {
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             output: expected_unbonding_period,
-            cost: Default::default(),
-            logs: Default::default(),
         }));
         assert_eq!(
             precompiles().execute(
@@ -152,8 +146,6 @@ fn read_era_reward_is_ok() {
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             output: expected_output,
-            cost: Default::default(),
-            logs: Default::default(),
         }));
 
         // execute and verify read_era_reward() query
@@ -188,8 +180,6 @@ fn read_era_staked_is_ok() {
         let expected = Some(Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             output: expected_output,
-            cost: Default::default(),
-            logs: Default::default(),
         }));
 
         // execute and verify read_era_staked() query
@@ -542,8 +532,6 @@ fn read_staked_amount_h160_verify(staker: TestAccount, amount: u128) {
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
         output: argument_from_u128(amount),
-        cost: Default::default(),
-        logs: Default::default(),
     }));
 
     assert_eq!(
@@ -573,8 +561,6 @@ fn read_staked_amount_ss58_verify(staker: AccountId32, amount: u128) {
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
         output: argument_from_u128(amount),
-        cost: Default::default(),
-        logs: Default::default(),
     }));
 
     assert_eq!(
@@ -803,8 +789,6 @@ fn contract_era_stake_verify(contract_array: [u8; 20], amount: u128) {
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
         output: expected_output,
-        cost: Default::default(),
-        logs: Default::default(),
     }));
 
     // execute and verify read_contract_stake() query
@@ -837,8 +821,6 @@ fn verify_staked_amount(contract_array: [u8; 20], staker: TestAccount, amount: B
     let expected = Some(Ok(PrecompileOutput {
         exit_status: ExitSucceed::Returned,
         output: argument_from_u128(amount),
-        cost: Default::default(),
-        logs: Default::default(),
     }));
 
     assert_eq!(

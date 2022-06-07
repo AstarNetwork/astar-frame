@@ -183,16 +183,10 @@ where
 {
     fn execute(
         &self,
-        address: H160,
-        input: &[u8],
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
+        handle: &mut impl PrecompileHandle,
     ) -> Option<PrecompileResult> {
-        match address {
-            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(
-                input, target_gas, context, is_static,
-            )),
+        match handle.code_address() {
+            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(handle,)),
             _ => None,
         }
     }
@@ -222,7 +216,6 @@ impl pallet_evm::Config for TestRuntime {
     type BlockGasLimit = ();
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
-    type WeightInfo = ();
 }
 
 parameter_types! {
