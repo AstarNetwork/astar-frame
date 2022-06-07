@@ -26,7 +26,7 @@ use sp_core::H256;
 use sp_runtime::{
     testing::{Header, UintAuthorityId},
     traits::{BlakeTwo256, IdentityLookup, OpaqueKeys},
-    RuntimeAppPublic,
+    Perbill, RuntimeAppPublic,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -78,6 +78,7 @@ impl system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -192,6 +193,7 @@ parameter_types! {
     pub const MaxInvulnerables: u32 = 20;
     pub const MinCandidates: u32 = 1;
     pub const MaxAuthorities: u32 = 100_000;
+    pub const SlashRatio: Perbill = Perbill::from_percent(10);
 }
 
 pub struct IsRegistered;
@@ -217,6 +219,7 @@ impl Config for Test {
     type ValidatorId = <Self as frame_system::Config>::AccountId;
     type ValidatorIdOf = IdentityCollator;
     type ValidatorRegistration = IsRegistered;
+    type SlashRatio = SlashRatio;
     type WeightInfo = ();
 }
 
@@ -226,29 +229,29 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
     let invulnerables = vec![1, 2];
-    let keys = invulnerables
+
+    let balances = vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)];
+    let keys = balances
         .iter()
-        .map(|i| {
+        .map(|&(i, _)| {
             (
-                *i,
-                *i,
+                i,
+                i,
                 MockSessionKeys {
-                    aura: UintAuthorityId(*i),
+                    aura: UintAuthorityId(i),
                 },
             )
         })
         .collect::<Vec<_>>();
-
-    let balances = pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)],
-    };
     let collator_selection = collator_selection::GenesisConfig::<Test> {
         desired_candidates: 2,
         candidacy_bond: 10,
         invulnerables,
     };
     let session = pallet_session::GenesisConfig::<Test> { keys };
-    balances.assimilate_storage(&mut t).unwrap();
+    pallet_balances::GenesisConfig::<Test> { balances }
+        .assimilate_storage(&mut t)
+        .unwrap();
     // collator selection must be initialized before session.
     collator_selection.assimilate_storage(&mut t).unwrap();
     session.assimilate_storage(&mut t).unwrap();
@@ -259,6 +262,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 pub fn initialize_to_block(n: u64) {
     for i in System::block_number() + 1..=n {
         System::set_block_number(i);
-        <AllPallets as frame_support::traits::OnInitialize<u64>>::on_initialize(i);
+        <AllPalletsWithSystem as frame_support::traits::OnInitialize<u64>>::on_initialize(i);
     }
 }

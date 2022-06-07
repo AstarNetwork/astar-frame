@@ -1,6 +1,6 @@
 [package]
 name = "pallet-precompile-dapps-staking"
-version = "1.1.0"
+version = "3.3.2"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -11,26 +11,30 @@ description = "dApps Staking EVM precompiles"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
-evm = { git = "https://github.com/AstarNetwork/evm", branch = "polkadot-v0.9.16", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-pallet-dapps-staking = { git = "https://github.com/AstarNetwork/astar-frame", tag = "polkadot-v0.9.16", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16",  default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
+precompile-utils = { path = "../utils", default-features = false }
+num_enum = { version = "0.5.3", default-features = false }
+log = "0.4"
+
+# Astar
+pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
 
 # Frontier
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.16", default-features = false }
-fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.16", default-features = false }
+pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.17", default-features = false }
+fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.17", default-features = false }
 
 [dev-dependencies]
 derive_more = "0.99"
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 serde = "1.0.100"
 sha3 = "0.9"
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16",  default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17",  default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 [features]
@@ -38,7 +42,6 @@ default = ["std"]
 std = [
     "codec/std",
     "scale-info/std",
-    "evm/std",
     "sp-std/std",
     "sp-core/std",
     "sp-runtime/std",

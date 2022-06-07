@@ -4,12 +4,13 @@ use super::*;
 use crate::Pallet as DappsStaking;
 
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_support::traits::{Get, OnFinalize, OnInitialize, OnUnbalanced};
+use frame_support::traits::{Get, OnFinalize, OnInitialize};
 use frame_system::{Pallet as System, RawOrigin};
 use sp_runtime::traits::{Bounded, One};
 
 const SEED: u32 = 9000;
-const BLOCK_REWARD: u32 = 1000u32;
+const STAKER_BLOCK_REWARD: u32 = 1234u32;
+const DAPP_BLOCK_REWARD: u32 = 9876u32;
 
 /// Used to prepare Dapps staking for testing.
 /// Resets all existing storage ensuring a clean run for the code that follows.
@@ -20,15 +21,24 @@ fn initialize<T: Config>() {
     Ledger::<T>::remove_all(None);
     RegisteredDevelopers::<T>::remove_all(None);
     RegisteredDapps::<T>::remove_all(None);
-    EraRewardsAndStakes::<T>::remove_all(None);
+    GeneralEraInfo::<T>::remove_all(None);
     ContractEraStake::<T>::remove_all(None);
+    GeneralStakerInfo::<T>::remove_all(None);
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
     PreApprovalIsEnabled::<T>::kill();
 
     // Initialize the first block.
-    DappsStaking::<T>::on_unbalanced(T::Currency::issue(BLOCK_REWARD.into()));
+    payout_block_rewards::<T>();
     DappsStaking::<T>::on_initialize(1u32.into());
+}
+
+/// Payout block rewards to stakers & dapps
+fn payout_block_rewards<T: Config>() {
+    DappsStaking::<T>::rewards(
+        T::Currency::issue(STAKER_BLOCK_REWARD.into()),
+        T::Currency::issue(DAPP_BLOCK_REWARD.into()),
+    );
 }
 
 /// Assert that the last event equals the provided one.
@@ -42,7 +52,7 @@ fn advance_to_era<T: Config>(n: EraIndex) {
         DappsStaking::<T>::on_finalize(System::<T>::block_number());
         System::<T>::set_block_number(System::<T>::block_number() + One::one());
         // This is performed outside of dapps staking but we expect it before on_initialize
-        DappsStaking::<T>::on_unbalanced(T::Currency::issue(BLOCK_REWARD.into()));
+        payout_block_rewards::<T>();
         DappsStaking::<T>::on_initialize(System::<T>::block_number());
     }
 }
@@ -102,14 +112,28 @@ benchmarks! {
     }
 
     unregister {
-        let n in 0 .. T::MaxNumberOfStakersPerContract::get();
         initialize::<T>();
         let (developer_id, contract_id) = register_contract::<T>()?;
-        prepare_bond_and_stake::<T>(n, &contract_id, SEED)?;
+        prepare_bond_and_stake::<T>(2, &contract_id, SEED)?;
 
-    }: _(RawOrigin::Signed(developer_id.clone()), contract_id.clone())
+    }: _(RawOrigin::Root, contract_id.clone())
     verify {
         assert_last_event::<T>(Event::<T>::ContractRemoved(developer_id, contract_id).into());
+    }
+
+    withdraw_from_unregistered {
+        initialize::<T>();
+        let (developer, contract_id) = register_contract::<T>()?;
+        let stakers = prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
+        let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
+
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount.clone())?;
+        DappsStaking::<T>::unregister(RawOrigin::Root.into(), contract_id.clone())?;
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    verify {
+        let staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
+        assert!(staker_info.latest_staked_value().is_zero());
     }
 
     enable_developer_pre_approval {
@@ -180,30 +204,93 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::Withdrawn(staker, unstake_amount).into());
     }
 
-    claim {
-        let n in 2 .. T::MaxNumberOfStakersPerContract::get();
-
+    claim_staker_with_restake {
         initialize::<T>();
-        let (developer_id, contract_id) = register_contract::<T>()?;
+        let (_, contract_id) = register_contract::<T>()?;
 
-        let number_of_stakers = n - 1;
+        let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
-        prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
 
+        DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::StakeBalance)?;
         advance_to_era::<T>(claim_era + 1u32);
 
-        let reward = DappsStaking::<T>::era_reward_and_stake(&claim_era).unwrap().rewards;
+    }: claim_staker(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    verify {
+        let mut staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
+        let (era, _) = staker_info.claim();
+        assert!(era > claim_era);
+    }
 
-        let claimer: T::AccountId = whitelisted_caller();
-    }: _(RawOrigin::Signed(claimer.clone()), contract_id.clone(), claim_era)
+    claim_staker_without_restake {
+        initialize::<T>();
+        let (_, contract_id) = register_contract::<T>()?;
+
+        let number_of_stakers = 3;
+        let claim_era = DappsStaking::<T>::current_era();
+        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
+
+        DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::FreeBalance)?;
+        advance_to_era::<T>(claim_era + 1u32);
+
+    }: claim_staker(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    verify {
+        let mut staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
+        let (era, _) = staker_info.claim();
+        assert!(era > claim_era);
+    }
+
+    claim_dapp {
+        initialize::<T>();
+        let (developer, contract_id) = register_contract::<T>()?;
+
+        let number_of_stakers = 3;
+        let claim_era = DappsStaking::<T>::current_era();
+        prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        advance_to_era::<T>(claim_era + 1u32);
+
+    }: _(RawOrigin::Signed(developer.clone()), contract_id.clone(), claim_era)
+    verify {
+        let staking_info = DappsStaking::<T>::contract_stake_info(&contract_id, claim_era).unwrap();
+        assert!(staking_info.contract_reward_claimed);
+    }
 
     force_new_era {
     }: _(RawOrigin::Root)
 
+    maintenance_mode {
+    }: _(RawOrigin::Root, true)
+
+    set_reward_destination {
+        initialize::<T>();
+
+        let option = RewardDestination::FreeBalance;
+        let (_, contract_id) = register_contract::<T>()?;
+
+        let number_of_stakers = 1;
+        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let staker = stakers[0].clone();
+    }: _(RawOrigin::Signed(staker.clone()), option)
+    verify {
+        assert_last_event::<T>(Event::<T>::RewardDestination(staker, option).into());
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::mock;
+    use sp_io::TestExternalities;
+
+    pub fn new_test_ext() -> TestExternalities {
+        mock::ExternalityBuilder::build()
+    }
 }
 
 impl_benchmark_test_suite!(
     DappsStaking,
-    crate::tests::new_test_ext(),
-    crate::tests::Test,
+    crate::benchmarking::tests::new_test_ext(),
+    crate::mock::TestRuntime,
 );
