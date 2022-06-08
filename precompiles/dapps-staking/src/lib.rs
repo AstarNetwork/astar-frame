@@ -119,6 +119,7 @@ where
         input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
+        println!("BOOOOM!    {:?}", input.read::<Bytes>());
         let staker_vec: Vec<u8> = input.read::<Bytes>()?.into();
         let staker = Self::parse_input_address(staker_vec)?;
 
@@ -144,6 +145,7 @@ where
 
         // parse input parameters for pallet-dapps-staking call
         let staker_vec: Vec<u8> = input.read::<Bytes>()?.into();
+
         let staker = Self::parse_input_address(staker_vec)?;
 
         // call pallet-dapps-staking
@@ -193,7 +195,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Lock up and stake balance of the origin account.
@@ -216,7 +218,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Start unbonding process and unstake balance from the contract.
@@ -239,7 +241,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Start unbonding process and unstake balance from the contract.
@@ -250,7 +252,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
@@ -272,7 +274,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
@@ -291,7 +293,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Set claim reward destination for the caller
@@ -322,7 +324,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
     /// Withdraw staked funds from the unregistered contract
     fn withdraw_from_unregistered(
@@ -343,7 +345,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
@@ -375,7 +377,7 @@ where
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
-        Ok(succeed([]))
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Helper method to decode type SmartContract enum

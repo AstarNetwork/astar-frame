@@ -18,7 +18,9 @@
 
 use super::*;
 use core::assert_matches::assert_matches;
-use fp_evm::{ExitSucceed, PrecompileOutput, PrecompileResult, PrecompileSet};
+use fp_evm::{
+    ExitReason, ExitSucceed, PrecompileOutput, PrecompileResult, PrecompileSet, Transfer,
+};
 use sp_std::boxed::Box;
 
 pub struct Subcall {
@@ -68,20 +70,6 @@ impl MockHandle {
             is_static: false,
         }
     }
-
-    // pub fn with_gas_limit(gas_limit: u64) -> Self {
-    // 	Self {
-    // 		gas_limit,
-    // 		gas_used: 0,
-    // 		logs: vec![],
-    // 		subcall_handle: None,
-    // 	}
-    // }
-
-    // pub fn with_subcall_handle(mut self, handle: Option<SubcallHandle>) -> Self {
-    // 	self.subcall_handle = handle;
-    // 	self
-    // }
 }
 
 impl PrecompileHandle for MockHandle {
@@ -280,14 +268,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
             handle.gas_limit = gas_limit;
         }
 
-        let res = self.precompiles.execute(
-            handle,
-            // self.to,
-            // &self.data,
-            // self.target_gas,
-            // &self.context,
-            // self.is_static,
-        );
+        let res = self.precompiles.execute(handle);
 
         self.subcall_handle = handle.subcall_handle.take();
 
@@ -305,7 +286,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
     /// Execute the precompile set and expect no precompile to have been executed.
     pub fn execute_none(mut self) {
         let res = self.execute();
-        assert!(res.is_some());
+        assert!(res.is_none());
         self.assert_optionals();
     }
 

@@ -4,6 +4,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
+    weights::RuntimeDbWeight,
     PalletId,
 };
 use pallet_dapps_staking::weights;
@@ -25,7 +26,9 @@ pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
 pub(crate) const MILLIAST: Balance = 1_000_000_000_000_000;
 pub(crate) const AST: Balance = 1_000 * MILLIAST;
-pub(crate) const TEST_CONTRACT: [u8; 20] = H160::repeat_byte(0x09).to_fixed_bytes();
+pub(crate) const TEST_CONTRACT_OLD: [u8; 20] = H160::repeat_byte(0x09).to_fixed_bytes();
+
+pub(crate) const TEST_CONTRACT: H160 = H160::repeat_byte(0x09);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
@@ -88,6 +91,17 @@ impl AddressMapping<AccountId32> for TestAccount {
     }
 }
 
+impl From<TestAccount> for H160 {
+    fn from(x: TestAccount) -> H160 {
+        match x {
+            TestAccount::Alex => H160::repeat_byte(0x01),
+            TestAccount::Bobo => H160::repeat_byte(0x02),
+            TestAccount::Dino => H160::repeat_byte(0x03),
+            _ => Default::default(),
+        }
+    }
+}
+
 impl TestAccount {
     pub(crate) fn to_h160(&self) -> H160 {
         match self {
@@ -121,10 +135,17 @@ impl From<TestAccount> for AccountId32 {
     }
 }
 
+pub const READ_WEIGHT: u64 = 3;
+pub const WRITE_WEIGHT: u64 = 7;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
         frame_system::limits::BlockWeights::simple_max(1024);
+    pub const TestWeights: RuntimeDbWeight = RuntimeDbWeight {
+        read: READ_WEIGHT,
+        write: WRITE_WEIGHT,
+    };
 }
 
 impl frame_system::Config for TestRuntime {
@@ -142,7 +163,7 @@ impl frame_system::Config for TestRuntime {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
+    type DbWeight = TestWeights;
     type Version = ();
     type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<Balance>;
@@ -181,12 +202,9 @@ where
     R: pallet_evm::Config,
     DappsStakingWrapper<R>: Precompile,
 {
-    fn execute(
-        &self,
-        handle: &mut impl PrecompileHandle,
-    ) -> Option<PrecompileResult> {
+    fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
         match handle.code_address() {
-            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(handle,)),
+            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(handle)),
             _ => None,
         }
     }
