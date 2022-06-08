@@ -33,6 +33,8 @@ derive_more = { version = "0.99" }
 serde = { version = "1.0.100" }
 sha3 = "0.10.1"
 
+precompile-utils = { path = "../utils", features = [ "testing" ] }
+
 codec = { package = "parity-scale-codec", version = "3.0.0", features = [ "max-encoded-len" ] }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 scale-info = { version = "2.1.0", default-features = false, features = [ "derive" ] }
@@ -47,6 +49,7 @@ std = [
 	"frame-system/std",
 	"pallet-assets/std",
 	"pallet-evm/std",
+	"pallet-balances/std",
 	"precompile-utils/std",
 	"sp-core/std",
 	"sp-io/std",
