@@ -13,11 +13,14 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    revert, succeed, Address, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
-use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::{
+    traits::{Saturating, Zero},
+    AccountId32,
+};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 extern crate alloc;
@@ -119,9 +122,10 @@ where
         input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        println!("BOOOOM!    {:?}", input.read::<Bytes>());
-        let staker_vec: Vec<u8> = input.read::<Bytes>()?.into();
-        let staker = Self::parse_input_address(staker_vec)?;
+        // TODO: make this simpler, possibly remove `parse_input_address` entirely
+        let x = input.read::<AccountId32>()?;
+        let staker_vec: &[u8; 32] = x.as_ref();
+        let staker = Self::parse_input_address(staker_vec.to_vec())?;
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
@@ -144,9 +148,10 @@ where
         let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let staker_vec: Vec<u8> = input.read::<Bytes>()?.into();
-
-        let staker = Self::parse_input_address(staker_vec)?;
+        // TODO: make this simpler, possibly remove `parse_input_address` entirely
+        let x = input.read::<AccountId32>()?;
+        let staker_vec: &[u8; 32] = x.as_ref();
+        let staker = Self::parse_input_address(staker_vec.to_vec())?;
 
         // call pallet-dapps-staking
         let staking_info = pallet_dapps_staking::GeneralStakerInfo::<R>::get(&staker, &contract_id);
@@ -280,7 +285,7 @@ where
     /// Claim rewards for the contract in the dapps-staking pallet
     fn claim_staker(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
-        input.expect_arguments(2)?;
+        input.expect_arguments(1)?;
 
         // parse contract's address
         let contract_h160 = input.read::<Address>()?.0;

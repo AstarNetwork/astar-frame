@@ -12,7 +12,7 @@ use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256, U256};
+use sp_core::{H160, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
@@ -26,7 +26,6 @@ pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
 pub(crate) const MILLIAST: Balance = 1_000_000_000_000_000;
 pub(crate) const AST: Balance = 1_000 * MILLIAST;
-pub(crate) const TEST_CONTRACT_OLD: [u8; 20] = H160::repeat_byte(0x09).to_fixed_bytes();
 
 pub(crate) const TEST_CONTRACT: H160 = H160::repeat_byte(0x09);
 
@@ -98,17 +97,6 @@ impl From<TestAccount> for H160 {
             TestAccount::Bobo => H160::repeat_byte(0x02),
             TestAccount::Dino => H160::repeat_byte(0x03),
             _ => Default::default(),
-        }
-    }
-}
-
-impl TestAccount {
-    pub(crate) fn to_h160(&self) -> H160 {
-        match self {
-            Self::Empty => Default::default(),
-            Self::Alex => H160::repeat_byte(0x01),
-            Self::Bobo => H160::repeat_byte(0x02),
-            Self::Dino => H160::repeat_byte(0x03),
         }
     }
 }
@@ -391,28 +379,4 @@ fn payout_block_rewards() {
         Balances::issue(STAKER_BLOCK_REWARD.into()),
         Balances::issue(DAPP_BLOCK_REWARD.into()),
     );
-}
-
-/// default evm context
-pub fn default_context() -> fp_evm::Context {
-    fp_evm::Context {
-        address: Default::default(),
-        caller: Default::default(),
-        apparent_value: U256::zero(),
-    }
-}
-
-/// returns call struct to be used with evm calls
-pub fn evm_call(source: AccountId32, input: Vec<u8>) -> pallet_evm::Call<TestRuntime> {
-    pallet_evm::Call::call {
-        source: source.to_h160(),
-        target: precompile_address(),
-        input,
-        value: U256::zero(),
-        gas_limit: u64::max_value(),
-        max_fee_per_gas: 0.into(),
-        max_priority_fee_per_gas: Some(U256::zero()),
-        nonce: None,
-        access_list: Vec::new(),
-    }
 }
