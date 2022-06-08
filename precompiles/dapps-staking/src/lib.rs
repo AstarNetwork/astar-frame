@@ -34,7 +34,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// Smart contract enum. TODO move this to Astar primitives.
 /// This is only used to encode SmartContract enum
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
 pub enum Contract<A> {
@@ -122,10 +121,9 @@ where
         input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        // TODO: make this simpler, possibly remove `parse_input_address` entirely
         let x = input.read::<AccountId32>()?;
         let staker_vec: &[u8; 32] = x.as_ref();
-        let staker = Self::parse_input_address(staker_vec.to_vec())?;
+        let staker = R::AccountId::from(*staker_vec);
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
@@ -148,10 +146,9 @@ where
         let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse input parameters for pallet-dapps-staking call
-        // TODO: make this simpler, possibly remove `parse_input_address` entirely
         let x = input.read::<AccountId32>()?;
         let staker_vec: &[u8; 32] = x.as_ref();
-        let staker = Self::parse_input_address(staker_vec.to_vec())?;
+        let staker = R::AccountId::from(*staker_vec);
 
         // call pallet-dapps-staking
         let staking_info = pallet_dapps_staking::GeneralStakerInfo::<R>::get(&staker, &contract_id);
@@ -402,32 +399,6 @@ where
         .map_err(|_| revert("Error while decoding SmartContract"))?;
 
         Ok(smart_contract)
-    }
-
-    /// Helper method to parse H160 or SS58 address
-    fn parse_input_address(staker_vec: Vec<u8>) -> EvmResult<R::AccountId> {
-        let staker: R::AccountId = match staker_vec.len() {
-            // public address of the ss58 account has 32 bytes
-            32 => {
-                let mut staker_bytes = [0_u8; 32];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..32]);
-
-                staker_bytes.into()
-            }
-            // public address of the H160 account has 20 bytes
-            20 => {
-                let mut staker_bytes = [0_u8; 20];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..20]);
-
-                R::AddressMapping::into_account_id(staker_bytes.into())
-            }
-            _ => {
-                // Return err if account length is wrong
-                return Err(revert("Error while parsing staker's address"));
-            }
-        };
-
-        Ok(staker)
     }
 }
 

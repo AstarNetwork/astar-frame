@@ -392,7 +392,7 @@ fn register_and_verify(developer: TestAccount, contract: H160) {
 }
 
 /// helper function to read ledger storage item
-fn read_staked_amount_h160_verify(staker: TestAccount, amount: u128) {
+fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
     precompiles()
         .prepare_test(
             staker.clone(),
@@ -419,7 +419,7 @@ fn bond_stake_and_verify(staker: TestAccount, contract: H160, amount: u128) {
         .expect_no_logs()
         .execute_returns(EvmDataWriter::new().write(true).build());
 
-    read_staked_amount_h160_verify(staker, amount);
+    read_staked_amount_verify(staker, amount);
 }
 
 /// helper function to unbond, unstake and verify if result is OK
@@ -435,9 +435,6 @@ fn unbond_unstake_and_verify(staker: TestAccount, contract: H160, amount: u128) 
         )
         .expect_no_logs()
         .execute_returns(EvmDataWriter::new().write(true).build());
-
-    // TODO: How does this check make sense? Shouldnt' the amount be old - unstaked?
-    read_staked_amount_h160_verify(staker.clone(), amount.clone());
 }
 
 /// helper function to withdraw unstaked funds and verify if result is OK
