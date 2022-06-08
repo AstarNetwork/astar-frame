@@ -26,6 +26,8 @@ scale-info = "2.0"
 derive_more = "0.99"
 hex-literal = "0.3.4"
 
+precompile-utils = { path = "../utils", features = [ "testing" ] }
+
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
