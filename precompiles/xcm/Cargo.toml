@@ -3,7 +3,7 @@ name = "pallet-evm-precompile-xcm"
 authors = [ "Stake Technologies <devops@stake.co.jp>" ]
 description = "Basic XCM support for EVM."
 edition = "2021"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 precompile-utils = { path = "../utils", default-features = false }
@@ -34,6 +34,8 @@ serde = "1.0.100"
 scale-info = "2.1.0"
 derive_more = "0.99"
 hex-literal = "0.3.4"
+
+precompile-utils = { path = "../utils", features = [ "testing" ] }
 
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }

@@ -31,7 +31,7 @@ pub type BlockNumber = u64;
 pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const PRECOMPILE_ADDRESS: u64 = 1;
+pub const PRECOMPILE_ADDRESS: H160 = H160::repeat_byte(0x7B);
 pub const ASSET_PRECOMPILE_ADDRESS_PREFIX: &[u8] = &[255u8; 4];
 
 #[derive(
@@ -69,7 +69,7 @@ impl AddressMapping<TestAccount> for TestAccount {
             a if a == H160::repeat_byte(0xAA) => Self::Alice,
             a if a == H160::repeat_byte(0xBB) => Self::Bob,
             a if a == H160::repeat_byte(0xCC) => Self::Charlie,
-            a if a == H160::from_low_u64_be(PRECOMPILE_ADDRESS) => Self::Precompile,
+            a if a == PRECOMPILE_ADDRESS => Self::Precompile,
             _ => Self::Bogus,
         }
     }
@@ -87,7 +87,7 @@ impl From<TestAccount> for H160 {
             TestAccount::Alice => H160::repeat_byte(0xAA),
             TestAccount::Bob => H160::repeat_byte(0xBB),
             TestAccount::Charlie => H160::repeat_byte(0xCC),
-            TestAccount::Precompile => H160::from_low_u64_be(PRECOMPILE_ADDRESS),
+            TestAccount::Precompile => PRECOMPILE_ADDRESS,
             TestAccount::Bogus => Default::default(),
         }
     }
@@ -167,31 +167,18 @@ where
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     XcmPrecompile<R, AssetIdConverter<AssetId>>: Precompile,
 {
-    fn execute(
-        &self,
-        address: H160,
-        input: &[u8],
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
-    ) -> Option<PrecompileResult> {
-        match address {
-            a if a == hash(PRECOMPILE_ADDRESS) => {
-                Some(XcmPrecompile::<R, AssetIdConverter<AssetId>>::execute(
-                    input, target_gas, context, is_static,
-                ))
-            }
+    fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+        match handle.code_address() {
+            a if a == PRECOMPILE_ADDRESS => Some(
+                XcmPrecompile::<R, AssetIdConverter<AssetId>>::execute(handle),
+            ),
             _ => None,
         }
     }
 
     fn is_precompile(&self, address: H160) -> bool {
-        address == hash(PRECOMPILE_ADDRESS)
+        address == PRECOMPILE_ADDRESS
     }
-}
-
-fn hash(a: u64) -> H160 {
-    H160::from_low_u64_be(a)
 }
 
 parameter_types! {
@@ -291,7 +278,6 @@ impl pallet_evm::Config for Runtime {
     type BlockGasLimit = ();
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -375,16 +361,5 @@ impl ExtBuilder {
         let mut ext = sp_io::TestExternalities::new(t);
         ext.execute_with(|| System::set_block_number(1));
         ext
-    }
-}
-
-// Helper function to give a simple evm context suitable for tests.
-// We can remove this once https://github.com/rust-blockchain/evm/pull/35
-// is in our dependency graph.
-pub fn evm_test_context() -> fp_evm::Context {
-    fp_evm::Context {
-        address: Default::default(),
-        caller: Default::default(),
-        apparent_value: From::from(0),
     }
 }
