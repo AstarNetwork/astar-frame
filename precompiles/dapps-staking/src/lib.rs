@@ -4,7 +4,7 @@
 #![cfg_attr(test, feature(assert_matches))]
 
 use codec::{Decode, Encode};
-use fp_evm::{Context, ExitSucceed, PrecompileOutput};
+use fp_evm::{PrecompileHandle, PrecompileOutput};
 
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
@@ -13,11 +13,14 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    Address, Bytes, EvmData, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
-    RuntimeHelper,
+    revert, succeed, Address, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
-use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::{
+    traits::{Saturating, Zero},
+    AccountId32,
+};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 extern crate alloc;
@@ -31,7 +34,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// Smart contract enum. TODO move this to Astar primitives.
 /// This is only used to encode SmartContract enum
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
 pub enum Contract<A> {
@@ -48,159 +50,122 @@ where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
     BalanceOf<R>: EvmData,
     <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
+    R::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     R::Call: From<pallet_dapps_staking::Call<R>>,
     R::AccountId: From<[u8; 32]>,
 {
     /// Fetch current era from CurrentEra storage map
-    fn read_current_era(gasometer: &mut Gasometer) -> EvmResult<PrecompileOutput> {
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn read_current_era(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
 
-        let output = EvmDataWriter::new().write(current_era).build();
-
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(current_era).build()))
     }
 
     /// Fetch unbonding period
-    fn read_unbonding_period(gasometer: &mut Gasometer) -> EvmResult<PrecompileOutput> {
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn read_unbonding_period(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let unbonding_period = R::UnbondingPeriod::get();
 
-        let output = EvmDataWriter::new().write(unbonding_period).build();
-
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(
+            EvmDataWriter::new().write(unbonding_period).build(),
+        ))
     }
 
     /// Fetch reward from EraRewardsAndStakes storage map
-    fn read_era_reward(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-    ) -> EvmResult<PrecompileOutput> {
-        input.expect_arguments(gasometer, 1)?;
+    fn read_era_reward(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let era: u32 = input.read::<u32>(gasometer)?.into();
+        let era: u32 = input.read::<u32>()?;
 
         // call pallet-dapps-staking
         let read_reward = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
         let reward = read_reward.map_or(Zero::zero(), |r| {
             r.rewards.stakers.saturating_add(r.rewards.dapps)
         });
-        // compose output
-        let output = EvmDataWriter::new().write(reward).build();
 
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(reward).build()))
     }
 
     /// Fetch total staked amount from EraRewardsAndStakes storage map
-    fn read_era_staked(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-    ) -> EvmResult<PrecompileOutput> {
-        input.expect_arguments(gasometer, 1)?;
+    fn read_era_staked(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         // parse input parameters for pallet-dapps-staking call
-        let era: u32 = input.read::<u32>(gasometer)?.into();
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+        let era: u32 = input.read::<u32>()?.into();
 
         // call pallet-dapps-staking
         let reward_and_stake = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
         // compose output
         let staked = reward_and_stake.map_or(Zero::zero(), |r| r.staked);
         let staked = TryInto::<u128>::try_into(staked).unwrap_or(0);
-        let output = EvmDataWriter::new().write(staked).build();
 
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(staked).build()))
     }
 
     /// Fetch Ledger storage map for an account
-    fn read_staked_amount(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-    ) -> EvmResult<PrecompileOutput> {
-        input.expect_arguments(gasometer, 1)?;
+    fn read_staked_amount(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let staker_vec: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
-        let staker = Self::parse_input_address(gasometer, staker_vec)?;
+        let x = input.read::<AccountId32>()?;
+        let staker_vec: &[u8; 32] = x.as_ref();
+        let staker = R::AccountId::from(*staker_vec);
 
         // call pallet-dapps-staking
         let ledger = pallet_dapps_staking::Ledger::<R>::get(&staker);
         log::trace!(target: "ds-precompile", "read_staked_amount for account:{:?}, ledger.locked:{:?}", staker, ledger.locked);
 
-        // compose output
-        let output = EvmDataWriter::new().write(ledger.locked).build();
-
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(ledger.locked).build()))
     }
 
     /// Read GeneralStakerInfo for account/contract
     fn read_staked_amount_on_contract(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
+        handle: &mut impl PrecompileHandle,
     ) -> EvmResult<PrecompileOutput> {
-        input.expect_arguments(gasometer, 2)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
 
         // parse contract address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let staker_vec: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
-        let staker = Self::parse_input_address(gasometer, staker_vec)?;
+        let x = input.read::<AccountId32>()?;
+        let staker_vec: &[u8; 32] = x.as_ref();
+        let staker = R::AccountId::from(*staker_vec);
 
         // call pallet-dapps-staking
         let staking_info = pallet_dapps_staking::GeneralStakerInfo::<R>::get(&staker, &contract_id);
         let staked_amount = staking_info.latest_staked_value();
         log::trace!(target: "ds-precompile", "read_staked_amount_on_contract for account:{:?}, contract: {:?} => staked_amount:{:?}", staker, contract_id, staked_amount);
 
-        // compose output
-        let output = EvmDataWriter::new().write(staked_amount).build();
-
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(staked_amount).build()))
     }
 
     /// Read the amount staked on contract in the given era
-    fn read_contract_stake(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-    ) -> EvmResult<PrecompileOutput> {
-        input.expect_arguments(gasometer, 1)?;
+    fn read_contract_stake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(2 * RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse input parameters for pallet-dapps-staking call
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
         let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
 
         // call pallet-dapps-staking
@@ -210,183 +175,134 @@ where
 
         // encode output with total
         let total = TryInto::<u128>::try_into(staking_info.total).unwrap_or(0);
-        let output = EvmDataWriter::new().write(total).build();
 
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output,
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(total).build()))
     }
 
     /// Register contract with the dapp-staking pallet
-    fn register(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn register(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
         log::trace!(target: "ds-precompile", "register {:?}", contract_id);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::register { contract_id }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Lock up and stake balance of the origin account.
-    fn bond_and_stake(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn bond_and_stake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse balance to be staked
-        let value: BalanceOf<R> = input.read(gasometer)?;
+        let value: BalanceOf<R> = input.read()?;
 
         log::trace!(target: "ds-precompile", "bond_and_stake {:?}, {:?}", contract_id, value);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::bond_and_stake { contract_id, value }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Start unbonding process and unstake balance from the contract.
-    fn unbond_and_unstake(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn unbond_and_unstake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse balance to be unstaked
-        let value: BalanceOf<R> = input.read(gasometer)?;
+        let value: BalanceOf<R> = input.read()?;
         log::trace!(target: "ds-precompile", "unbond_and_unstake {:?}, {:?}", contract_id, value);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call =
             pallet_dapps_staking::Call::<R>::unbond_and_unstake { contract_id, value }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Start unbonding process and unstake balance from the contract.
-    fn withdraw_unbonded(
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-
+    fn withdraw_unbonded(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::withdraw_unbonded {}.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
-    fn claim_dapp(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn claim_dapp(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse era
-        let era: u32 = input.read::<u32>(gasometer)?.into();
+        let era: u32 = input.read::<u32>()?.into();
         log::trace!(target: "ds-precompile", "claim_dapp {:?}, era {:?}", contract_id, era);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::claim_dapp { contract_id, era }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
-    fn claim_staker(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn claim_staker(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
         log::trace!(target: "ds-precompile", "claim_staker {:?}", contract_id);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::claim_staker { contract_id }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Set claim reward destination for the caller
-    fn set_reward_destination(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn set_reward_destination(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+
         // raw solidity representation of enum
-        let reward_destination_raw = input.read::<u8>(gasometer)?;
+        let reward_destination_raw = input.read::<u8>()?;
 
         // Transform raw value into dapps staking enum
         let reward_destination = if reward_destination_raw == 0 {
@@ -400,68 +316,58 @@ where
         };
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         log::trace!(target: "ds-precompile", "set_reward_destination {:?} {:?}", origin, reward_destination);
 
         let call =
             pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
     /// Withdraw staked funds from the unregistered contract
     fn withdraw_from_unregistered(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 1)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
 
         // parse contract's address
-        let contract_h160 = input.read::<Address>(gasometer)?.0;
-        let contract_id = Self::decode_smart_contract(gasometer, contract_h160)?;
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
         log::trace!(target: "ds-precompile", "withdraw_from_unregistered {:?}", contract_id);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call =
             pallet_dapps_staking::Call::<R>::withdraw_from_unregistered { contract_id }.into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Claim rewards for the contract in the dapps-staking pallet
-    fn nomination_transfer(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<(
-        <R::Call as Dispatchable>::Origin,
-        pallet_dapps_staking::Call<R>,
-    )> {
-        input.expect_arguments(gasometer, 3)?;
-        gasometer.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    fn nomination_transfer(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(3)?;
 
         // parse origin contract's address
-        let origin_contract_h160 = input.read::<Address>(gasometer)?.0;
-        let origin_contract_id = Self::decode_smart_contract(gasometer, origin_contract_h160)?;
+        let origin_contract_h160 = input.read::<Address>()?.0;
+        let origin_contract_id = Self::decode_smart_contract(origin_contract_h160)?;
 
         // parse balance to be transferred
-        let value = input.read::<BalanceOf<R>>(gasometer)?;
+        let value = input.read::<BalanceOf<R>>()?;
 
         // parse target contract's address
-        let target_contract_h160 = input.read::<Address>(gasometer)?.0;
-        let target_contract_id = Self::decode_smart_contract(gasometer, target_contract_h160)?;
+        let target_contract_h160 = input.read::<Address>()?.0;
+        let target_contract_id = Self::decode_smart_contract(target_contract_h160)?;
 
         log::trace!(target: "ds-precompile", "nomination_transfer {:?} {:?} {:?}", origin_contract_id, value, target_contract_id);
 
         // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(context.caller);
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_dapps_staking::Call::<R>::nomination_transfer {
             origin_contract_id,
             value,
@@ -469,13 +375,13 @@ where
         }
         .into();
 
-        // Return call information
-        Ok((Some(origin).into(), call))
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
     /// Helper method to decode type SmartContract enum
     pub fn decode_smart_contract(
-        gasometer: &mut Gasometer,
         contract_h160: H160,
     ) -> EvmResult<<R as pallet_dapps_staking::Config>::SmartContract> {
         // Encode contract address to fit SmartContract enum.
@@ -488,38 +394,9 @@ where
         let smart_contract = <R as pallet_dapps_staking::Config>::SmartContract::decode(
             &mut &contract_enum_encoded[..21],
         )
-        .map_err(|_| gasometer.revert("Error while decoding SmartContract"))?;
+        .map_err(|_| revert("Error while decoding SmartContract"))?;
 
         Ok(smart_contract)
-    }
-
-    /// Helper method to parse H160 or SS58 address
-    fn parse_input_address(
-        gasometer: &mut Gasometer,
-        staker_vec: Vec<u8>,
-    ) -> EvmResult<R::AccountId> {
-        let staker: R::AccountId = match staker_vec.len() {
-            // public address of the ss58 account has 32 bytes
-            32 => {
-                let mut staker_bytes = [0_u8; 32];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..32]);
-
-                staker_bytes.into()
-            }
-            // public address of the H160 account has 20 bytes
-            20 => {
-                let mut staker_bytes = [0_u8; 20];
-                staker_bytes[..].clone_from_slice(&staker_vec[0..20]);
-
-                R::AddressMapping::into_account_id(staker_bytes.into())
-            }
-            _ => {
-                // Return err if account length is wrong
-                return Err(gasometer.revert("Error while parsing staker's address"));
-            }
-        };
-
-        Ok(staker)
     }
 }
 
@@ -554,69 +431,43 @@ where
     BalanceOf<R>: EvmData,
     R::AccountId: From<[u8; 32]>,
 {
-    fn execute(
-        input: &[u8],
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
-    ) -> EvmResult<PrecompileOutput> {
-        log::trace!(target: "ds-precompile", "Execute input = {:?}", input);
-        let mut gasometer = Gasometer::new(target_gas);
-        let gasometer = &mut gasometer;
+    fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        log::trace!(target: "ds-precompile", "Execute input = {:?}", handle.input());
 
-        let (mut input, selector) = EvmDataReader::new_with_selector(gasometer, input)?;
-        let input = &mut input;
+        let selector = handle.read_selector()?;
 
-        gasometer.check_function_modifier(
-            context,
-            is_static,
-            match selector {
-                Action::ReadCurrentEra
-                | Action::ReadUnbondingPeriod
-                | Action::ReadEraReward
-                | Action::ReadEraStaked
-                | Action::ReadStakedAmount
-                | Action::ReadStakedAmountOnContract
-                | Action::ReadContractStake => FunctionModifier::View,
-                _ => FunctionModifier::NonPayable,
-            },
-        )?;
+        handle.check_function_modifier(match selector {
+            Action::ReadCurrentEra
+            | Action::ReadUnbondingPeriod
+            | Action::ReadEraReward
+            | Action::ReadEraStaked
+            | Action::ReadStakedAmount
+            | Action::ReadStakedAmountOnContract
+            | Action::ReadContractStake => FunctionModifier::View,
+            _ => FunctionModifier::NonPayable,
+        })?;
 
-        let (origin, call) = match selector {
+        match selector {
             // read storage
-            Action::ReadCurrentEra => return Self::read_current_era(gasometer),
-            Action::ReadUnbondingPeriod => return Self::read_unbonding_period(gasometer),
-            Action::ReadEraReward => return Self::read_era_reward(input, gasometer),
-            Action::ReadEraStaked => return Self::read_era_staked(input, gasometer),
-            Action::ReadStakedAmount => return Self::read_staked_amount(input, gasometer),
+            Action::ReadCurrentEra => return Self::read_current_era(handle),
+            Action::ReadUnbondingPeriod => return Self::read_unbonding_period(handle),
+            Action::ReadEraReward => return Self::read_era_reward(handle),
+            Action::ReadEraStaked => return Self::read_era_staked(handle),
+            Action::ReadStakedAmount => return Self::read_staked_amount(handle),
             Action::ReadStakedAmountOnContract => {
-                return Self::read_staked_amount_on_contract(input, gasometer)
+                return Self::read_staked_amount_on_contract(handle)
             }
-            Action::ReadContractStake => return Self::read_contract_stake(input, gasometer),
+            Action::ReadContractStake => return Self::read_contract_stake(handle),
             // Dispatchables
-            Action::Register => Self::register(input, gasometer, context)?,
-            Action::BondAndStake => Self::bond_and_stake(input, gasometer, context)?,
-            Action::UnbondAndUnstake => Self::unbond_and_unstake(input, gasometer, context)?,
-            Action::WithdrawUnbounded => Self::withdraw_unbonded(gasometer, context)?,
-            Action::ClaimDapp => Self::claim_dapp(input, gasometer, context)?,
-            Action::ClaimStaker => Self::claim_staker(input, gasometer, context)?,
-            Action::SetRewardDestination => {
-                Self::set_reward_destination(input, gasometer, context)?
-            }
-            Action::WithdrawFromUnregistered => {
-                Self::withdraw_from_unregistered(input, gasometer, context)?
-            }
-            Action::NominationTransfer => Self::nomination_transfer(input, gasometer, context)?,
-        };
-
-        // Dispatch call (if enough gas).
-        RuntimeHelper::<R>::try_dispatch(origin, call, gasometer)?;
-
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output: vec![],
-            logs: vec![],
-        })
+            Action::Register => Self::register(handle),
+            Action::BondAndStake => Self::bond_and_stake(handle),
+            Action::UnbondAndUnstake => Self::unbond_and_unstake(handle),
+            Action::WithdrawUnbounded => Self::withdraw_unbonded(handle),
+            Action::ClaimDapp => Self::claim_dapp(handle),
+            Action::ClaimStaker => Self::claim_staker(handle),
+            Action::SetRewardDestination => Self::set_reward_destination(handle),
+            Action::WithdrawFromUnregistered => Self::withdraw_from_unregistered(handle),
+            Action::NominationTransfer => Self::nomination_transfer(handle),
+        }
     }
 }

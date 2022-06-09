@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use fp_evm::{Context, ExitSucceed, PrecompileOutput};
+use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
 use sp_core::{H256, U256};
@@ -13,7 +13,8 @@ use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
 use precompile_utils::{
-    Address, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer, RuntimeHelper,
+    revert, succeed, Address, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
+    RuntimeHelper,
 };
 
 #[cfg(test)]
@@ -41,25 +42,16 @@ where
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
-    fn execute(
-        input: &[u8], //Reminder this is big-endian
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
-    ) -> EvmResult<PrecompileOutput> {
+    fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         log::trace!(target: "xcm-precompile", "In XCM precompile");
 
-        let mut gasometer = Gasometer::new(target_gas);
-        let gasometer = &mut gasometer;
+        let selector = handle.read_selector()?;
 
-        let (mut input, selector) = EvmDataReader::new_with_selector(gasometer, input)?;
-        let input = &mut input;
-
-        gasometer.check_function_modifier(context, is_static, FunctionModifier::NonPayable)?;
+        handle.check_function_modifier(FunctionModifier::NonPayable)?;
 
         match selector {
             // Dispatchables
-            Action::AssetsWithdraw => Self::assets_withdraw(input, gasometer, context),
+            Action::AssetsWithdraw => Self::assets_withdraw(handle),
         }
     }
 }
@@ -75,17 +67,13 @@ where
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
-    fn assets_withdraw(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        context: &Context,
-    ) -> EvmResult<PrecompileOutput> {
-        // Bound check
-        input.expect_arguments(gasometer, 6)?;
+    fn assets_withdraw(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(6)?;
 
         // Read arguments and check it
         let assets: Vec<MultiLocation> = input
-            .read::<Vec<Address>>(gasometer)?
+            .read::<Vec<Address>>()?
             .iter()
             .cloned()
             .filter_map(|address| {
@@ -95,7 +83,7 @@ where
             })
             .collect();
         let amounts: Vec<u128> = input
-            .read::<Vec<U256>>(gasometer)?
+            .read::<Vec<U256>>()?
             .iter()
             .map(|x| x.low_u128())
             .collect();
@@ -104,16 +92,16 @@ where
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
         if assets.len() != amounts.len() || assets.len() == 0 {
-            return Err(gasometer.revert("assets resolution failure"));
+            return Err(revert("Assets resolution failure."));
         }
 
-        let recipient: [u8; 32] = input.read::<H256>(gasometer)?.into();
-        let is_relay = input.read::<bool>(gasometer)?;
-        let parachain_id: u32 = input.read::<U256>(gasometer)?.low_u32();
-        let fee_asset_item: u32 = input.read::<U256>(gasometer)?.low_u32();
+        let recipient: [u8; 32] = input.read::<H256>()?.into();
+        let is_relay = input.read::<bool>()?;
+        let parachain_id: u32 = input.read::<U256>()?.low_u32();
+        let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
 
         if fee_asset_item as usize > assets.len() {
-            return Err(gasometer.revert("bad fee index"));
+            return Err(revert("Bad fee index."));
         }
 
         // Prepare pallet-xcm call arguments
@@ -138,7 +126,7 @@ where
             .into();
 
         // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(context.caller)).into();
+        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
         let call = pallet_xcm::Call::<R>::reserve_withdraw_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
@@ -148,13 +136,8 @@ where
         .into();
 
         // Dispatch a call.
-        RuntimeHelper::<R>::try_dispatch(origin, call, gasometer)?;
+        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
 
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output: EvmDataWriter::new().write(true).build(),
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 }

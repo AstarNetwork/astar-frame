@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use fp_evm::{Context, ExitSucceed, PrecompileOutput};
+use fp_evm::{PrecompileHandle, PrecompileOutput};
 use pallet_evm::Precompile;
 use sp_core::ecdsa;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
 use precompile_utils::{
-    Bytes, EvmDataReader, EvmDataWriter, EvmResult, FunctionModifier, Gasometer,
+    succeed, Bytes, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
 };
 
 #[cfg(test)]
@@ -26,54 +26,36 @@ pub enum Action {
 pub struct SubstrateEcdsaPrecompile<Runtime>(PhantomData<Runtime>);
 
 impl<Runtime: pallet_evm::Config> Precompile for SubstrateEcdsaPrecompile<Runtime> {
-    fn execute(
-        input: &[u8], //Reminder this is big-endian
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
-    ) -> EvmResult<PrecompileOutput> {
+    fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         log::trace!(target: "substrate-ecdsa-precompile", "In SubstrateEcdsa precompile");
 
-        let mut gasometer = Gasometer::new(target_gas);
-        let gasometer = &mut gasometer;
+        let selector = handle.read_selector()?;
 
-        let (mut input, selector) = EvmDataReader::new_with_selector(gasometer, input)?;
-        let input = &mut input;
-
-        gasometer.check_function_modifier(context, is_static, FunctionModifier::View)?;
+        handle.check_function_modifier(FunctionModifier::View)?;
 
         match selector {
             // Dispatchables
-            Action::Verify => Self::verify(input, gasometer, context),
+            Action::Verify => Self::verify(handle),
         }
     }
 }
 
 impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
-    fn verify(
-        input: &mut EvmDataReader,
-        gasometer: &mut Gasometer,
-        _: &Context,
-    ) -> EvmResult<PrecompileOutput> {
-        // Bound check
-        input.expect_arguments(gasometer, 3)?;
+    fn verify(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(3)?;
 
         // Parse arguments
-        let public_bytes: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
-        let signature_bytes: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
-        let message: Vec<u8> = input.read::<Bytes>(gasometer)?.into();
+        let public_bytes: Vec<u8> = input.read::<Bytes>()?.into();
+        let signature_bytes: Vec<u8> = input.read::<Bytes>()?.into();
+        let message: Vec<u8> = input.read::<Bytes>()?.into();
 
         // Parse public key
         let public = if let Ok(public) = ecdsa::Public::try_from(&public_bytes[..]) {
             public
         } else {
             // Return `false` if public key length is wrong
-            return Ok(PrecompileOutput {
-                exit_status: ExitSucceed::Returned,
-                cost: gasometer.used_gas(),
-                output: EvmDataWriter::new().write(false).build(),
-                logs: Default::default(),
-            });
+            return Ok(succeed(EvmDataWriter::new().write(false).build()));
         };
 
         // Parse signature
@@ -83,12 +65,7 @@ impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
             sig
         } else {
             // Return `false` if signature length is wrong
-            return Ok(PrecompileOutput {
-                exit_status: ExitSucceed::Returned,
-                cost: gasometer.used_gas(),
-                output: EvmDataWriter::new().write(false).build(),
-                logs: Default::default(),
-            });
+            return Ok(succeed(EvmDataWriter::new().write(false).build()));
         };
 
         log::trace!(
@@ -105,11 +82,6 @@ impl<Runtime: pallet_evm::Config> SubstrateEcdsaPrecompile<Runtime> {
             signature, is_confirmed,
         );
 
-        Ok(PrecompileOutput {
-            exit_status: ExitSucceed::Returned,
-            cost: gasometer.used_gas(),
-            output: EvmDataWriter::new().write(is_confirmed).build(),
-            logs: Default::default(),
-        })
+        Ok(succeed(EvmDataWriter::new().write(is_confirmed).build()))
     }
 }

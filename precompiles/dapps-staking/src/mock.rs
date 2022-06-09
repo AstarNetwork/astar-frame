@@ -4,6 +4,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
+    weights::RuntimeDbWeight,
     PalletId,
 };
 use pallet_dapps_staking::weights;
@@ -11,7 +12,7 @@ use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256, U256};
+use sp_core::{H160, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
@@ -25,7 +26,8 @@ pub(crate) type Balance = u128;
 pub(crate) type EraIndex = u32;
 pub(crate) const MILLIAST: Balance = 1_000_000_000_000_000;
 pub(crate) const AST: Balance = 1_000 * MILLIAST;
-pub(crate) const TEST_CONTRACT: [u8; 20] = H160::repeat_byte(0x09).to_fixed_bytes();
+
+pub(crate) const TEST_CONTRACT: H160 = H160::repeat_byte(0x09);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
@@ -88,13 +90,13 @@ impl AddressMapping<AccountId32> for TestAccount {
     }
 }
 
-impl TestAccount {
-    pub(crate) fn to_h160(&self) -> H160 {
-        match self {
-            Self::Empty => Default::default(),
-            Self::Alex => H160::repeat_byte(0x01),
-            Self::Bobo => H160::repeat_byte(0x02),
-            Self::Dino => H160::repeat_byte(0x03),
+impl From<TestAccount> for H160 {
+    fn from(x: TestAccount) -> H160 {
+        match x {
+            TestAccount::Alex => H160::repeat_byte(0x01),
+            TestAccount::Bobo => H160::repeat_byte(0x02),
+            TestAccount::Dino => H160::repeat_byte(0x03),
+            _ => Default::default(),
         }
     }
 }
@@ -121,10 +123,17 @@ impl From<TestAccount> for AccountId32 {
     }
 }
 
+pub const READ_WEIGHT: u64 = 3;
+pub const WRITE_WEIGHT: u64 = 7;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
         frame_system::limits::BlockWeights::simple_max(1024);
+    pub const TestWeights: RuntimeDbWeight = RuntimeDbWeight {
+        read: READ_WEIGHT,
+        write: WRITE_WEIGHT,
+    };
 }
 
 impl frame_system::Config for TestRuntime {
@@ -142,7 +151,7 @@ impl frame_system::Config for TestRuntime {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
+    type DbWeight = TestWeights;
     type Version = ();
     type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<Balance>;
@@ -181,18 +190,9 @@ where
     R: pallet_evm::Config,
     DappsStakingWrapper<R>: Precompile,
 {
-    fn execute(
-        &self,
-        address: H160,
-        input: &[u8],
-        target_gas: Option<u64>,
-        context: &Context,
-        is_static: bool,
-    ) -> Option<PrecompileResult> {
-        match address {
-            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(
-                input, target_gas, context, is_static,
-            )),
+    fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+        match handle.code_address() {
+            a if a == precompile_address() => Some(DappsStakingWrapper::<R>::execute(handle)),
             _ => None,
         }
     }
@@ -222,7 +222,6 @@ impl pallet_evm::Config for TestRuntime {
     type BlockGasLimit = ();
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -380,28 +379,4 @@ fn payout_block_rewards() {
         Balances::issue(STAKER_BLOCK_REWARD.into()),
         Balances::issue(DAPP_BLOCK_REWARD.into()),
     );
-}
-
-/// default evm context
-pub fn default_context() -> fp_evm::Context {
-    fp_evm::Context {
-        address: Default::default(),
-        caller: Default::default(),
-        apparent_value: U256::zero(),
-    }
-}
-
-/// returns call struct to be used with evm calls
-pub fn evm_call(source: AccountId32, input: Vec<u8>) -> pallet_evm::Call<TestRuntime> {
-    pallet_evm::Call::call {
-        source: source.to_h160(),
-        target: precompile_address(),
-        input,
-        value: U256::zero(),
-        gas_limit: u64::max_value(),
-        max_fee_per_gas: 0.into(),
-        max_priority_fee_per_gas: Some(U256::zero()),
-        nonce: None,
-        access_list: Vec::new(),
-    }
 }
