@@ -20,7 +20,6 @@ use crate::{revert, EvmResult};
 
 use alloc::borrow::ToOwned;
 use core::{any::type_name, ops::Range};
-use fp_evm::{ExitError, PrecompileFailure};
 use frame_support::sp_runtime::AccountId32;
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_core::{H160, H256, U256};
@@ -607,23 +606,25 @@ impl EvmData for Bytes {
 
 impl EvmData for AccountId32 {
     fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
-        let range = reader.move_cursor(32)?;
+        // AccountId32 is encoded as bytes
+        let data = Bytes::read(reader)?;
+        if data.as_bytes().len() != 32 {
+            return Err(revert(
+                "AccountId32 bytes should consist of exactly 32 bytes",
+            ));
+        }
 
-        let data = reader
-            .input
-            .get(range)
-            .ok_or_else(|| revert("tried to parse AccountId32 out of bounds"))?;
-
-        AccountId32::try_from(data).map_err(|_| PrecompileFailure::Error {
-            exit_status: ExitError::Other("Cannot parse AccountId32 address".into()),
-        })
+        AccountId32::try_from(data.as_bytes())
+            .map_err(|_| revert("Cannot parse AccountId32 address"))
     }
 
     fn write(writer: &mut EvmDataWriter, value: Self) {
-        writer.data.extend_from_slice(value.as_ref());
+        // AccountId32 is encoded as bytes
+        let bytes = <AccountId32 as AsRef<[u8]>>::as_ref(&value).into();
+        Bytes::write(writer, bytes);
     }
 
     fn has_static_size() -> bool {
-        true
+        false
     }
 }
