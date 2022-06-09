@@ -60,8 +60,6 @@ where
 
         let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
 
-        // let output = EvmDataWriter::new().write(current_era).build();
-
         Ok(succeed(EvmDataWriter::new().write(current_era).build()))
     }
 
