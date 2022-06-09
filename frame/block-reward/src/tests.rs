@@ -287,12 +287,18 @@ impl FreeBalanceSnapshot {
     /// Future balance changes won't be reflected in this instance.
     fn new() -> Self {
         Self {
-            treasury: <TestRuntime as Config>::Currency::free_balance(&TREASURY_POT.into_account()),
-            collators: <TestRuntime as Config>::Currency::free_balance(
-                &COLLATOR_POT.into_account(),
+            treasury: <TestRuntime as Config>::Currency::free_balance(
+                &TREASURY_POT.into_account_truncating(),
             ),
-            stakers: <TestRuntime as Config>::Currency::free_balance(&STAKERS_POT.into_account()),
-            dapps: <TestRuntime as Config>::Currency::free_balance(&DAPPS_POT.into_account()),
+            collators: <TestRuntime as Config>::Currency::free_balance(
+                &COLLATOR_POT.into_account_truncating(),
+            ),
+            stakers: <TestRuntime as Config>::Currency::free_balance(
+                &STAKERS_POT.into_account_truncating(),
+            ),
+            dapps: <TestRuntime as Config>::Currency::free_balance(
+                &DAPPS_POT.into_account_truncating(),
+            ),
         }
     }
 

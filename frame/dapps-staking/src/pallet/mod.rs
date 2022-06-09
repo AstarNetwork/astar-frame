@@ -1092,7 +1092,7 @@ pub mod pallet {
 
         /// Get AccountId assigned to the pallet.
         pub(crate) fn account_id() -> T::AccountId {
-            T::PalletId::get().into_account()
+            T::PalletId::get().into_account_truncating()
         }
 
         /// `Err` if pallet disabled for maintenance, `Ok` otherwise

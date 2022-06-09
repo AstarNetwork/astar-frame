@@ -51,7 +51,7 @@ pub(crate) fn free_balance_of_dapps_staking_account() -> Balance {
 
 /// Used to fetch pallet account Id
 pub(crate) fn account_id() -> AccountId {
-    <TestRuntime as Config>::PalletId::get().into_account()
+    <TestRuntime as Config>::PalletId::get().into_account_truncating()
 }
 
 /// Used to get total dapps reward for an era.
