@@ -392,13 +392,31 @@ fn register_and_verify(developer: TestAccount, contract: H160) {
 }
 
 /// helper function to read ledger storage item
-fn read_staked_amount_verify(staker: TestAccount, amount: u128) {
+fn read_staked_amount_h160_verify(staker: TestAccount, amount: u128) {
     precompiles()
         .prepare_test(
             staker.clone(),
             precompile_address(),
             EvmDataWriter::new_with_selector(Action::ReadStakedAmount)
-                .write(AccountId32::from(staker))
+                .write(Bytes(
+                    Into::<H160>::into(staker.clone()).to_fixed_bytes().to_vec(),
+                ))
+                .build(),
+        )
+        .expect_no_logs()
+        .execute_returns(EvmDataWriter::new().write(amount).build());
+}
+
+/// helper function to read ledger storage item for ss58 account
+fn read_staked_amount_ss58_verify(staker: TestAccount, amount: u128) {
+    let staker_acc_id: AccountId32 = staker.clone().into();
+
+    precompiles()
+        .prepare_test(
+            staker.clone(),
+            precompile_address(),
+            EvmDataWriter::new_with_selector(Action::ReadStakedAmount)
+                .write(Bytes(staker_acc_id.encode()))
                 .build(),
         )
         .expect_no_logs()
@@ -419,7 +437,8 @@ fn bond_stake_and_verify(staker: TestAccount, contract: H160, amount: u128) {
         .expect_no_logs()
         .execute_returns(EvmDataWriter::new().write(true).build());
 
-    read_staked_amount_verify(staker, amount);
+    read_staked_amount_h160_verify(staker.clone(), amount);
+    read_staked_amount_ss58_verify(staker, amount);
 }
 
 /// helper function to unbond, unstake and verify if result is OK
@@ -451,9 +470,7 @@ fn withdraw_unbonded_verify(staker: TestAccount) {
         .prepare_test(
             staker.clone(),
             precompile_address(),
-            EvmDataWriter::new_with_selector(Action::WithdrawUnbounded)
-                .write(staker_acc_id.clone())
-                .build(),
+            EvmDataWriter::new_with_selector(Action::WithdrawUnbounded).build(),
         )
         .expect_no_logs()
         .execute_returns(EvmDataWriter::new().write(true).build());
@@ -621,7 +638,9 @@ fn verify_staked_amount(contract: H160, staker: TestAccount, amount: Balance) {
             precompile_address(),
             EvmDataWriter::new_with_selector(Action::ReadStakedAmountOnContract)
                 .write(Address(contract.clone()))
-                .write(AccountId32::from(staker))
+                .write(Bytes(
+                    Into::<H160>::into(staker.clone()).to_fixed_bytes().to_vec(),
+                ))
                 .build(),
         )
         .expect_cost(READ_WEIGHT)

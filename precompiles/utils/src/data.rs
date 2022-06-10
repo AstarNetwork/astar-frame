@@ -20,8 +20,6 @@ use crate::{revert, EvmResult};
 
 use alloc::borrow::ToOwned;
 use core::{any::type_name, ops::Range};
-use fp_evm::{ExitError, PrecompileFailure};
-use frame_support::sp_runtime::AccountId32;
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_core::{H160, H256, U256};
 use sp_std::{convert::TryInto, vec, vec::Vec};
@@ -602,28 +600,5 @@ impl EvmData for Bytes {
 
     fn has_static_size() -> bool {
         false
-    }
-}
-
-impl EvmData for AccountId32 {
-    fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
-        let range = reader.move_cursor(32)?;
-
-        let data = reader
-            .input
-            .get(range)
-            .ok_or_else(|| revert("tried to parse AccountId32 out of bounds"))?;
-
-        AccountId32::try_from(data).map_err(|_| PrecompileFailure::Error {
-            exit_status: ExitError::Other("Cannot parse AccountId32 address".into()),
-        })
-    }
-
-    fn write(writer: &mut EvmDataWriter, value: Self) {
-        writer.data.extend_from_slice(value.as_ref());
-    }
-
-    fn has_static_size() -> bool {
-        true
     }
 }
