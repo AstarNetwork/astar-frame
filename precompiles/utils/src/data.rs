@@ -20,7 +20,6 @@ use crate::{revert, EvmResult};
 
 use alloc::borrow::ToOwned;
 use core::{any::type_name, ops::Range};
-use frame_support::sp_runtime::AccountId32;
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_core::{H160, H256, U256};
 use sp_std::{convert::TryInto, vec, vec::Vec};
@@ -597,31 +596,6 @@ impl EvmData for Bytes {
                 .write_raw_bytes(&value)
                 .build(),
         );
-    }
-
-    fn has_static_size() -> bool {
-        false
-    }
-}
-
-impl EvmData for AccountId32 {
-    fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
-        // AccountId32 is encoded as bytes
-        let data = Bytes::read(reader)?;
-        if data.as_bytes().len() != 32 {
-            return Err(revert(
-                "AccountId32 bytes should consist of exactly 32 bytes",
-            ));
-        }
-
-        AccountId32::try_from(data.as_bytes())
-            .map_err(|_| revert("Cannot parse AccountId32 address"))
-    }
-
-    fn write(writer: &mut EvmDataWriter, value: Self) {
-        // AccountId32 is encoded as bytes
-        let bytes = <AccountId32 as AsRef<[u8]>>::as_ref(&value).into();
-        Bytes::write(writer, bytes);
     }
 
     fn has_static_size() -> bool {
