@@ -37,6 +37,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 [features]
 default = [ "std" ]
 std = [
+    "num_enum/std",
     "codec/std",
     "fp-evm/std",
     "pallet-evm/std",
