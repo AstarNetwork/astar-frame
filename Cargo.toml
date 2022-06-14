@@ -7,6 +7,7 @@ members = [
     "frame/pallet-xcm",
     "frame/xc-asset-config",
     "frame/vesting",
+    "primitives/xcm",
     "precompiles/assets-erc20",
     "precompiles/dapps-staking",
     "precompiles/substrate-ecdsa",
