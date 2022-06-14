@@ -6,8 +6,9 @@
 //!
 //! - `AssetLocationIdConverter` - conversion between local asset Id and cross-chain asset multilocation
 //! - `FixedRateOfForeignAsset` - weight trader for execution payment in foreign asset
-//! - `
-//! Please refer to concrete
+//! - `ReserveAssetFilter` - used to check whether asset/origin are a valid reserve location
+//! 
+//! Please refer to implementation below for more info.
 //!
 
 #![cfg_attr(not(feature = "std"), no_std)]
