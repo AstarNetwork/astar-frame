@@ -2,48 +2,13 @@
 //!
 //! ## Overview
 //!
-//! Pallet that implements dapps staking protocol.
+//! Collection of common XCM primitives used by runtimes.
 //!
-//! Dapps staking protocol is a completely decentralized & innovative approach to reward developers for their contribution to the Astar/Shiden ecosystem.
-//! Stakers can pick a dapp and nominate it for rewards by locking their tokens. Dapps will be rewarded, based on the proportion of locked tokens.
-//! Stakers are also rewarded, based on the total amount they've locked (invariant of the dapp they staked on).
+//! - `AssetLocationIdConverter` - conversion between local asset Id and cross-chain asset multilocation
+//! - `FixedRateOfForeignAsset` - weight trader for execution payment in foreign asset
+//! - `
+//! Please refer to concrete
 //!
-//! Rewards are accumulated throughout an **era** and when **era** finishes, both stakers and developers can claim their rewards for that era.
-//! This is a continous process. Rewards can be claimed even for eras which are older than the last one (no limit at the moment).
-//!
-//! Reward claiming isn't automated since the whole process is done **on-chain** and is fully decentralized.
-//! Both stakers and developers are responsible for claiming their own rewards.
-//!
-//!
-//! ## Interface
-//!
-//! ### Dispatchable Function
-//!
-//! - `register` - used to register a new contract for dapps staking
-//! - `unregister` - used to unregister contract from dapps staking, making it ineligible for receiveing future rewards
-//! - `withdraw_from_unregistered` - used by stakers to withdraw their stake from an unregistered contract (no unbonding period)
-//! - `bond_and_stake` - basic call for nominating a dapp and locking stakers tokens into dapps staking
-//! - `unbond_and_unstake` - removes nomination from the contract, starting the unbonding process for the unstaked funds
-//! - `withdraw_unbonded` - withdraws all funds that have completed the unbonding period
-//! - `nomination_transfer` - transfer nomination from one contract to another contract (avoids unbonding period)
-//! - `claim_staker` - claims staker reward for a single era
-//! - `claim_dapp` - claims dapp rewards for the specified era
-//! - `force_new_era` - forces new era on the start of the next block
-//! - `developer_pre_approval` - adds developer account to the pre-approved developers
-//! - `enable_developer_pre_approval` - enables or disables developer pre-approval check for dApp registration
-//! - `maintenance_mode` - enables or disables pallet maintenance mode
-//! - `set_reward_destination` - sets reward destination for the staker rewards
-//! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)
-//!
-//! User is encouraged to refer to specific function implementations for more comprehensive documentation.
-//!
-//! ### Other
-//!
-//! - `on_initialize` - part of `Hooks` trait, it's important to call this per block since it handles reward snapshots and era advancement.
-//! - `account_id` - returns pallet's account Id
-//! - `ensure_pallet_enabled` - checks whether pallet is in maintenance mode or not and returns appropriate `Result`
-//! - `rewards` - used to deposit staker and dapps rewards into dApps staking reward pool
-//! - `tvl` - total value
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -228,10 +193,8 @@ impl FilterAssetLocation for ReserveAssetFilter {
         };
 
         if let Some(ref reserve) = reserve_location {
-            println!("HERE! {:?}    {:?}", origin, reserve);
             origin == reserve
         } else {
-            println!("Ended as NONE");
             false
         }
     }
