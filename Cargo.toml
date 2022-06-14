@@ -6,6 +6,7 @@ members = [
     "frame/dapps-staking",
     "frame/pallet-xcm",
     "frame/xc-asset-config",
+    "frame/vesting",
     "precompiles/assets-erc20",
     "precompiles/dapps-staking",
     "precompiles/substrate-ecdsa",
