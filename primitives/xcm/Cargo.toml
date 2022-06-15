@@ -1,6 +1,6 @@
 [package]
 name = "xcm-primitives"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 description = "Common XCM primitives used by runtimes"
 edition = "2021"
@@ -11,14 +11,14 @@ edition = "2021"
 log = { version = "0.4", default-features = false }
 
 # Substrate dependencies
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
 # XCM dependencies
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
 
 # Astar pallets
 pallet-xc-asset-config = { path = "../../frame/xc-asset-config", default-features = false }
