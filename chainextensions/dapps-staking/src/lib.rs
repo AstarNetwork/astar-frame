@@ -1,12 +1,20 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 use sp_runtime::DispatchError;
-// use sp_std::vec::Vec;
 
-mod extension_traits;
-use extension_traits::AstarChainExtension;
 use codec::Encode;
 use frame_support::log::{error, trace};
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
 use pallet_dapps_staking;
+
+pub trait AstarChainExtension {
+    fn execute_func<E: Ext>(
+        func_id: u32,
+        env: Environment<E, InitState>,
+    ) -> Result<(), DispatchError>
+    where
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+        E: pallet_dapps_staking::pallet::pallet::Config;
+}
 
 pub struct DappsStakingExtension;
 impl AstarChainExtension for DappsStakingExtension {
@@ -16,7 +24,7 @@ impl AstarChainExtension for DappsStakingExtension {
     ) -> Result<(), DispatchError>
     where
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-        E: pallet_dapps_staking::Config,
+        E: pallet_dapps_staking::pallet::pallet::Config,
     {
         let mut env = env.buf_in_buf_out();
         match func_id {
@@ -41,7 +49,7 @@ impl AstarChainExtension for DappsStakingExtension {
             // DappsStaking - general_era_info()
             2 => {
                 let arg: u32 = env.read_as()?;
-                let era_info =pallet_dapps_staking::GeneralEraInfo::<E>::get(arg)
+                let era_info = pallet_dapps_staking::GeneralEraInfo::<E>::get(arg)
                     .ok_or(DispatchError::Other("general_era_info call failed"));
                 let era_info_encoded = era_info.encode();
                 trace!(
