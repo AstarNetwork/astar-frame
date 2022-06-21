@@ -7,30 +7,29 @@ use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, 
 use pallet_dapps_staking;
 
 pub trait AstarChainExtension {
-    fn execute_func<E: Ext>(
+    fn execute_func<E, R>(
         func_id: u32,
         env: Environment<E, InitState>,
     ) -> Result<(), DispatchError>
     where
+        E: Ext,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-        E: pallet_dapps_staking::pallet::pallet::Config;
+        R: pallet_dapps_staking::Config;
 }
 
 pub struct DappsStakingExtension;
 impl AstarChainExtension for DappsStakingExtension {
-    fn execute_func<E: Ext>(
-        func_id: u32,
-        env: Environment<E, InitState>,
-    ) -> Result<(), DispatchError>
+    fn execute_func<E, R>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
     where
+        E: Ext,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-        E: pallet_dapps_staking::pallet::pallet::Config,
+        R: pallet_dapps_staking::Config,
     {
         let mut env = env.buf_in_buf_out();
         match func_id {
             // DappsStaking - current_era()
             1 => {
-                let current_era = pallet_dapps_staking::CurrentEra::<E>::get();
+                let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
                 let current_era_encoded = current_era.encode();
                 trace!(
                     target: "runtime",
@@ -49,7 +48,7 @@ impl AstarChainExtension for DappsStakingExtension {
             // DappsStaking - general_era_info()
             2 => {
                 let arg: u32 = env.read_as()?;
-                let era_info = pallet_dapps_staking::GeneralEraInfo::<E>::get(arg)
+                let era_info = pallet_dapps_staking::GeneralEraInfo::<R>::get(arg)
                     .ok_or(DispatchError::Other("general_era_info call failed"));
                 let era_info_encoded = era_info.encode();
                 trace!(
