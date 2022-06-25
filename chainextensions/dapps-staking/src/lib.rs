@@ -2,7 +2,7 @@
 use sp_runtime::DispatchError;
 
 use codec::Encode;
-use frame_support::log::{error, trace};
+use frame_support::log::trace;
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
 use pallet_dapps_staking;
 
@@ -17,6 +17,27 @@ pub trait AstarChainExtension {
         R: pallet_dapps_staking::Config;
 }
 
+enum DappsStakingFunc {
+    CurrentEra = 1,
+    GeneralEraInfo = 2,
+}
+
+impl TryFrom<u32> for DappsStakingFunc {
+    type Error = DispatchError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            1 => return Ok(DappsStakingFunc::CurrentEra),
+            2 => return Ok(DappsStakingFunc::GeneralEraInfo),
+            _ => {
+                return Err(DispatchError::Other(
+                    "DappsStakingExtension: Unimplemented func_id",
+                ))
+            }
+        }
+    }
+}
+
 pub struct DappsStakingExtension;
 impl AstarChainExtension for DappsStakingExtension {
     fn execute_func<E, R>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -25,16 +46,16 @@ impl AstarChainExtension for DappsStakingExtension {
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
         R: pallet_dapps_staking::Config,
     {
+        let func_id = DappsStakingFunc::try_from(func_id)?;
         let mut env = env.buf_in_buf_out();
         match func_id {
             // DappsStaking - current_era()
-            1 => {
+            DappsStakingFunc::CurrentEra => {
                 let current_era = pallet_dapps_staking::CurrentEra::<R>::get();
                 let current_era_encoded = current_era.encode();
                 trace!(
                     target: "runtime",
-                    "[ChainExtension]|call|func_id:{:} current_era:{:?}",
-                    func_id,
+                    "[ChainExtension]|call| current_era:{:?}",
                     &current_era_encoded
                 );
 
@@ -46,15 +67,14 @@ impl AstarChainExtension for DappsStakingExtension {
             }
 
             // DappsStaking - general_era_info()
-            2 => {
+            DappsStakingFunc::GeneralEraInfo => {
                 let arg: u32 = env.read_as()?;
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<R>::get(arg)
                     .ok_or(DispatchError::Other("general_era_info call failed"));
                 let era_info_encoded = era_info.encode();
                 trace!(
                     target: "runtime",
-                    "[ChainExtension]|call|func_id:{:} era_info_encoded:{:?}",
-                    func_id,
+                    "[ChainExtension]|call era_info_encoded:{:?}",
                     &era_info_encoded
                 );
 
@@ -63,12 +83,6 @@ impl AstarChainExtension for DappsStakingExtension {
                         "ChainExtension DappsStakingExtension failed to write result",
                     )
                 })?;
-            }
-            _ => {
-                error!("Called an unregistered `func_id`: {:}", func_id);
-                return Err(DispatchError::Other(
-                    "DappsStakingExtension: Unimplemented func_id",
-                ));
             }
         }
         Ok(())
