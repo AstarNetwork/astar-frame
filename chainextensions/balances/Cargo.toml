@@ -23,7 +23,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 log = "0.4.16"
 
 # Astar
-chain-extension-traits = { path = "../traits" }
+chain-extension-traits = { path = "../traits", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
 [features]
