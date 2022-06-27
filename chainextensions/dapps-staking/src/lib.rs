@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use sp_runtime::DispatchError;
+use chain_extension_traits::ChainExtension;
 use codec::Encode;
 use frame_support::log::{error, trace};
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
-use chain_extension_traits::ChainExtension;
+use sp_runtime::DispatchError;
 
 pub struct DappsStakingExtension;
 
