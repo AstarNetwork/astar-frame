@@ -14,5 +14,7 @@ members = [
     "precompiles/sr25519",
     "precompiles/utils",
     "precompiles/xcm",
+    "chainextensions/traits",
+    "chainextensions/balances",
     "chainextensions/dapps-staking",
 ]

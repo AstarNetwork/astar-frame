@@ -1,5 +1,5 @@
 [package]
-name = "pallet-chain-extension-dapps-staking"
+name = "chain-extension-balances"
 version = "4.0.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
@@ -24,7 +24,7 @@ log = "0.4.16"
 
 # Astar
 chain-extension-traits = { path = "../traits", default-features = false }
-pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
 [features]
 default = ["std"]
@@ -36,7 +36,7 @@ std = [
     "pallet-contracts/std",
     "pallet-contracts-primitives/std",
     "pallet-contracts-rpc-runtime-api/std",
-    "pallet-dapps-staking/std",
+    "pallet-balances/std",
     "scale-info/std",
     "sp-std/std",
     "sp-core/std",
