@@ -1,29 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use sp_runtime::DispatchError;
-
 use codec::Encode;
 use frame_support::log::{error, trace};
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
-use pallet_dapps_staking;
-
-pub trait AstarChainExtension {
-    fn execute_func<E, R>(
-        func_id: u32,
-        env: Environment<E, InitState>,
-    ) -> Result<(), DispatchError>
-    where
-        E: Ext,
-        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-        R: pallet_dapps_staking::Config;
-}
+use chain_extension_traits::ChainExtension;
 
 pub struct DappsStakingExtension;
-impl AstarChainExtension for DappsStakingExtension {
-    fn execute_func<E, R>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
+
+impl<R: pallet_dapps_staking::Config> ChainExtension<R> for DappsStakingExtension {
+    fn execute_func<E>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
     where
-        E: Ext,
+        E: Ext<T = R>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-        R: pallet_dapps_staking::Config,
     {
         let mut env = env.buf_in_buf_out();
         match func_id {
