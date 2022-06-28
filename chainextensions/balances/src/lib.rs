@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use chain_extension_traits::ChainExtension;
+use chain_extension_traits::ChainExtensionExec;
 use codec::Encode;
 use frame_support::log::{error, trace};
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
@@ -7,10 +7,10 @@ use sp_runtime::DispatchError;
 
 pub struct BalancesExtension;
 
-impl<R: pallet_balances::Config> ChainExtension<R> for BalancesExtension {
+impl<T: pallet_balances::Config> ChainExtensionExec<T> for BalancesExtension {
     fn execute_func<E>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
     where
-        E: Ext<T = R>,
+        E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let mut env = env.buf_in_buf_out();
@@ -18,7 +18,7 @@ impl<R: pallet_balances::Config> ChainExtension<R> for BalancesExtension {
             // Balances - free_balance()
             1 => {
                 let arg: <E::T as SysConfig>::AccountId = env.read_as()?;
-                let free_balance = pallet_balances::Pallet::<R>::free_balance(arg.clone());
+                let free_balance = pallet_balances::Pallet::<T>::free_balance(arg.clone());
                 let free_balance_encoded = free_balance.encode();
                 trace!(
                     target: "runtime",
@@ -34,7 +34,7 @@ impl<R: pallet_balances::Config> ChainExtension<R> for BalancesExtension {
             // balances - usable_balance()
             2 => {
                 let arg: <E::T as SysConfig>::AccountId = env.read_as()?;
-                let usable_balance = pallet_balances::Pallet::<R>::usable_balance(arg.clone());
+                let usable_balance = pallet_balances::Pallet::<T>::usable_balance(arg.clone());
                 let usable_balance_encoded = usable_balance.encode();
                 trace!(
                     target: "runtime",
