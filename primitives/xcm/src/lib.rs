@@ -207,8 +207,8 @@ impl FilterAssetLocation for ReserveAssetFilter {
 
 /// Used to deposit XCM fees into a destination account.
 ///
-/// Only handles fungible assets for now. If for any reason taking of the fee fails, it will be burned.
-/// Error trace will be printed.
+/// Only handles fungible assets for now.
+/// If for any reason taking of the fee fails, it will be burned and and error trace will be printed.
 ///
 pub struct XcmFungibleFeeHandler<AccountId, Matcher, Assets, FeeDestination>(
     sp_std::marker::PhantomData<(AccountId, Matcher, Assets, FeeDestination)>,
