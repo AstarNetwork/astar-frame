@@ -7,20 +7,24 @@
 //! - `AssetLocationIdConverter` - conversion between local asset Id and cross-chain asset multilocation
 //! - `FixedRateOfForeignAsset` - weight trader for execution payment in foreign asset
 //! - `ReserveAssetFilter` - used to check whether asset/origin are a valid reserve location
+//! - `XcmFungibleFeeHandler` - used to handle XCM fee execution fees
 //!
 //! Please refer to implementation below for more info.
 //!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
-use sp_runtime::traits::Bounded;
+use frame_support::{
+    traits::{tokens::fungibles, Get},
+    weights::{constants::WEIGHT_PER_SECOND, Weight},
+};
+use sp_runtime::traits::{Bounded, Zero};
 use sp_std::{borrow::Borrow, marker::PhantomData};
 
 // Polkadot imports
 use xcm::latest::prelude::*;
 use xcm_builder::TakeRevenue;
-use xcm_executor::traits::{FilterAssetLocation, WeightTrader};
+use xcm_executor::traits::{FilterAssetLocation, MatchesFungibles, WeightTrader};
 
 use pallet_xc_asset_config::{ExecutionPaymentRate, XcAssetLocation};
 
@@ -197,6 +201,50 @@ impl FilterAssetLocation for ReserveAssetFilter {
             origin == reserve
         } else {
             false
+        }
+    }
+}
+
+/// Used to deposit XCM fees into a destination account.
+///
+/// Only handles fungible assets for now.
+/// If for any reason taking of the fee fails, it will be burned and and error trace will be printed.
+///
+pub struct XcmFungibleFeeHandler<AccountId, Matcher, Assets, FeeDestination>(
+    sp_std::marker::PhantomData<(AccountId, Matcher, Assets, FeeDestination)>,
+);
+impl<
+        AccountId,
+        Assets: fungibles::Mutate<AccountId>,
+        Matcher: MatchesFungibles<Assets::AssetId, Assets::Balance>,
+        FeeDestination: Get<AccountId>,
+    > TakeRevenue for XcmFungibleFeeHandler<AccountId, Matcher, Assets, FeeDestination>
+{
+    fn take_revenue(revenue: MultiAsset) {
+        match Matcher::matches_fungibles(&revenue) {
+            Ok((asset_id, amount)) => {
+                if amount > Zero::zero() {
+                    if let Err(error) = Assets::mint_into(asset_id, &FeeDestination::get(), amount)
+                    {
+                        log::error!(
+                            target: "xcm::weight",
+                            "XcmFeeHandler::take_revenue failed when minting asset: {:?}", error,
+                        );
+                    } else {
+                        log::trace!(
+                            target: "xcm::weight",
+                            "XcmFeeHandler::take_revenue took {:?} of asset Id {:?}",
+                            amount, asset_id,
+                        );
+                    }
+                }
+            }
+            Err(_) => {
+                log::error!(
+                    target: "xcm::weight",
+                    "XcmFeeHandler:take_revenue failed to match fungible asset, it has been burned."
+                );
+            }
         }
     }
 }

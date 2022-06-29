@@ -1,6 +1,6 @@
 [package]
 name = "xcm-primitives"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 description = "Common XCM primitives used by runtimes"
 edition = "2021"
