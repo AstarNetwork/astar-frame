@@ -1,11 +1,11 @@
  pragma solidity ^0.8.0;
 
     /**
-     * @title ERC20 interface
+     * @title ERC20 interface extended by additional methods
      * @dev see https://github.com/ethereum/EIPs/issues/20
      * @dev copied from https://github.com/OpenZeppelin/openzeppelin-contracts
      */
-    interface IERC20 {
+    interface IERC20Plus {
         
     /**
     * @dev Returns the name of the token.
@@ -121,9 +121,17 @@
 
     /**
      * @dev Mints the specified amount of asset for the beneficiary.
-     * This operation will increase total supply.
-     * Only usable by asset owner (issuer).
+     * This operation will increase the total supply.
+     * Only usable by asset admin.
      * Selector: 40c10f19
      */
     function mint(address beneficiary, uint256 amount) external view returns (bool);
+
+    /**
+     * @dev Burns by up to the specified amount of asset from the target.
+     * This operation will increase decrease the total supply.
+     * Only usable by asset admin.
+     * Selector: 9dc29fac
+     */
+    function burn(address who, uint256 amount) external view returns (bool);
 }

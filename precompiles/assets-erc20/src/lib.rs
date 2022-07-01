@@ -72,6 +72,7 @@ pub enum Action {
     Decimals = "decimals()",
     MinimumBalance = "minimumBalance()",
     Mint = "mint(address,uint256)",
+    Burn = "burn(address,uint256)",
 }
 
 /// This trait ensure we can convert EVM address to AssetIds
@@ -149,6 +150,7 @@ where
                         // XC20+
                         Action::MinimumBalance => Self::minimum_balance(asset_id, handle),
                         Action::Mint => Self::mint(asset_id, handle),
+                        Action::Burn => Self::burn(asset_id, handle),
                     }
                 };
                 return Some(result);
@@ -472,41 +474,52 @@ where
         asset_id: AssetIdOf<Runtime, Instance>,
         handle: &mut impl PrecompileHandle,
     ) -> EvmResult<PrecompileOutput> {
-        // TODO: check this
-        handle.record_log_costs_manual(3, 32)?;
-
         let mut input = handle.read_input()?;
         input.expect_arguments(2)?;
 
         let beneficiary: H160 = input.read::<Address>()?.into();
         let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
 
-        // Build call with origin.
-        {
-            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-            let beneficiary = Runtime::AddressMapping::into_account_id(beneficiary);
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let beneficiary = Runtime::AddressMapping::into_account_id(beneficiary);
 
-            // Dispatch call (if enough gas).
-            RuntimeHelper::<Runtime>::try_dispatch(
-                handle,
-                Some(origin).into(),
-                pallet_assets::Call::<Runtime, Instance>::mint {
-                    id: asset_id,
-                    beneficiary: Runtime::Lookup::unlookup(beneficiary),
-                    amount,
-                },
-            )?;
-        }
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::mint {
+                id: asset_id,
+                beneficiary: Runtime::Lookup::unlookup(beneficiary),
+                amount,
+            },
+        )?;
 
-        // TODO
-        // LogsBuilder::new(handle.context().address)
-        //     .log3(
-        //         SELECTOR_LOG_TRANSFER,
-        //         handle.context().caller,
-        //         to,
-        //         EvmDataWriter::new().write(amount).build(),
-        //     )
-        //     .record(handle)?;
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn burn(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let who: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let who = Runtime::AddressMapping::into_account_id(who);
+
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::burn {
+                id: asset_id,
+                who: Runtime::Lookup::unlookup(who),
+                amount,
+            },
+        )?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
