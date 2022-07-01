@@ -108,4 +108,22 @@
         address indexed spender,
         uint256 value
     );
+
+    /**************************/
+    /********** XC20+ *********/
+    /**************************/
+
+    /**
+     * @dev Returns minimum balance an account must have to exist
+     * Selector: b9d1d49b
+     */
+    function minimumBalance() external view returns (uint256);
+
+    /**
+     * @dev Mints the specified amount of asset for the beneficiary.
+     * This operation will increase total supply.
+     * Only usable by asset owner (issuer).
+     * Selector: 40c10f19
+     */
+    function mint(address beneficiary, uint256 amount) external view returns (bool);
 }

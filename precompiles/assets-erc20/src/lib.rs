@@ -70,6 +70,8 @@ pub enum Action {
     Name = "name()",
     Symbol = "symbol()",
     Decimals = "decimals()",
+    MinimumBalance = "minimumBalance()",
+    Mint = "mint(address,uint256)",
 }
 
 /// This trait ensure we can convert EVM address to AssetIds
@@ -134,6 +136,7 @@ where
                     }
 
                     match selector {
+                        // XC20
                         Action::TotalSupply => Self::total_supply(asset_id, handle),
                         Action::BalanceOf => Self::balance_of(asset_id, handle),
                         Action::Allowance => Self::allowance(asset_id, handle),
@@ -143,6 +146,9 @@ where
                         Action::Name => Self::name(asset_id, handle),
                         Action::Symbol => Self::symbol(asset_id, handle),
                         Action::Decimals => Self::decimals(asset_id, handle),
+                        // XC20+
+                        Action::MinimumBalance => Self::minimum_balance(asset_id, handle),
+                        Action::Mint => Self::mint(asset_id, handle),
                     }
                 };
                 return Some(result);
@@ -448,5 +454,60 @@ where
                 ))
                 .build(),
         ))
+    }
+
+    fn minimum_balance(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<Runtime>::db_read_gas_cost())?;
+
+        let min_balance: U256 =
+            pallet_assets::Pallet::<Runtime, Instance>::minimum_balance(asset_id).into();
+
+        Ok(succeed(EvmDataWriter::new().write(min_balance).build()))
+    }
+
+    fn mint(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        // TODO: check this
+        handle.record_log_costs_manual(3, 32)?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let beneficiary: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let beneficiary = Runtime::AddressMapping::into_account_id(beneficiary);
+
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::mint {
+                    id: asset_id,
+                    beneficiary: Runtime::Lookup::unlookup(beneficiary),
+                    amount,
+                },
+            )?;
+        }
+
+        // TODO
+        // LogsBuilder::new(handle.context().address)
+        //     .log3(
+        //         SELECTOR_LOG_TRANSFER,
+        //         handle.context().caller,
+        //         to,
+        //         EvmDataWriter::new().write(amount).build(),
+        //     )
+        //     .record(handle)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 }

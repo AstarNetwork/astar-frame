@@ -77,6 +77,8 @@ fn selectors() {
     assert_eq!(Action::Name as u32, 0x06fdde03);
     assert_eq!(Action::Symbol as u32, 0x95d89b41);
     assert_eq!(Action::Decimals as u32, 0x313ce567);
+    assert_eq!(Action::MinimumBalance as u32, 0xb9d1d49b);
+    assert_eq!(Action::Mint as u32, 0x40c10f19);
 
     assert_eq!(
         crate::SELECTOR_LOG_TRANSFER,
@@ -806,4 +808,28 @@ fn get_metadata() {
                 .expect_no_logs()
                 .execute_returns(EvmDataWriter::new().write(12u8).build());
         });
+}
+
+#[test]
+fn minimum_balance_is_right() {
+    ExtBuilder::default().build().execute_with(|| {
+        let expected_min_balance = 19;
+        assert_ok!(Assets::force_create(
+            Origin::root(),
+            0u128,
+            Account::Alice.into(),
+            true,
+            expected_min_balance,
+        ));
+
+        precompiles()
+            .prepare_test(
+                Account::Alice,
+                Account::AssetId(0u128),
+                EvmDataWriter::new_with_selector(Action::MinimumBalance).build(),
+            )
+            .expect_cost(0)
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(expected_min_balance).build());
+    });
 }
