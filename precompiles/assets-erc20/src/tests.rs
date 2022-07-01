@@ -828,8 +828,68 @@ fn minimum_balance_is_right() {
                 Account::AssetId(0u128),
                 EvmDataWriter::new_with_selector(Action::MinimumBalance).build(),
             )
-            .expect_cost(0)
+            .expect_cost(0) // TODO: Test db read/write costs
             .expect_no_logs()
             .execute_returns(EvmDataWriter::new().write(expected_min_balance).build());
+    });
+}
+
+#[test]
+fn mint_is_ok() {
+    ExtBuilder::default().build().execute_with(|| {
+        let asset_id = 0;
+        assert_ok!(Assets::force_create(
+            Origin::root(),
+            asset_id,
+            Account::Alice.into(),
+            true,
+            1,
+        ));
+
+        // Sanity check, Bob should be without assets
+        assert!(Assets::balance(asset_id, &Account::Bob.into()).is_zero());
+
+        // Mint some assets for Bob
+        let mint_amount = 7 * 11 * 19;
+        precompiles()
+            .prepare_test(
+                Account::Alice,
+                Account::AssetId(asset_id),
+                EvmDataWriter::new_with_selector(Action::Mint)
+                    .write(Address(Account::Bob.into()))
+                    .write(U256::from(mint_amount))
+                    .build(),
+            )
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(true).build());
+
+        // Ensure Bob's asset balance was increased
+        assert_eq!(Assets::balance(asset_id, &Account::Bob.into()), mint_amount);
+    });
+}
+
+#[test]
+fn mint_non_issuer_not_ok() {
+    ExtBuilder::default().build().execute_with(|| {
+        let asset_id = 0;
+        assert_ok!(Assets::force_create(
+            Origin::root(),
+            asset_id,
+            Account::Alice.into(),
+            true,
+            1,
+        ));
+
+        precompiles()
+            .prepare_test(
+                Account::Bob,
+                Account::AssetId(asset_id),
+                EvmDataWriter::new_with_selector(Action::Mint)
+                    .write(Address(Account::Bob.into()))
+                    .write(U256::from(42))
+                    .build(),
+            )
+            .expect_no_logs()
+            .execute_reverts(|output| from_utf8(&output).unwrap().contains("NoPermission"));
     });
 }
