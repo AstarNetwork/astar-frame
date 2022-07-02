@@ -190,11 +190,13 @@ pub mod pallet {
         false
     }
 
+    /// Deprecated. Need to be cleanedup with OnRuntimeUpgrade
     /// Enable or disable pre-approval list for new contract registration
     #[pallet::storage]
     #[pallet::getter(fn pre_approval_is_enabled)]
     pub(crate) type PreApprovalIsEnabled<T> = StorageValue<_, bool, ValueQuery, PreApprovalOnEmpty>;
 
+    /// Deprecated, need to be cleanup with OnRuntimeUpgrade.
     /// List of pre-approved developers who can register contracts.
     #[pallet::storage]
     #[pallet::getter(fn pre_approved_developers)]
@@ -345,10 +347,11 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
-            contract_id: T::SmartContract,
+            developer: T::AccountId,
+            contract_id: T::SmartContract
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
-            let developer = ensure_signed(origin)?;
+            ensure_root(origin)?;
 
             ensure!(
                 !RegisteredDevelopers::<T>::contains_key(&developer),
@@ -359,13 +362,6 @@ pub mod pallet {
                 Error::<T>::AlreadyRegisteredContract,
             );
             ensure!(contract_id.is_valid(), Error::<T>::ContractIsNotValid);
-
-            if Self::pre_approval_is_enabled() {
-                ensure!(
-                    PreApprovedDevelopers::<T>::contains_key(&developer),
-                    Error::<T>::RequiredContractPreApproval,
-                );
-            }
 
             T::Currency::reserve(&developer, T::RegisterDeposit::get())?;
 
@@ -879,41 +875,6 @@ pub mod pallet {
             ensure_root(origin)?;
             ForceEra::<T>::put(Forcing::ForceNew);
             Ok(())
-        }
-
-        /// Adds developer account to the list of whitelisted dev accounts which can register their dapp for dApp staking.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::developer_pre_approval())]
-        pub fn developer_pre_approval(
-            origin: OriginFor<T>,
-            developer: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-
-            ensure!(
-                !PreApprovedDevelopers::<T>::contains_key(&developer),
-                Error::<T>::AlreadyPreApprovedDeveloper
-            );
-            PreApprovedDevelopers::<T>::insert(developer, ());
-
-            Ok(().into())
-        }
-
-        /// Enable or disable _pre-approval_ check.
-        /// If disabled, dApp registration is fully permisionless.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::enable_developer_pre_approval())]
-        pub fn enable_developer_pre_approval(
-            origin: OriginFor<T>,
-            enabled: bool,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-            PreApprovalIsEnabled::<T>::put(enabled);
-            Ok(().into())
         }
 
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.

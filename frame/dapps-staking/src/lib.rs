@@ -31,8 +31,6 @@
 //! - `claim_staker` - claims staker reward for a single era
 //! - `claim_dapp` - claims dapp rewards for the specified era
 //! - `force_new_era` - forces new era on the start of the next block
-//! - `developer_pre_approval` - adds developer account to the pre-approved developers
-//! - `enable_developer_pre_approval` - enables or disables developer pre-approval check for dApp registration
 //! - `maintenance_mode` - enables or disables pallet maintenance mode
 //! - `set_reward_destination` - sets reward destination for the staker rewards
 //! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)

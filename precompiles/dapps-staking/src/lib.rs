@@ -174,25 +174,6 @@ where
         Ok(succeed(EvmDataWriter::new().write(total).build()))
     }
 
-    /// Register contract with the dapp-staking pallet
-    fn register(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
-        let mut input = handle.read_input()?;
-        input.expect_arguments(1)?;
-
-        // parse contract's address
-        let contract_h160 = input.read::<Address>()?.0;
-        let contract_id = Self::decode_smart_contract(contract_h160)?;
-        log::trace!(target: "ds-precompile", "register {:?}", contract_id);
-
-        // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::register { contract_id }.into();
-
-        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
-
-        Ok(succeed(EvmDataWriter::new().write(true).build()))
-    }
-
     /// Lock up and stake balance of the origin account.
     fn bond_and_stake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
@@ -431,7 +412,6 @@ pub enum Action {
     ReadStakedAmount = "read_staked_amount(bytes)",
     ReadStakedAmountOnContract = "read_staked_amount_on_contract(address,bytes)",
     ReadContractStake = "read_contract_stake(address)",
-    Register = "register(address)",
     BondAndStake = "bond_and_stake(address,uint128)",
     UnbondAndUnstake = "unbond_and_unstake(address,uint128)",
     WithdrawUnbounded = "withdraw_unbonded()",
@@ -480,7 +460,6 @@ where
             }
             Action::ReadContractStake => return Self::read_contract_stake(handle),
             // Dispatchables
-            Action::Register => Self::register(handle),
             Action::BondAndStake => Self::bond_and_stake(handle),
             Action::UnbondAndUnstake => Self::unbond_and_unstake(handle),
             Action::WithdrawUnbounded => Self::withdraw_unbonded(handle),

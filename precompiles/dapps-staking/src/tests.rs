@@ -368,16 +368,8 @@ fn nomination_transfer() {
 
 /// helper function to register and verify if registration is valid
 fn register_and_verify(developer: TestAccount, contract: H160) {
-    precompiles()
-        .prepare_test(
-            developer.clone(),
-            precompile_address(),
-            EvmDataWriter::new_with_selector(Action::Register)
-                .write(Address(contract.clone()))
-                .build(),
-        )
-        .expect_no_logs()
-        .execute_returns(EvmDataWriter::new().write(true).build());
+    let smart_contract = decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
+    DappsStaking::register(Origin::root(), developer.clone().into(), smart_contract).unwrap();
 
     // check the storage after the register
     let dev_account_id: AccountId32 = developer.into();
