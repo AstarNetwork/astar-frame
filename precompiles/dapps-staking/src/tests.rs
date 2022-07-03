@@ -113,18 +113,6 @@ fn read_era_staked_is_ok() {
 }
 
 #[test]
-fn register_is_ok() {
-    ExternalityBuilder::default()
-        .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
-        .build()
-        .execute_with(|| {
-            initialize_first_block();
-
-            register_and_verify(TestAccount::Alex, TEST_CONTRACT);
-        });
-}
-
-#[test]
 fn register_via_precompile_fails() {
     ExternalityBuilder::default()
         .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
