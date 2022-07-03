@@ -13,7 +13,7 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    revert, succeed, error, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    error, revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
@@ -292,9 +292,7 @@ where
         } else if reward_destination_raw == 1 {
             RewardDestination::StakeBalance
         } else {
-            return Err(error(
-                "Unexpected reward destination value.",
-            ));
+            return Err(error("Unexpected reward destination value."));
         };
 
         // Build call with origin.

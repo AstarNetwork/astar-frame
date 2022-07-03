@@ -6,12 +6,12 @@ use crate::{
     },
     *,
 };
+use fp_evm::ExitError;
 use frame_support::assert_ok;
 use pallet_dapps_staking::RewardDestination;
 use precompile_utils::testing::*;
 use sp_core::H160;
 use sp_runtime::{traits::Zero, AccountId32, Perbill};
-use fp_evm::ExitError;
 
 fn precompiles() -> DappPrecompile<TestRuntime> {
     PrecompilesValue::get()
@@ -121,15 +121,17 @@ fn register_via_precompile_fails() {
             initialize_first_block();
 
             precompiles()
-            .prepare_test(
-                TestAccount::Alex,
-                precompile_address(),
-                EvmDataWriter::new_with_selector(Action::Register)
-                    .write(Address(TEST_CONTRACT.clone()))
-                    .build(),
-            )
-            .expect_no_logs()
-            .execute_error(ExitError::Other(alloc::borrow::Cow::Borrowed("register via evm precompile is not allowed")));
+                .prepare_test(
+                    TestAccount::Alex,
+                    precompile_address(),
+                    EvmDataWriter::new_with_selector(Action::Register)
+                        .write(Address(TEST_CONTRACT.clone()))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_error(ExitError::Other(alloc::borrow::Cow::Borrowed(
+                    "register via evm precompile is not allowed",
+                )));
         });
 }
 
@@ -379,7 +381,8 @@ fn nomination_transfer() {
 
 /// helper function to register and verify if registration is valid
 fn register_and_verify(developer: TestAccount, contract: H160) {
-    let smart_contract = decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
+    let smart_contract =
+        decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
     DappsStaking::register(Origin::root(), developer.clone().into(), smart_contract).unwrap();
 
     // check the storage after the register

@@ -348,7 +348,7 @@ pub mod pallet {
         pub fn register(
             origin: OriginFor<T>,
             developer: T::AccountId,
-            contract_id: T::SmartContract
+            contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             ensure_root(origin)?;
