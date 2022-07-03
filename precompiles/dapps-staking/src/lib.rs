@@ -13,7 +13,7 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    revert, succeed, error, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
@@ -174,6 +174,12 @@ where
         Ok(succeed(EvmDataWriter::new().write(total).build()))
     }
 
+    /// Register contract with the dapp-staking pallet
+    fn register(_: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        // register call is root-origin. it should always fail when called evm via precompiles.
+        Err(error("register via evm precompile is not allowed"))
+    }
+
     /// Lock up and stake balance of the origin account.
     fn bond_and_stake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
@@ -286,7 +292,7 @@ where
         } else if reward_destination_raw == 1 {
             RewardDestination::StakeBalance
         } else {
-            return Err(precompile_utils::error(
+            return Err(error(
                 "Unexpected reward destination value.",
             ));
         };
@@ -412,6 +418,7 @@ pub enum Action {
     ReadStakedAmount = "read_staked_amount(bytes)",
     ReadStakedAmountOnContract = "read_staked_amount_on_contract(address,bytes)",
     ReadContractStake = "read_contract_stake(address)",
+    Register = "register(address)",
     BondAndStake = "bond_and_stake(address,uint128)",
     UnbondAndUnstake = "unbond_and_unstake(address,uint128)",
     WithdrawUnbounded = "withdraw_unbonded()",
@@ -460,6 +467,7 @@ where
             }
             Action::ReadContractStake => return Self::read_contract_stake(handle),
             // Dispatchables
+            Action::Register => Self::register(handle),
             Action::BondAndStake => Self::bond_and_stake(handle),
             Action::UnbondAndUnstake => Self::unbond_and_unstake(handle),
             Action::WithdrawUnbounded => Self::withdraw_unbonded(handle),

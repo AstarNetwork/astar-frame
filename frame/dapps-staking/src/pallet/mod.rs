@@ -190,7 +190,7 @@ pub mod pallet {
         false
     }
 
-    /// Deprecated. Need to be cleanedup with OnRuntimeUpgrade
+    /// Deprecated. Need to be cleaned up with OnRuntimeUpgrade
     /// Enable or disable pre-approval list for new contract registration
     #[pallet::storage]
     #[pallet::getter(fn pre_approval_is_enabled)]
