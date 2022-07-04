@@ -128,7 +128,7 @@
      * Only usable by asset admin.
      * Selector: 40c10f19
      */
-    function mint(address beneficiary, uint256 amount) external view returns (bool);
+    function mint(address beneficiary, uint256 amount) external returns (bool);
 
     /**
      * @dev Burns by up to the specified amount of asset from the target.
@@ -136,6 +136,6 @@
      * Only usable by asset admin.
      * Selector: 9dc29fac
      */
-    function burn(address who, uint256 amount) external view returns (bool);
+    function burn(address who, uint256 amount) external returns (bool);
 }
 
