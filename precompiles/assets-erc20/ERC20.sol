@@ -1,11 +1,11 @@
  pragma solidity ^0.8.0;
 
     /**
-     * @title ERC20 interface extended by additional methods
+     * @title ERC20 interface
      * @dev see https://github.com/ethereum/EIPs/issues/20
      * @dev copied from https://github.com/OpenZeppelin/openzeppelin-contracts
      */
-    interface IERC20Plus {
+    interface IERC20 {
         
     /**
     * @dev Returns the name of the token.
@@ -108,10 +108,13 @@
         address indexed spender,
         uint256 value
     );
+}
 
-    /**************************/
-    /********** XC20+ *********/
-    /**************************/
+    /**
+     * @title Extension for ERC20 interface
+     * @dev Extended functions with minimum balance check as well as mint & burn.
+     */
+    interface IERC20Plus is IERC20 {
 
     /**
      * @dev Returns minimum balance an account must have to exist
@@ -135,3 +138,4 @@
      */
     function burn(address who, uint256 amount) external view returns (bool);
 }
+
