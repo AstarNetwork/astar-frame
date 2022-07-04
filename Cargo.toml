@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "chainextensions/dapps-staking",
+    "chainextensions/traits",
     "frame/block-reward",
     "frame/collator-selection",
     "frame/custom-signatures",
@@ -14,5 +16,4 @@ members = [
     "precompiles/sr25519",
     "precompiles/utils",
     "precompiles/xcm",
-    "chainextensions/dapps-staking",
 ]
