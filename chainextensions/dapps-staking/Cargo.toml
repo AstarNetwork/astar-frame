@@ -23,6 +23,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 log = "0.4.16"
 
 # Astar
+chain-extension-traits = { path = "../traits", default-features = false }
 pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
 
 [features]
