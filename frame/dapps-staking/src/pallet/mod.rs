@@ -2,17 +2,16 @@
 
 use super::*;
 use frame_support::{
-    log,
     dispatch::DispatchResult,
-    ensure,
+    ensure, log,
     pallet_prelude::*,
+    storage::child::KillStorageResult,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
         ReservableCurrency, WithdrawReasons,
     },
     weights::Weight,
     PalletId,
-    storage::child::KillStorageResult
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use sp_runtime::{
@@ -337,24 +336,44 @@ pub mod pallet {
             }
         }
 
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<(), &'static str> {
+            log::info!(">>> Pre Upgrade");
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
+
+            assert_eq!(Version::V3_0_0, StorageVersion::<T>::get());
+
+            Ok(())
+        }
+
         fn on_runtime_upgrade() -> Weight {
             // Maintenance mode to prevent existing extrinsics update PreApprovedDevelopers map.
             PalletDisabled::<T>::put(true);
+            StorageVersion::<T>::put(Version::default());
             cleanup_pre_approved_developers::<T>()
         }
 
         #[cfg(feature = "try-runtime")]
         fn post_upgrade() -> Result<(), &'static str> {
+            log::info!(">>> Post Upgrade");
+
             assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());
             assert_eq!(PalletDisabled::<T>::get(), true);
 
             // pre approved developers count should be 0
-            let current_pre_approved_developers_count = PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
             assert_eq!(current_pre_approved_developers_count, 0);
+
             Ok(())
         }
     }
-    
+
     fn cleanup_pre_approved_developers<T: Config>() -> Weight {
         let mut consumed_weight = Zero::zero();
 
