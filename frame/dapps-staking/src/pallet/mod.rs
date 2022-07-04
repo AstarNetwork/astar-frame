@@ -2,6 +2,7 @@
 
 use super::*;
 use frame_support::{
+    log,
     dispatch::DispatchResult,
     ensure,
     pallet_prelude::*,
@@ -11,6 +12,7 @@ use frame_support::{
     },
     weights::Weight,
     PalletId,
+    storage::child::KillStorageResult
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use sp_runtime::{
@@ -332,6 +334,54 @@ pub mod pallet {
                 consumed_weight + T::DbWeight::get().reads_writes(5, 3)
             } else {
                 T::DbWeight::get().reads(4)
+            }
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            // Maintenance mode to prevent existing extrinsics update PreApprovedDevelopers map.
+            PalletDisabled::<T>::put(true);
+            cleanup_pre_approved_developers::<T>()
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade() -> Result<(), &'static str> {
+            assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());
+            assert_eq!(PalletDisabled::<T>::get(), true);
+
+            // pre approved developers count should be 0
+            let current_pre_approved_developers_count = PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            assert_eq!(current_pre_approved_developers_count, 0);
+            Ok(())
+        }
+    }
+    
+    fn cleanup_pre_approved_developers<T: Config>() -> Weight {
+        let mut consumed_weight = Zero::zero();
+
+        let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
+        let approximate_deletions_remaining =
+            (100 / (T::DbWeight::get().writes(1) * 11 / 10)).max(1); // temporary total weight available 100
+
+        let removal_result = if cfg!(feature = "try-runtime") {
+            PreApprovedDevelopers::<T>::remove_all(None)
+        } else {
+            PreApprovedDevelopers::<T>::remove_all(Some(approximate_deletions_remaining as u32))
+        };
+
+        match removal_result {
+            KillStorageResult::AllRemoved(removed_entries_num) => {
+                log::info!(">>> PreApprovalDevelopers cleanup finished.");
+                consumed_weight += deletion_weight * removed_entries_num as u64;
+                consumed_weight
+            }
+            KillStorageResult::SomeRemaining(removed_entries_num) => {
+                log::info!(">>> PreApprovalDevelopers cleanup stopped due to reaching max amount of deletions.");
+                consumed_weight += deletion_weight * removed_entries_num as u64;
+                if cfg!(feature = "try-runtime") {
+                    return consumed_weight + cleanup_pre_approved_developers::<T>();
+                } else {
+                    return consumed_weight;
+                }
             }
         }
     }

@@ -178,11 +178,12 @@ pub enum Version {
     V1_0_0,
     V2_0_0,
     V3_0_0,
+    V4_0_0,
 }
 
 impl Default for Version {
     fn default() -> Self {
-        Version::V3_0_0
+        Version::V4_0_0
     }
 }
 
