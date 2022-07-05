@@ -6,5 +6,6 @@ pub trait ChainExtensionExec<T: SysConfig> {
     fn execute_func<E>(func_id: u32, env: Environment<E, InitState>) -> Result<(), DispatchError>
     where
         E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>;
+        <E::T as SysConfig>::AccountId:
+            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]> + From<[u8; 32]>;
 }
