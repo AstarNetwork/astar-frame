@@ -266,8 +266,6 @@ pub mod pallet {
         NothingToWithdraw,
         /// The contract is already registered by other account
         AlreadyRegisteredContract,
-        /// User attempts to register with address which is not contract
-        ContractIsNotValid,
         /// This account was already used to register contract
         AlreadyUsedDeveloperAccount,
         /// Smart contract not owned by the account id.
@@ -355,7 +353,9 @@ pub mod pallet {
             // Maintenance mode to prevent existing extrinsics update PreApprovedDevelopers map.
             PalletDisabled::<T>::put(true);
             StorageVersion::<T>::put(Version::default());
-            cleanup_pre_approved_developers::<T>()
+            let consumed_weight = cleanup_pre_approved_developers::<T>();
+            PalletDisabled::<T>::put(false);
+            consumed_weight
         }
 
         #[cfg(feature = "try-runtime")]
@@ -363,7 +363,7 @@ pub mod pallet {
             log::info!(">>> Post Upgrade");
 
             assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());
-            assert_eq!(PalletDisabled::<T>::get(), true);
+            assert_eq!(PalletDisabled::<T>::get(), false);
 
             // pre approved developers count should be 0
             let current_pre_approved_developers_count =
@@ -430,7 +430,6 @@ pub mod pallet {
                 !RegisteredDapps::<T>::contains_key(&contract_id),
                 Error::<T>::AlreadyRegisteredContract,
             );
-            ensure!(contract_id.is_valid(), Error::<T>::ContractIsNotValid);
 
             T::Currency::reserve(&developer, T::RegisterDeposit::get())?;
 

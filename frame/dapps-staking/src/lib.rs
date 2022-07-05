@@ -81,10 +81,7 @@ pub type BalanceOf<T> =
 pub type EraIndex = u32;
 
 /// Simple trait used to check whether the underlying struct represents a valid smart contract on-chain.
-pub trait IsContract: Default {
-    /// Used to check whether this smart contract is valid on-chain or not.
-    fn is_valid(&self) -> bool;
-}
+pub trait IsContract: Default {}
 
 /// DApp State descriptor
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]

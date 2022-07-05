@@ -154,14 +154,7 @@ impl<AccountId> Default for MockSmartContract<AccountId> {
     }
 }
 
-impl<AccountId> pallet_dapps_staking::IsContract for MockSmartContract<AccountId> {
-    fn is_valid(&self) -> bool {
-        match self {
-            MockSmartContract::Wasm(_account) => false,
-            MockSmartContract::Evm(_account) => true,
-        }
-    }
-}
+impl<AccountId> pallet_dapps_staking::IsContract for MockSmartContract<AccountId> {}
 
 pub struct ExternalityBuilder;
 
