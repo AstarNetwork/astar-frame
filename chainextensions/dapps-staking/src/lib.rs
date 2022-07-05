@@ -6,11 +6,17 @@ use sp_runtime::{
 
 use chain_extension_traits::ChainExtensionExec;
 use codec::{Decode, Encode};
-use frame_support::log::trace;
+use frame_support::{log::trace,
+traits::Currency};
+use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
 use pallet_dapps_staking;
 use sp_core::H160;
 use sp_std::marker::PhantomData;
+
+type BalanceOf<T> = <<T as pallet_dapps_staking::Config>::Currency as Currency<
+    <T as frame_system::Config>::AccountId,
+>>::Balance;
 
 /// This is only used to encode SmartContract enum
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
@@ -29,6 +35,10 @@ enum DappsStakingFunc {
     StakedAmount = 5,
     StakedAmountOnContract = 6,
     ReadContractStake = 7,
+    Register = 8,
+    BondAndStake = 9,
+    UnbondAndStake = 10,
+    ClaimStaker = 11,
 }
 
 impl TryFrom<u32> for DappsStakingFunc {
@@ -43,6 +53,10 @@ impl TryFrom<u32> for DappsStakingFunc {
             5 => return Ok(DappsStakingFunc::StakedAmount),
             6 => return Ok(DappsStakingFunc::StakedAmountOnContract),
             7 => return Ok(DappsStakingFunc::ReadContractStake),
+            8 => return Ok(DappsStakingFunc::Register),
+            9 => return Ok(DappsStakingFunc::BondAndStake),
+            10 => return Ok(DappsStakingFunc::UnbondAndStake),
+            11 => return Ok(DappsStakingFunc::ClaimStaker),
             _ => {
                 return Err(DispatchError::Other(
                     "DappsStakingExtension: Unimplemented func_id",
@@ -71,6 +85,14 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::CurrentEra => {
                 let era = pallet_dapps_staking::CurrentEra::<T>::get();
                 result_encoded = era.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
 
             // DappsStaking - read_unbonding_period()
@@ -84,6 +106,14 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     r.rewards.stakers.saturating_add(r.rewards.dapps)
                 });
                 result_encoded = reward.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
 
             // DappsStaking - read_era_reward()
@@ -95,6 +125,14 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     r.rewards.stakers.saturating_add(r.rewards.dapps)
                 });
                 result_encoded = reward.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
 
             // DappsStaking - read_era_staked()
@@ -106,6 +144,14 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     r.rewards.stakers.saturating_add(r.rewards.stakers)
                 });
                 result_encoded = staked.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
 
             // DappsStaking - read_staked_amount()
@@ -113,6 +159,14 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let staker: T::AccountId = env.read_as()?;
                 let staked = pallet_dapps_staking::Ledger::<T>::get(&staker);
                 result_encoded = staked.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
 
             // DappsStaking - read_staked_amount_on_contract()
@@ -120,31 +174,106 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let staker: T::AccountId = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
-
+                log::trace!(target: "StakedAmountOnContract", "contract {:?}", contract);
                 let staking_info =
-                    pallet_dapps_staking::GeneralStakerInfo::<T>::get(&staker, &contract);
+                pallet_dapps_staking::GeneralStakerInfo::<T>::get(&staker, &contract);
+                log::trace!(target: "StakedAmountOnContract", "staking_info {:?}", staking_info);
                 result_encoded = staking_info.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
             }
-
+            
             // DappsStaking - read_contract_stake()
             DappsStakingFunc::ReadContractStake => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
+                log::trace!(target: "ReadContractStake", "contract {:?}", contract);
                 let current_era = pallet_dapps_staking::CurrentEra::<T>::get();
                 let staking_info =
                     pallet_dapps_staking::Pallet::<T>::contract_stake_info(&contract, current_era)
                         .unwrap_or_default();
                 result_encoded = staking_info.encode();
+                trace!(
+                    target: "runtime",
+                    "[ChainExtension] DappsStakingExtension result={:?}",
+                    &result_encoded
+                );
+                env.write(&result_encoded, false, None).map_err(|_| {
+                    DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                })?;
+            }
+
+            // DappsStaking - register()
+            DappsStakingFunc::Register => {
+                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract = Self::decode_smart_contract(contract_bytes)?;
+
+                let caller = env.ext().caller().clone();
+                pallet_dapps_staking::Pallet::<T>::register(
+                    RawOrigin::Signed(caller).into(),
+                    contract,
+                )
+                .map_err(|_| {
+                    DispatchError::Other("[ChainExtension] Register failed to write result")
+                })?;
+            }
+
+            // DappsStaking - bond_and_stake()
+            DappsStakingFunc::BondAndStake => {
+                let contract_bytes: [u8; 32] = env.read_as()?;
+                let value: BalanceOf<T> = env.read_as()?;
+                let contract = Self::decode_smart_contract(contract_bytes)?;                
+
+                let caller = env.ext().caller().clone();
+                pallet_dapps_staking::Pallet::<T>::bond_and_stake(
+                    RawOrigin::Signed(caller).into(),
+                    contract,
+                    value
+                )
+                .map_err(|_| {
+                    DispatchError::Other("[ChainExtension] BondAndStake failed to write result")
+                })?;
+            }
+
+            // DappsStaking - unbond_and_unstake()
+            DappsStakingFunc::UnbondAndStake => {
+                let contract_bytes: [u8; 32] = env.read_as()?;
+                let value: BalanceOf<T> = env.read_as()?;
+                let contract = Self::decode_smart_contract(contract_bytes)?;                
+
+                let caller = env.ext().caller().clone();
+                pallet_dapps_staking::Pallet::<T>::unbond_and_unstake(
+                    RawOrigin::Signed(caller).into(),
+                    contract,
+                    value
+                )
+                .map_err(|_| {
+                    DispatchError::Other("[ChainExtension] BondAndStake failed to write result")
+                })?;
+            }
+
+            // DappsStaking - claim_staker()
+            DappsStakingFunc::ClaimStaker => {
+                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract = Self::decode_smart_contract(contract_bytes)?;                
+
+                let caller = env.ext().caller().clone();
+                pallet_dapps_staking::Pallet::<T>::claim_staker(
+                    RawOrigin::Signed(caller).into(),
+                    contract,
+                )
+                .map_err(|_| {
+                    DispatchError::Other("[ChainExtension] BondAndStake failed to write result")
+                })?;
             }
         }
-        trace!(
-            target: "runtime",
-            "[ChainExtension] DappsStakingExtension result={:?}",
-            &result_encoded
-        );
-        env.write(&result_encoded, false, None).map_err(|_| {
-            DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
-        })?;
+
         Ok(())
     }
 }
