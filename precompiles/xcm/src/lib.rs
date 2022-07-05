@@ -82,11 +82,11 @@ where
                     .flatten()
             })
             .collect();
-        let amounts: Vec<u128> = input
-            .read::<Vec<U256>>()?
-            .iter()
-            .map(|x| x.low_u128())
-            .collect();
+        let amounts_raw = input.read::<Vec<U256>>()?;
+        if amounts_raw.iter().any(|x| *x > u128::max_value().into()) {
+            return Err(revert("Asset amount is too big"));
+        }
+        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location
@@ -108,7 +108,7 @@ where
         let dest = if is_relay {
             MultiLocation::parent()
         } else {
-            X1(Junction::Parachain(parachain_id)).into()
+            X1(Junction::Parachain(parachain_id)).into_exterior(1)
         };
 
         let beneficiary: MultiLocation = X1(Junction::AccountId32 {
