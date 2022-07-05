@@ -83,13 +83,10 @@ where
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
-        if amounts_raw.any(|x| x > u128::max_value().into()) {
-            return Err(revert("Asset amount is too big"))
+        if amounts_raw.iter().any(|x| *x > u128::max_value().into()) {
+            return Err(revert("Asset amount is too big"));
         }
-        let amounts = amounts_raw
-            .iter()
-            .map(|x| x.low_u128())
-            .collect();
+        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location
