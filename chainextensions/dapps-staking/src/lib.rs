@@ -7,12 +7,12 @@ use sp_runtime::{
 use chain_extension_traits::ChainExtensionExec;
 use codec::{Decode, Encode};
 use frame_support::{
-    log::trace,
+    log,
     traits::{Currency, Get},
 };
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
-use pallet_dapps_staking::RewardDestination;
+use pallet_dapps_staking::{RewardDestination, WeightInfo};
 use sp_core::H160;
 use sp_std::marker::PhantomData;
 
@@ -97,8 +97,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::CurrentEra => {
                 let era = pallet_dapps_staking::CurrentEra::<T>::get();
                 result_encoded = era.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -113,8 +112,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::UnbondingPeriod => {
                 let unbonding_period = T::UnbondingPeriod::get();
                 result_encoded = unbonding_period.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -134,8 +132,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     r.rewards.stakers.saturating_add(r.rewards.dapps)
                 });
                 result_encoded = reward.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -155,8 +152,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     r.rewards.stakers.saturating_add(r.rewards.stakers)
                 });
                 result_encoded = staked.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -172,8 +168,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let staker: T::AccountId = env.read_as()?;
                 let staked = pallet_dapps_staking::Ledger::<T>::get(&staker);
                 result_encoded = staked.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -189,13 +184,12 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let staker: T::AccountId = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
-                log::trace!(target: "StakedAmountOnContract", "contract {:?}", contract);
+                log::info!("contract {:?}", contract);
                 let staking_info =
                     pallet_dapps_staking::GeneralStakerInfo::<T>::get(&staker, &contract);
-                log::trace!(target: "StakedAmountOnContract", "staking_info {:?}", staking_info);
+                log::info!("staking_info {:?}", staking_info);
                 result_encoded = staking_info.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -210,14 +204,13 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::ReadContractStake => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
-                log::trace!(target: "ReadContractStake", "contract {:?}", contract);
+                log::info!(target: "ReadContractStake", "contract {:?}", contract);
                 let current_era = pallet_dapps_staking::CurrentEra::<T>::get();
                 let staking_info =
                     pallet_dapps_staking::Pallet::<T>::contract_stake_info(&contract, current_era)
                         .unwrap_or_default();
                 result_encoded = staking_info.encode();
-                trace!(
-                    target: "runtime",
+                log::info!(
                     "[ChainExtension] DappsStakingExtension result={:?}",
                     &result_encoded
                 );
@@ -230,15 +223,27 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
 
             // DappsStaking - register()
             DappsStakingFunc::Register => {
+                sp_std::if_std!{println!(
+                    "[ChainExtension] DappsStakingExtension Register entered"
+                );}
+				let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::register();
+                env.charge_weight(base_weight)?;
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
 
                 let caller = env.ext().caller().clone();
+                sp_std::if_std!{println!(
+                    "[ChainExtension] DappsStakingExtension Register contract {:?}, caller{:?}, weight {:?}",
+                    contract, caller, base_weight
+                );}
                 pallet_dapps_staking::Pallet::<T>::register(
                     RawOrigin::Signed(caller).into(),
                     contract,
                 )
                 .map_err(|_| DispatchError::Other("[ChainExtension] Register failed"))?;
+                sp_std::if_std!{println!(
+                    "[ChainExtension] DappsStakingExtension Register exit"
+                );}
             }
 
             // DappsStaking - bond_and_stake()
