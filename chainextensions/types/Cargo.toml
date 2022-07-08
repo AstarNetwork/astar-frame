@@ -11,3 +11,4 @@ description = "Types definitions for chain extension for WASM contracts"
 [dependencies]
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24",  default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
