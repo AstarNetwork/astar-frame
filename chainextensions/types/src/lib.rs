@@ -1,9 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use sp_runtime::{
-    DispatchError, ModuleError,
-};
 use codec::{Decode, Encode};
-
+use sp_runtime::{DispatchError, ModuleError};
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
