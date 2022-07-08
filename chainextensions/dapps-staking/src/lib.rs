@@ -5,6 +5,7 @@ use sp_runtime::{
 };
 
 use chain_extension_traits::ChainExtensionExec;
+use chain_extension_types::{DappsStakingValueInput, DappsStakingAccountInput};
 use codec::{Decode, Encode};
 use frame_support::{
     // log,
@@ -143,15 +144,18 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 })?;
             }
 
-            // DappsStaking - read_staked_amount_on_contract()
             DappsStakingFunc::StakedAmountOnContract => {
-                let contract_bytes: [u8; 32] = env.read_as()?;
-                let staker: T::AccountId = env.read_as()?;
-                let contract = Self::decode_smart_contract(contract_bytes)?;
-                let result_to_encode =
+                let args: DappsStakingAccountInput<T::AccountId> = env.read_as()?;
+                let staker: T::AccountId = args.staker;
+                let contract = Self::decode_smart_contract2(args.contract)?;
+                let staking_info =
                     pallet_dapps_staking::GeneralStakerInfo::<T>::get(&staker, &contract);
-                    env.write(&result_to_encode.encode(), false, None).map_err(|_| {
-                        DispatchError::Other("[ChainExtension] DappsStakingExtension failed to write result")
+                let staked_amount = staking_info.latest_staked_value();
+                env.write(&staked_amount.encode(), false, None)
+                    .map_err(|_| {
+                        DispatchError::Other(
+                            "[ChainExtension] DappsStakingExtension failed to write result",
+                        )
                     })?;
             }
 
@@ -419,6 +423,34 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
 }
 
 impl<R> DappsStakingExtension<R> {
+    // TODO: remove only temporarily - when all function are reworked
+    /// Helper method to decode type SmartContract enum
+    pub fn decode_smart_contract2(
+        account: R::AccountId
+    ) -> Result<<R as pallet_dapps_staking::Config>::SmartContract, DispatchError>
+        where
+            R: pallet_dapps_staking::Config,
+
+    {
+        // Encode contract address to fit SmartContract enum.
+        // Since the SmartContract enum type can't be accessed from this chain extension,
+        // use locally defined enum clone (see Contract enum)
+        let contract_enum_encoded = Contract::<R::AccountId>::Wasm(account).encode();
+
+        // encoded enum will add one byte before the contract's address
+        // therefore we need to decode len(u32) + 1 byte = 33
+        let smart_contract = <R as pallet_dapps_staking::Config>::SmartContract::decode(
+            &mut &contract_enum_encoded[..33],
+        )
+            .map_err(|_| {
+                DispatchError::Other(
+                    "[ChainExtension] Error while decoding SmartContract in ChainExtension",
+                )
+            })?;
+
+        Ok(smart_contract)
+    }
+
     /// Helper method to decode type SmartContract enum
     pub fn decode_smart_contract(
         contract_bytes: [u8; 32],
