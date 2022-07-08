@@ -116,7 +116,7 @@ pub enum Contract<Account> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingValueInput<AccountId, Balance> {
-    pub account_id: AccountId,
+    pub contract: AccountId,
     pub value: Balance,
 }
 
