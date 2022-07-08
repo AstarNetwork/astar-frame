@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
+use frame_support::pallet_prelude::MaxEncodedLen;
 use sp_runtime::{DispatchError, ModuleError};
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -101,4 +102,16 @@ impl TryFrom<DispatchError> for DSError {
             _ => return Err(DispatchError::Other("DappsStakingExtension: Unknown error")),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+pub struct DappsStakingValueInput<AccountId, Balance> {
+    pub account_id: AccountId,
+    pub value: Balance,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+pub struct DappsStakingAccountInput<AccountId> {
+    pub contract: AccountId,
+    pub staker: AccountId,
 }
