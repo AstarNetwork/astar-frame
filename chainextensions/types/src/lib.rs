@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use frame_support::pallet_prelude::MaxEncodedLen;
+use sp_core::H160;
 use sp_runtime::{DispatchError, ModuleError};
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -104,6 +105,15 @@ impl TryFrom<DispatchError> for DSError {
     }
 }
 
+/// This is only used to encode SmartContract enum
+#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
+pub enum SmartContract<Account> {
+    // EVM smart contract instance.
+    Evm(H160),
+    // Wasm smart contract instance. Not used in this precompile
+    Wasm(Account),
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingValueInput<AccountId, Balance> {
     pub account_id: AccountId,
@@ -114,4 +124,10 @@ pub struct DappsStakingValueInput<AccountId, Balance> {
 pub struct DappsStakingAccountInput<AccountId> {
     pub contract: AccountId,
     pub staker: AccountId,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+pub struct DappsStakingContractAmount<AccountId> {
+    pub contract: AccountId,
+    pub amount: u128,
 }
