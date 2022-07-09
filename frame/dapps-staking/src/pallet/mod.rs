@@ -368,6 +368,10 @@ pub mod pallet {
             // pre approved developers count should be 0
             let current_pre_approved_developers_count =
                 PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
             assert_eq!(current_pre_approved_developers_count, 0);
 
             Ok(())
@@ -379,7 +383,12 @@ pub mod pallet {
 
         let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
         let approximate_deletions_remaining =
-            (100 / (T::DbWeight::get().writes(1) * 11 / 10)).max(1); // temporary total weight available 100
+            (T::BlockWeights::get().max_block / (T::DbWeight::get().writes(1) * 11 / 10)).max(1);
+
+        log::info!(
+            "Approximate Delegations Remaining {}",
+            approximate_deletions_remaining
+        );
 
         let removal_result = if cfg!(feature = "try-runtime") {
             PreApprovedDevelopers::<T>::remove_all(None)
