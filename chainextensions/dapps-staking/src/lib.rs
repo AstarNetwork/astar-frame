@@ -15,6 +15,9 @@ use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, 
 use pallet_dapps_staking::{RewardDestination, WeightInfo};
 use sp_std::marker::PhantomData;
 
+#[cfg(test)]
+mod test;
+
 type BalanceOf<T> = <<T as pallet_dapps_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
