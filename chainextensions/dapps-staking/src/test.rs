@@ -1,10 +1,9 @@
 use super::*;
 
 use frame_support::{
-    
     construct_runtime, parameter_types,
     traits::{ConstU32, Nothing},
-    weights::{RuntimeDbWeight, constants::WEIGHT_PER_SECOND, Weight},
+    weights::{constants::WEIGHT_PER_SECOND, RuntimeDbWeight, Weight},
     PalletId,
 };
 use frame_system::limits::{BlockLength, BlockWeights};
@@ -13,12 +12,14 @@ use sp_core::{H160, H256};
 use codec::{Decode, Encode};
 use sp_io::TestExternalities;
 use sp_runtime::{
-    AccountId32,
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
+    AccountId32, Perbill,
 };
 
+/// Contract extension for Local Chain-Extension
+// use pallet_chain_extension_dapps_staking::DappsStakingExtension;
+use chain_extension_traits::ChainExtensionExec;
 use pallet_contracts::{
     chain_extension::{
         ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
@@ -27,9 +28,6 @@ use pallet_contracts::{
     DefaultContractAccessWeight,
 };
 use pallet_dapps_staking::weights;
-/// Contract extension for Local Chain-Extension
-// use pallet_chain_extension_dapps_staking::DappsStakingExtension;
-use chain_extension_traits::ChainExtensionExec;
 
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -322,7 +320,5 @@ fn current_era_is_ok() {
         System::set_block_number(2);
 
         assert_eq!(0u32, DappsStaking::current_era());
-
-
     })
 }
