@@ -115,19 +115,13 @@ pub enum Contract<Account> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
-pub struct DappsStakingValueInput<AccountId, Balance> {
-    pub contract: AccountId,
+pub struct DappsStakingValueInput<Balance> {
+    pub contract: [u8; 32],
     pub value: Balance,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
-pub struct DappsStakingAccountInput<AccountId> {
-    pub contract: AccountId,
-    pub staker: AccountId,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
-pub struct DappsStakingContractAmount<Balance> {
-    pub contract_bytes: [u8; 32],
-    pub value: Balance,
+pub struct DappsStakingAccountInput {
+    pub contract: [u8; 32],
+    pub staker: [u8; 32],
 }
