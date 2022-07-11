@@ -17,47 +17,47 @@ type BalanceOf<T> = <<T as pallet_dapps_staking::Config>::Currency as Currency<
 >>::Balance;
 
 enum DappsStakingFunc {
-    CurrentEra = 1,
-    UnbondingPeriod = 2,
-    EraRewards = 3,
-    EraStaked = 4,
-    StakedAmount = 5,
-    StakedAmountOnContract = 6,
-    ReadContractStake = 7,
-    Register = 8,
-    BondAndStake = 9,
-    UnbondAndStake = 10,
-    WithdrawUnbonded = 11,
-    ClaimStaker = 12,
-    ClaimDapp = 13,
-    SetRewardDestination = 14,
-    WithdrawFromUnregistered = 15,
-    NominationTransfer = 16,
+    CurrentEra,
+    UnbondingPeriod,
+    EraRewards,
+    EraStaked,
+    StakedAmount,
+    StakedAmountOnContract,
+    ReadContractStake,
+    Register,
+    BondAndStake,
+    UnbondAndStake,
+    WithdrawUnbonded,
+    ClaimStaker,
+    ClaimDapp,
+    SetRewardDestination,
+    WithdrawFromUnregistered,
+    NominationTransfer,
 }
 
 impl TryFrom<u32> for DappsStakingFunc {
     type Error = DispatchError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            1 => return Ok(DappsStakingFunc::CurrentEra),
-            2 => return Ok(DappsStakingFunc::UnbondingPeriod),
-            3 => return Ok(DappsStakingFunc::EraRewards),
-            4 => return Ok(DappsStakingFunc::EraStaked),
-            5 => return Ok(DappsStakingFunc::StakedAmount),
-            6 => return Ok(DappsStakingFunc::StakedAmountOnContract),
-            7 => return Ok(DappsStakingFunc::ReadContractStake),
-            8 => return Ok(DappsStakingFunc::Register),
-            9 => return Ok(DappsStakingFunc::BondAndStake),
-            10 => return Ok(DappsStakingFunc::UnbondAndStake),
-            11 => return Ok(DappsStakingFunc::WithdrawUnbonded),
-            12 => return Ok(DappsStakingFunc::ClaimStaker),
-            13 => return Ok(DappsStakingFunc::ClaimDapp),
-            14 => return Ok(DappsStakingFunc::SetRewardDestination),
-            15 => return Ok(DappsStakingFunc::WithdrawFromUnregistered),
-            16 => return Ok(DappsStakingFunc::NominationTransfer),
+        return match value {
+            1 => Ok(DappsStakingFunc::CurrentEra),
+            2 => Ok(DappsStakingFunc::UnbondingPeriod),
+            3 => Ok(DappsStakingFunc::EraRewards),
+            4 => Ok(DappsStakingFunc::EraStaked),
+            5 => Ok(DappsStakingFunc::StakedAmount),
+            6 => Ok(DappsStakingFunc::StakedAmountOnContract),
+            7 => Ok(DappsStakingFunc::ReadContractStake),
+            8 => Ok(DappsStakingFunc::Register),
+            9 => Ok(DappsStakingFunc::BondAndStake),
+            10 => Ok(DappsStakingFunc::UnbondAndStake),
+            11 => Ok(DappsStakingFunc::WithdrawUnbonded),
+            12 => Ok(DappsStakingFunc::ClaimStaker),
+            13 => Ok(DappsStakingFunc::ClaimDapp),
+            14 => Ok(DappsStakingFunc::SetRewardDestination),
+            15 => Ok(DappsStakingFunc::WithdrawFromUnregistered),
+            16 => Ok(DappsStakingFunc::NominationTransfer),
             _ => {
-                return Err(DispatchError::Other(
+                Err(DispatchError::Other(
                     "DappsStakingExtension: Unimplemented func_id",
                 ))
             }
