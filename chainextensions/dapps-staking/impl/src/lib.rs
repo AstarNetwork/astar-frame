@@ -35,6 +35,10 @@ enum DappsStakingFunc {
     ClaimStaker,
     ClaimDapp,
     SetRewardDestination,
+<<<<<<< HEAD
+=======
+    WithdrawFromUnregistered,
+>>>>>>> 9091190 (moved types & traits to same folder)
     NominationTransfer,
 }
 
