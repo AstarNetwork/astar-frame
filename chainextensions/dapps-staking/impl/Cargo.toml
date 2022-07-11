@@ -25,7 +25,7 @@ log = "0.4.16"
 # Astar
 chain-extension-traits = { path = "../traits", default-features = false }
 chain-extension-types = { path = "../types", default-features = false }
-pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
+pallet-dapps-staking = { path = "../../../frame/dapps-staking", default-features = false }
 
 [features]
 default = ["std"]
