@@ -857,7 +857,7 @@ pub mod pallet {
 
             T::Currency::resolve_creating(&dapp_info.developer, reward_imbalance);
             Self::deposit_event(Event::<T>::Reward(
-                dapp_info.developer.clone(),
+                dapp_info.developer,
                 contract_id.clone(),
                 era,
                 dapp_reward,
@@ -1029,7 +1029,7 @@ pub mod pallet {
             // Increment ledger and total staker value for contract.
             staking_info.total = staking_info.total.saturating_add(value);
 
-            return Ok(());
+            Ok(())
         }
 
         /// An utility method used to unstake specified amount from an arbitrary contract.
@@ -1087,7 +1087,7 @@ pub mod pallet {
                 Error::<T>::TooManyEraStakeValues
             );
 
-            return Ok(value_to_unstake);
+            Ok(value_to_unstake)
         }
 
         /// Get AccountId assigned to the pallet.
@@ -1109,9 +1109,9 @@ pub mod pallet {
         fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
             if ledger.is_empty() {
                 Ledger::<T>::remove(&staker);
-                T::Currency::remove_lock(STAKING_ID, &staker);
+                T::Currency::remove_lock(STAKING_ID, staker);
             } else {
-                T::Currency::set_lock(STAKING_ID, &staker, ledger.locked, WithdrawReasons::all());
+                T::Currency::set_lock(STAKING_ID, staker, ledger.locked, WithdrawReasons::all());
                 Ledger::<T>::insert(staker, ledger);
             }
         }
@@ -1144,8 +1144,8 @@ pub mod pallet {
                 era + 1,
                 EraInfo {
                     rewards: Default::default(),
-                    staked: era_info.staked.clone(),
-                    locked: era_info.locked.clone(),
+                    staked: era_info.staked,
+                    locked: era_info.locked,
                 },
             );
 
@@ -1194,7 +1194,7 @@ pub mod pallet {
         ) -> BalanceOf<T> {
             // Ensure that staker has enough balance to bond & stake.
             let free_balance =
-                T::Currency::free_balance(&staker).saturating_sub(T::MinimumRemainingAmount::get());
+                T::Currency::free_balance(staker).saturating_sub(T::MinimumRemainingAmount::get());
 
             // Remove already locked funds from the free balance
             free_balance.saturating_sub(ledger.locked)

@@ -267,7 +267,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     fn stake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
         if let Some(era_stake) = self.stakes.last_mut() {
             if era_stake.era > current_era {
-                return Err("Unexpected era".into());
+                return Err("Unexpected era");
             }
 
             let new_stake_value = era_stake.staked.saturating_add(value);
@@ -307,7 +307,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     fn unstake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
         if let Some(era_stake) = self.stakes.last_mut() {
             if era_stake.era > current_era {
-                return Err("Unexpected era".into());
+                return Err("Unexpected era");
             }
 
             let new_stake_value = era_stake.staked.saturating_sub(value);
