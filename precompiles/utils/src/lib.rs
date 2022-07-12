@@ -243,21 +243,26 @@ pub enum FunctionModifier {
 pub trait PrecompileHandleExt: PrecompileHandle {
     /// Record cost of a log manually.
     /// This can be useful to record log costs early when their content have static size.
+    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult;
 
     /// Record cost of logs.
+    #[must_use]
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult;
 
     /// Check that a function call is compatible with the context it is
     /// called into.
+    #[must_use]
     fn check_function_modifier(&self, modifier: FunctionModifier) -> EvmResult;
 
     /// Read the selector from the input data.
+    #[must_use]
     fn read_selector<T>(&self) -> EvmResult<T>
     where
         T: num_enum::TryFromPrimitive<Primitive = u32>;
 
     /// Returns a reader of the input, skipping the selector.
+    #[must_use]
     fn read_input(&self) -> EvmResult<EvmDataReader>;
 }
 
@@ -357,6 +362,7 @@ pub fn call_cost(value: U256, config: &evm::Config) -> u64 {
 impl<T: PrecompileHandle> PrecompileHandleExt for T {
     /// Record cost of a log manualy.
     /// This can be useful to record log costs early when their content have static size.
+    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult {
         self.record_cost(log_costs(topics, data_len)?)?;
 
@@ -364,6 +370,7 @@ impl<T: PrecompileHandle> PrecompileHandleExt for T {
     }
 
     /// Record cost of logs.
+    #[must_use]
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult {
         for log in logs {
             self.record_log_costs_manual(log.topics.len(), log.data.len())?;
@@ -374,11 +381,13 @@ impl<T: PrecompileHandle> PrecompileHandleExt for T {
 
     /// Check that a function call is compatible with the context it is
     /// called into.
+    #[must_use]
     fn check_function_modifier(&self, modifier: FunctionModifier) -> EvmResult {
         check_function_modifier(self.context(), self.is_static(), modifier)
     }
 
     /// Read the selector from the input data.
+    #[must_use]
     fn read_selector<S>(&self) -> EvmResult<S>
     where
         S: num_enum::TryFromPrimitive<Primitive = u32>,
@@ -387,6 +396,7 @@ impl<T: PrecompileHandle> PrecompileHandleExt for T {
     }
 
     /// Returns a reader of the input, skipping the selector.
+    #[must_use]
     fn read_input(&self) -> EvmResult<EvmDataReader> {
         EvmDataReader::new_skip_selector(self.input())
     }

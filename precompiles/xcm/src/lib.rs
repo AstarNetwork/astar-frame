@@ -78,8 +78,7 @@ where
             .cloned()
             .filter_map(|address| {
                 R::address_to_asset_id(address.into())
-                    .map(|x| C::reverse_ref(x).ok())
-                    .flatten()
+                    .and_then(|x| C::reverse_ref(x).ok())
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
@@ -91,7 +90,7 @@ where
         // Check that assets list is valid:
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
-        if assets.len() != amounts.len() || assets.len() == 0 {
+        if assets.len() != amounts.len() || assets.is_empty() {
             return Err(revert("Assets resolution failure."));
         }
 
@@ -132,8 +131,7 @@ where
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
             fee_asset_item,
-        }
-        .into();
+        };
 
         // Dispatch a call.
         RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;

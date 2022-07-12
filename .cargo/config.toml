@@ -1,0 +1,15 @@
+# https://github.com/rust-lang/rust-clippy#clippy
+[target.'cfg(feature = "cargo-clippy")']
+rustflags = [
+  # deny
+  "-Dclippy::correctness",
+  "-Dclippy::suspicious",
+  "-Dclippy::style",
+  "-Dclippy::complexity",
+  "-Dclippy::perf",
+  # allow
+  "-Aclippy::boxed_local",
+  "-Aclippy::double_must_use",
+  "-Aclippy::type_complexity",
+  "-Aclippy::unused_unit",
+]
