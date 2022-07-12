@@ -22,6 +22,7 @@ use sp_std::convert::From;
 const STAKING_ID: LockIdentifier = *b"dapstake";
 
 #[frame_support::pallet]
+#[allow(clippy::module_inception)]
 pub mod pallet {
     use super::*;
 

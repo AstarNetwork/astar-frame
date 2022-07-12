@@ -90,7 +90,7 @@ pub trait AddressToAssetId<AssetId> {
 /// 1024-2047 Precompiles that are not in Ethereum Mainnet but are neither Astar specific
 /// 2048-4095 Astar specific precompiles
 /// Asset precompiles can only fall between
-/// 	0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+///     0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 /// The precompile for AssetId X, where X is a u128 (i.e.16 bytes), if 0XFFFFFFFF + Bytes(AssetId)
 /// In order to route the address to Erc20AssetsPrecompile<R>, we first check whether the AssetId
 /// exists in pallet-assets
@@ -99,6 +99,7 @@ pub trait AddressToAssetId<AssetId> {
 
 /// This means that every address that starts with 0xFFFFFFFF will go through an additional db read,
 /// but the probability for this to happen is 2^-32 for random addresses
+#[derive(Default)]
 pub struct Erc20AssetsPrecompileSet<Runtime, Instance: 'static = ()>(
     PhantomData<(Runtime, Instance)>,
 );
@@ -174,12 +175,6 @@ where
         } else {
             false
         }
-    }
-}
-
-impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
-    pub fn new() -> Self {
-        Self(PhantomData)
     }
 }
 
@@ -367,7 +362,7 @@ where
         {
             let caller: Runtime::AccountId =
                 Runtime::AddressMapping::into_account_id(handle.context().caller);
-            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from.clone());
+            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from);
             let to: Runtime::AccountId = Runtime::AddressMapping::into_account_id(to);
 
             // If caller is "from", it can spend as much as it wants from its own balance.

@@ -123,7 +123,7 @@ impl VestingAction {
     fn pick_schedules<'a, T: Config>(
         &'a self,
         schedules: Vec<VestingInfo<BalanceOf<T>, T::BlockNumber>>,
-    ) -> impl Iterator<Item = VestingInfo<BalanceOf<T>, T::BlockNumber>> + 'a {
+    ) -> impl Iterator<Item = VestingInfo<BalanceOf<T>, T::BlockNumber>> + '_ {
         schedules
             .into_iter()
             .enumerate()

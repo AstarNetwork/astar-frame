@@ -58,7 +58,10 @@ pub(crate) fn network_id_to_bytes(network_id: NetworkId) -> Vec<u8> {
 
 // Function to convert bytes to networkId
 pub(crate) fn network_id_from_bytes(encoded_bytes: Vec<u8>) -> EvmResult<NetworkId> {
-    ensure!(!encoded_bytes.is_empty(), revert("Junctions cannot be empty"));
+    ensure!(
+        !encoded_bytes.is_empty(),
+        revert("Junctions cannot be empty")
+    );
     let mut encoded_network_id = EvmDataReader::new(&encoded_bytes);
 
     let network_selector = encoded_network_id.read_raw_bytes(1)?;
