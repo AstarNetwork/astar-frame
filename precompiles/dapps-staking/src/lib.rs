@@ -231,8 +231,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_dapps_staking::Call::<R>::unbond_and_unstake { contract_id, value };
+        let call = pallet_dapps_staking::Call::<R>::unbond_and_unstake { contract_id, value };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -314,8 +313,7 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         log::trace!(target: "ds-precompile", "set_reward_destination {:?} {:?}", origin, reward_destination);
 
-        let call =
-            pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination };
+        let call = pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -335,8 +333,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_dapps_staking::Call::<R>::withdraw_from_unregistered { contract_id };
+        let call = pallet_dapps_staking::Call::<R>::withdraw_from_unregistered { contract_id };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -474,9 +471,7 @@ where
             Action::ReadEraReward => Self::read_era_reward(handle),
             Action::ReadEraStaked => Self::read_era_staked(handle),
             Action::ReadStakedAmount => Self::read_staked_amount(handle),
-            Action::ReadStakedAmountOnContract => {
-                Self::read_staked_amount_on_contract(handle)
-            }
+            Action::ReadStakedAmountOnContract => Self::read_staked_amount_on_contract(handle),
             Action::ReadContractStake => Self::read_contract_stake(handle),
             // Dispatchables
             Action::Register => Self::register(handle),

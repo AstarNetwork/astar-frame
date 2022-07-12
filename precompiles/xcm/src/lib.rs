@@ -77,8 +77,7 @@ where
             .iter()
             .cloned()
             .filter_map(|address| {
-                R::address_to_asset_id(address.into())
-                    .and_then(|x| C::reverse_ref(x).ok())
+                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
