@@ -1,2 +1,2 @@
 # The maximum complexity a type can have (defaults to 250)
-type-complexity-threshold = 300
+type-complexity-threshold = 400
