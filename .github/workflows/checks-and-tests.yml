@@ -38,6 +38,9 @@ jobs:
     - name: Generate code coverage report
       run: cargo tarpaulin --verbose -o=Xml
 
+    - run: |
+        ls -R
+
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.2.0
       with:
