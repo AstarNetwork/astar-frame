@@ -56,10 +56,7 @@ jobs:
       uses: actions-rs/tarpaulin@v0.1
       with:
         args: '--all-features'
-      out-type: Xml
-
-    - run: |
-        ls -R
+        out-type: Xml
 
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.2.0
