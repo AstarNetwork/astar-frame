@@ -176,7 +176,7 @@ where
 
     /// Register contract with the dapp-staking pallet
     fn register(_: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
-        // register call is root-origin. it should always fail when called evm via precompiles.
+        // register is root-origin call. it should always fail when called via evm precompiles.
         Err(error("register via evm precompile is not allowed"))
     }
 
