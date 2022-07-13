@@ -123,7 +123,7 @@ impl VestingAction {
     fn pick_schedules<'a, T: Config>(
         &'a self,
         schedules: Vec<VestingInfo<BalanceOf<T>, T::BlockNumber>>,
-    ) -> impl Iterator<Item = VestingInfo<BalanceOf<T>, T::BlockNumber>> + 'a {
+    ) -> impl Iterator<Item = VestingInfo<BalanceOf<T>, T::BlockNumber>> + '_ {
         schedules
             .into_iter()
             .enumerate()
@@ -593,8 +593,8 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns a tuple that consists of:
     /// - Vec of vesting schedules, where completed schedules and those specified
-    /// 	by filter are removed. (Note the vec is not checked for respecting
-    /// 	bounded length.)
+    ///     by filter are removed. (Note the vec is not checked for respecting
+    ///     bounded length.)
     /// - The amount locked at the current block number based on the given schedules.
     ///
     /// NOTE: the amount locked does not include any schedules that are filtered out via `action`.
@@ -715,8 +715,8 @@ impl<T: Config> Pallet<T> {
         };
 
         debug_assert!(
-            locked_now > Zero::zero() && schedules.len() > 0
-                || locked_now == Zero::zero() && schedules.len() == 0
+            locked_now > Zero::zero() && !schedules.is_empty()
+                || locked_now == Zero::zero() && schedules.is_empty()
         );
 
         Ok((schedules, locked_now))
@@ -785,7 +785,7 @@ where
         let (schedules, locked_now) =
             Self::exec_action(schedules.to_vec(), VestingAction::Passive)?;
 
-        Self::write_vesting(&who, schedules)?;
+        Self::write_vesting(who, schedules)?;
         Self::write_lock(who, locked_now);
 
         Ok(())
@@ -821,7 +821,7 @@ where
 
         let (schedules, locked_now) = Self::exec_action(schedules.to_vec(), remove_action)?;
 
-        Self::write_vesting(&who, schedules)?;
+        Self::write_vesting(who, schedules)?;
         Self::write_lock(who, locked_now);
         Ok(())
     }

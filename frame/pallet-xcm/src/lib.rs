@@ -1451,7 +1451,7 @@ pub mod pallet {
             );
             let versioned_dest = VersionedMultiLocation::from(dest.clone());
             VersionDiscoveryQueue::<T>::mutate(|q| {
-                if let Some(index) = q.iter().position(|i| &i.0 == &versioned_dest) {
+                if let Some(index) = q.iter().position(|i| i.0 == versioned_dest) {
                     // exists - just bump the count.
                     q[index].1.saturating_inc();
                 } else {
@@ -1477,7 +1477,6 @@ pub mod pallet {
                         "Could not determine a version to wrap XCM for destination: {:?}",
                         dest,
                     );
-                    ()
                 })
                 .and_then(|v| xcm.into().into_version(v.min(XCM_VERSION)))
         }
@@ -1562,7 +1561,7 @@ pub mod pallet {
                 1 => AssetTraps::<T>::remove(hash),
                 n => AssetTraps::<T>::insert(hash, n - 1),
             }
-            return true;
+            true
         }
     }
 
@@ -1658,7 +1657,7 @@ pub mod pallet {
                         ));
                         return 0;
                     }
-                    return match maybe_notify {
+                    match maybe_notify {
                         Some((pallet_index, call_index)) => {
                             // This is a bit horrible, but we happen to know that the `Call` will
                             // be built by `(pallet_index: u8, call_index: u8, QueryId, Response)`.
@@ -1715,11 +1714,11 @@ pub mod pallet {
                             Queries::<T>::insert(query_id, QueryStatus::Ready { response, at });
                             0
                         }
-                    };
+                    }
                 }
                 _ => {
                     Self::deposit_event(Event::UnexpectedResponse(origin.clone(), query_id));
-                    return 0;
+                    0
                 }
             }
         }

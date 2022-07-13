@@ -11,9 +11,9 @@ edition = "2021"
 log = { version = "0.4", default-features = false }
 
 # Substrate dependencies
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
 # XCM dependencies
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
@@ -26,11 +26,11 @@ pallet-xc-asset-config = { path = "../../frame/xc-asset-config", default-feature
 [features]
 default = ["std"]
 std = [
-    "frame-support/std",
-    "sp-std/std",
-    "sp-runtime/std",
-    "xcm/std",
-    "xcm-builder/std",
-    "xcm-executor/std",
-    "pallet-xc-asset-config/std",
+	"frame-support/std",
+	"sp-std/std",
+	"sp-runtime/std",
+	"xcm/std",
+	"xcm-builder/std",
+	"xcm-executor/std",
+	"pallet-xc-asset-config/std",
 ]

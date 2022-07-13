@@ -139,17 +139,9 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
+    #[cfg_attr(feature = "std", derive(Default))]
     pub struct GenesisConfig {
         pub reward_config: RewardDistributionConfig,
-    }
-
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                reward_config: Default::default(),
-            }
-        }
     }
 
     #[pallet::genesis_build]

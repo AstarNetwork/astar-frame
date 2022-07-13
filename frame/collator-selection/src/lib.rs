@@ -388,7 +388,7 @@ pub mod pallet {
 
             let current_count =
                 <Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
-                    if candidates.into_iter().any(|candidate| candidate.who == who) {
+                    if candidates.iter_mut().any(|candidate| candidate.who == who) {
                         Err(Error::<T>::AlreadyCandidate)?
                     } else {
                         T::Currency::reserve(&who, deposit)?;
@@ -444,8 +444,8 @@ pub mod pallet {
                         let slash = T::SlashRatio::get() * deposit;
                         let remain = deposit - slash;
 
-                        let (imbalance, _) = T::Currency::slash_reserved(&who, slash);
-                        T::Currency::unreserve(&who, remain);
+                        let (imbalance, _) = T::Currency::slash_reserved(who, slash);
+                        T::Currency::unreserve(who, remain);
 
                         if let Some(dest) = Self::slash_destination() {
                             T::Currency::resolve_creating(&dest, imbalance);
@@ -453,7 +453,7 @@ pub mod pallet {
 
                         Self::deposit_event(Event::CandidateSlashed(who.clone()));
                     } else {
-                        T::Currency::unreserve(&who, deposit);
+                        T::Currency::unreserve(who, deposit);
                     }
                     candidates.remove(index);
                     <LastAuthoredBlock<T>>::remove(who.clone());
@@ -477,7 +477,7 @@ pub mod pallet {
         ) -> Vec<T::AccountId> {
             let now = frame_system::Pallet::<T>::block_number();
             let kick_threshold = T::KickThreshold::get();
-            let new_candidates = candidates
+            candidates
                 .into_iter()
                 .filter_map(|c| {
                     let last_block = <LastAuthoredBlock<T>>::get(c.who.clone());
@@ -495,8 +495,7 @@ pub mod pallet {
                         None
                     }
                 })
-                .collect::<Vec<_>>();
-            new_candidates
+                .collect::<Vec<_>>()
         }
     }
 
