@@ -38,11 +38,6 @@ jobs:
     - name: Generate code coverage report
       run: cargo tarpaulin --verbose -o=Xml
 
-    - uses: actions/upload-artifact@master
-      with:
-        name: coverage-report.html
-        path: tarpaulin-report.html
-
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.2.0
       with:
