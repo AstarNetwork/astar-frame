@@ -241,28 +241,28 @@ pub enum FunctionModifier {
 }
 
 pub trait PrecompileHandleExt: PrecompileHandle {
+    #[must_use]
     /// Record cost of a log manually.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult;
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult;
 
+    #[must_use]
     /// Check that a function call is compatible with the context it is
     /// called into.
-    #[must_use]
     fn check_function_modifier(&self, modifier: FunctionModifier) -> EvmResult;
 
-    /// Read the selector from the input data.
     #[must_use]
+    /// Read the selector from the input data.
     fn read_selector<T>(&self) -> EvmResult<T>
     where
         T: num_enum::TryFromPrimitive<Primitive = u32>;
 
-    /// Returns a reader of the input, skipping the selector.
     #[must_use]
+    /// Returns a reader of the input, skipping the selector.
     fn read_input(&self) -> EvmResult<EvmDataReader>;
 }
 
@@ -360,17 +360,17 @@ pub fn call_cost(value: U256, config: &evm::Config) -> u64 {
 }
 
 impl<T: PrecompileHandle> PrecompileHandleExt for T {
+    #[must_use]
     /// Record cost of a log manualy.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult {
         self.record_cost(log_costs(topics, data_len)?)?;
 
         Ok(())
     }
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult {
         for log in logs {
             self.record_log_costs_manual(log.topics.len(), log.data.len())?;
@@ -379,15 +379,15 @@ impl<T: PrecompileHandle> PrecompileHandleExt for T {
         Ok(())
     }
 
+    #[must_use]
     /// Check that a function call is compatible with the context it is
     /// called into.
-    #[must_use]
     fn check_function_modifier(&self, modifier: FunctionModifier) -> EvmResult {
         check_function_modifier(self.context(), self.is_static(), modifier)
     }
 
-    /// Read the selector from the input data.
     #[must_use]
+    /// Read the selector from the input data.
     fn read_selector<S>(&self) -> EvmResult<S>
     where
         S: num_enum::TryFromPrimitive<Primitive = u32>,
@@ -395,8 +395,8 @@ impl<T: PrecompileHandle> PrecompileHandleExt for T {
         EvmDataReader::read_selector(self.input())
     }
 
-    /// Returns a reader of the input, skipping the selector.
     #[must_use]
+    /// Returns a reader of the input, skipping the selector.
     fn read_input(&self) -> EvmResult<EvmDataReader> {
         EvmDataReader::new_skip_selector(self.input())
     }
@@ -418,6 +418,7 @@ pub fn succeed(output: impl AsRef<[u8]>) -> PrecompileOutput {
     }
 }
 
+#[must_use]
 /// Check that a function call is compatible with the context it is
 /// called into.
 fn check_function_modifier(
