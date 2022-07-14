@@ -194,7 +194,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
     ) -> Self {
         let to = to.into();
         let mut handle = MockHandle::new(
-            to.clone(),
+            to,
             Context {
                 address: to,
                 caller: from.into(),
@@ -243,7 +243,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
 
     pub fn expect_log(mut self, log: Log) -> Self {
         self.expected_logs = Some({
-            let mut logs = self.expected_logs.unwrap_or_else(Vec::new);
+            let mut logs = self.expected_logs.unwrap_or_default();
             logs.push(PrettyLog(log));
             logs
         });

@@ -109,3 +109,33 @@
         uint256 value
     );
 }
+
+    /**
+     * @title Extension for ERC20 interface
+     * @dev Extended functions with minimum balance check as well as mint & burn.
+     */
+    interface IERC20Plus is IERC20 {
+
+    /**
+     * @dev Returns minimum balance an account must have to exist
+     * Selector: b9d1d49b
+     */
+    function minimumBalance() external view returns (uint256);
+
+    /**
+     * @dev Mints the specified amount of asset for the beneficiary.
+     * This operation will increase the total supply.
+     * Only usable by asset admin.
+     * Selector: 40c10f19
+     */
+    function mint(address beneficiary, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Burns by up to the specified amount of asset from the target.
+     * This operation will increase decrease the total supply.
+     * Only usable by asset admin.
+     * Selector: 9dc29fac
+     */
+    function burn(address who, uint256 amount) external returns (bool);
+}
+

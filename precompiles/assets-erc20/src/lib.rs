@@ -70,6 +70,9 @@ pub enum Action {
     Name = "name()",
     Symbol = "symbol()",
     Decimals = "decimals()",
+    MinimumBalance = "minimumBalance()",
+    Mint = "mint(address,uint256)",
+    Burn = "burn(address,uint256)",
 }
 
 /// This trait ensure we can convert EVM address to AssetIds
@@ -87,7 +90,7 @@ pub trait AddressToAssetId<AssetId> {
 /// 1024-2047 Precompiles that are not in Ethereum Mainnet but are neither Astar specific
 /// 2048-4095 Astar specific precompiles
 /// Asset precompiles can only fall between
-/// 	0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+///     0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 /// The precompile for AssetId X, where X is a u128 (i.e.16 bytes), if 0XFFFFFFFF + Bytes(AssetId)
 /// In order to route the address to Erc20AssetsPrecompile<R>, we first check whether the AssetId
 /// exists in pallet-assets
@@ -96,6 +99,7 @@ pub trait AddressToAssetId<AssetId> {
 
 /// This means that every address that starts with 0xFFFFFFFF will go through an additional db read,
 /// but the probability for this to happen is 2^-32 for random addresses
+#[derive(Default)]
 pub struct Erc20AssetsPrecompileSet<Runtime, Instance: 'static = ()>(
     PhantomData<(Runtime, Instance)>,
 );
@@ -125,15 +129,18 @@ where
                     };
 
                     if let Err(err) = handle.check_function_modifier(match selector {
-                        Action::Approve | Action::Transfer | Action::TransferFrom => {
-                            FunctionModifier::NonPayable
-                        }
+                        Action::Approve
+                        | Action::Transfer
+                        | Action::TransferFrom
+                        | Action::Mint
+                        | Action::Burn => FunctionModifier::NonPayable,
                         _ => FunctionModifier::View,
                     }) {
                         return Some(Err(err));
                     }
 
                     match selector {
+                        // XC20
                         Action::TotalSupply => Self::total_supply(asset_id, handle),
                         Action::BalanceOf => Self::balance_of(asset_id, handle),
                         Action::Allowance => Self::allowance(asset_id, handle),
@@ -143,6 +150,10 @@ where
                         Action::Name => Self::name(asset_id, handle),
                         Action::Symbol => Self::symbol(asset_id, handle),
                         Action::Decimals => Self::decimals(asset_id, handle),
+                        // XC20+
+                        Action::MinimumBalance => Self::minimum_balance(asset_id, handle),
+                        Action::Mint => Self::mint(asset_id, handle),
+                        Action::Burn => Self::burn(asset_id, handle),
                     }
                 };
                 return Some(result);
@@ -164,12 +175,6 @@ where
         } else {
             false
         }
-    }
-}
-
-impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
-    pub fn new() -> Self {
-        Self(PhantomData)
     }
 }
 
@@ -357,7 +362,7 @@ where
         {
             let caller: Runtime::AccountId =
                 Runtime::AddressMapping::into_account_id(handle.context().caller);
-            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from.clone());
+            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from);
             let to: Runtime::AccountId = Runtime::AddressMapping::into_account_id(to);
 
             // If caller is "from", it can spend as much as it wants from its own balance.
@@ -448,5 +453,71 @@ where
                 ))
                 .build(),
         ))
+    }
+
+    fn minimum_balance(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<Runtime>::db_read_gas_cost())?;
+
+        let min_balance: U256 =
+            pallet_assets::Pallet::<Runtime, Instance>::minimum_balance(asset_id).into();
+
+        Ok(succeed(EvmDataWriter::new().write(min_balance).build()))
+    }
+
+    fn mint(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let beneficiary: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let beneficiary = Runtime::AddressMapping::into_account_id(beneficiary);
+
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::mint {
+                id: asset_id,
+                beneficiary: Runtime::Lookup::unlookup(beneficiary),
+                amount,
+            },
+        )?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn burn(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let who: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let who = Runtime::AddressMapping::into_account_id(who);
+
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::burn {
+                id: asset_id,
+                who: Runtime::Lookup::unlookup(who),
+                amount,
+            },
+        )?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 }

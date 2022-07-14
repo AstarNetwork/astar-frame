@@ -19,11 +19,11 @@ interface XCM {
      * - all assets has corresponded amount (lenght of assets list matched to amount list)
      */
     function assets_withdraw(
-        address[] asset_id,
-        uint256[] asset_amount,
+        address[] calldata asset_id,
+        uint256[] calldata asset_amount,
         bytes32   recipient_account_id,
         bool      is_relay,
         uint256   parachain_id,
-        uint256   fee_index,
-    ) external view returns (bool);
+        uint256   fee_index
+    ) external returns (bool);
 }

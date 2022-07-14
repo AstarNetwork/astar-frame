@@ -35,7 +35,7 @@ use xcm::latest::{Junction, Junctions, MultiLocation, NetworkId};
 // end to recover the name
 pub(crate) fn network_id_to_bytes(network_id: NetworkId) -> Vec<u8> {
     let mut encoded: Vec<u8> = Vec::new();
-    match network_id.clone() {
+    match network_id {
         NetworkId::Any => {
             encoded.push(0u8);
             encoded
@@ -58,7 +58,10 @@ pub(crate) fn network_id_to_bytes(network_id: NetworkId) -> Vec<u8> {
 
 // Function to convert bytes to networkId
 pub(crate) fn network_id_from_bytes(encoded_bytes: Vec<u8>) -> EvmResult<NetworkId> {
-    ensure!(encoded_bytes.len() > 0, revert("Junctions cannot be empty"));
+    ensure!(
+        !encoded_bytes.is_empty(),
+        revert("Junctions cannot be empty")
+    );
     let mut encoded_network_id = EvmDataReader::new(&encoded_bytes);
 
     let network_selector = encoded_network_id.read_raw_bytes(1)?;
@@ -80,12 +83,12 @@ impl EvmData for Junction {
         let junction_bytes = junction.as_bytes();
 
         ensure!(
-            junction_bytes.len() > 0,
+            !junction_bytes.is_empty(),
             revert("Junctions cannot be empty")
         );
 
         // For simplicity we use an EvmReader here
-        let mut encoded_junction = EvmDataReader::new(&junction_bytes);
+        let mut encoded_junction = EvmDataReader::new(junction_bytes);
 
         // We take the first byte
         let enum_selector = encoded_junction.read_raw_bytes(1)?;
@@ -95,14 +98,14 @@ impl EvmData for Junction {
             0 => {
                 // In the case of Junction::Parachain, we need 4 additional bytes
                 let mut data: [u8; 4] = Default::default();
-                data.copy_from_slice(&encoded_junction.read_raw_bytes(4)?);
+                data.copy_from_slice(encoded_junction.read_raw_bytes(4)?);
                 let para_id = u32::from_be_bytes(data);
                 Ok(Junction::Parachain(para_id))
             }
             1 => {
                 // In the case of Junction::AccountId32, we need 32 additional bytes plus NetworkId
                 let mut account: [u8; 32] = Default::default();
-                account.copy_from_slice(&encoded_junction.read_raw_bytes(32)?);
+                account.copy_from_slice(encoded_junction.read_raw_bytes(32)?);
 
                 let network = encoded_junction.read_till_end()?.to_vec();
                 Ok(Junction::AccountId32 {
@@ -113,7 +116,7 @@ impl EvmData for Junction {
             2 => {
                 // In the case of Junction::AccountIndex64, we need 8 additional bytes plus NetworkId
                 let mut index: [u8; 8] = Default::default();
-                index.copy_from_slice(&encoded_junction.read_raw_bytes(8)?);
+                index.copy_from_slice(encoded_junction.read_raw_bytes(8)?);
                 // Now we read the network
                 let network = encoded_junction.read_till_end()?.to_vec();
                 Ok(Junction::AccountIndex64 {
@@ -124,7 +127,7 @@ impl EvmData for Junction {
             3 => {
                 // In the case of Junction::AccountKey20, we need 20 additional bytes plus NetworkId
                 let mut account: [u8; 20] = Default::default();
-                account.copy_from_slice(&encoded_junction.read_raw_bytes(20)?);
+                account.copy_from_slice(encoded_junction.read_raw_bytes(20)?);
 
                 let network = encoded_junction.read_till_end()?.to_vec();
                 Ok(Junction::AccountKey20 {
@@ -138,7 +141,7 @@ impl EvmData for Junction {
             5 => {
                 // In the case of Junction::GeneralIndex, we need 16 additional bytes
                 let mut general_index: [u8; 16] = Default::default();
-                general_index.copy_from_slice(&encoded_junction.read_raw_bytes(16)?);
+                general_index.copy_from_slice(encoded_junction.read_raw_bytes(16)?);
                 Ok(Junction::GeneralIndex(u128::from_be_bytes(general_index)))
             }
             6 => Ok(Junction::GeneralKey(
@@ -220,7 +223,7 @@ impl EvmData for Junctions {
     }
 
     fn write(writer: &mut EvmDataWriter, value: Self) {
-        let encoded: Vec<Junction> = value.iter().map(|junction| junction.clone()).collect();
+        let encoded: Vec<Junction> = value.iter().cloned().collect();
         EvmData::write(writer, encoded);
     }
 

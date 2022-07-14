@@ -241,13 +241,13 @@ pub enum FunctionModifier {
 }
 
 pub trait PrecompileHandleExt: PrecompileHandle {
+    #[must_use]
     /// Record cost of a log manually.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult;
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult;
 
     #[must_use]
@@ -360,17 +360,17 @@ pub fn call_cost(value: U256, config: &evm::Config) -> u64 {
 }
 
 impl<T: PrecompileHandle> PrecompileHandleExt for T {
+    #[must_use]
     /// Record cost of a log manualy.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult {
         self.record_cost(log_costs(topics, data_len)?)?;
 
         Ok(())
     }
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult {
         for log in logs {
             self.record_log_costs_manual(log.topics.len(), log.data.len())?;

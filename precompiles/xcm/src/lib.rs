@@ -77,21 +77,19 @@ where
             .iter()
             .cloned()
             .filter_map(|address| {
-                R::address_to_asset_id(address.into())
-                    .map(|x| C::reverse_ref(x).ok())
-                    .flatten()
+                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
             })
             .collect();
-        let amounts: Vec<u128> = input
-            .read::<Vec<U256>>()?
-            .iter()
-            .map(|x| x.low_u128())
-            .collect();
+        let amounts_raw = input.read::<Vec<U256>>()?;
+        if amounts_raw.iter().any(|x| *x > u128::max_value().into()) {
+            return Err(revert("Asset amount is too big"));
+        }
+        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
-        if assets.len() != amounts.len() || assets.len() == 0 {
+        if assets.len() != amounts.len() || assets.is_empty() {
             return Err(revert("Assets resolution failure."));
         }
 
@@ -108,7 +106,7 @@ where
         let dest = if is_relay {
             MultiLocation::parent()
         } else {
-            X1(Junction::Parachain(parachain_id)).into()
+            X1(Junction::Parachain(parachain_id)).into_exterior(1)
         };
 
         let beneficiary: MultiLocation = X1(Junction::AccountId32 {
@@ -132,8 +130,7 @@ where
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
             fee_asset_item,
-        }
-        .into();
+        };
 
         // Dispatch a call.
         RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;

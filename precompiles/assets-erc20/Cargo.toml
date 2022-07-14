@@ -1,9 +1,9 @@
 [package]
 name = "pallet-evm-precompile-assets-erc20"
-authors = [ "Stake Technologies", "PureStake" ]
+authors = ["Stake Technologies", "PureStake"]
 description = "A Precompile to expose a Assets pallet through an ERC20-compliant interface."
 edition = "2021"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies]
 log = "0.4.16"
@@ -13,7 +13,7 @@ slices = "0.2.0"
 precompile-utils = { path = "../utils", default-features = false }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [ "max-encoded-len" ] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
@@ -32,15 +32,15 @@ derive_more = { version = "0.99" }
 serde = { version = "1.0.100" }
 sha3 = "0.10.1"
 
-precompile-utils = { path = "../utils", features = [ "testing" ] }
+precompile-utils = { path = "../utils", features = ["testing"] }
 
-codec = { package = "parity-scale-codec", version = "3.0.0", features = [ "max-encoded-len" ] }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["max-encoded-len"] }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
-scale-info = { version = "2.1.0", default-features = false, features = [ "derive" ] }
+scale-info = { version = "2.1.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 
 [features]
-default = [ "std" ]
+default = ["std"]
 std = [
 	"codec/std",
 	"fp-evm/std",

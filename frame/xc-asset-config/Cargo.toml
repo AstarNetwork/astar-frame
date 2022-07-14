@@ -1,6 +1,6 @@
 [package]
 name = "pallet-xc-asset-config"
-authors = [ "Stake Technologies" ]
+authors = ["Stake Technologies"]
 edition = "2021"
 version = "1.2.0"
 
@@ -11,8 +11,8 @@ serde = { version = "1.0.106", optional = true }
 # Substrate
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-parity-scale-codec = { version = "3.0.0", default-features = false, features = [ "derive" ] }
-scale-info = { version = "2.0", default-features = false, features = [ "derive" ] }
+parity-scale-codec = { version = "3.0.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
@@ -25,11 +25,11 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24",  default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 
 [features]
-default = [ "std" ]
+default = ["std"]
 std = [
 	"frame-support/std",
 	"frame-system/std",
@@ -45,4 +45,4 @@ std = [
 runtime-benchmarks = [
 	"frame-benchmarking",
 ]
-try-runtime = [ "frame-support/try-runtime" ]
+try-runtime = ["frame-support/try-runtime"]

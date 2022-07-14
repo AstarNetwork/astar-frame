@@ -108,7 +108,7 @@ fn prepare_bond_and_stake<T: Config>(
         DappsStaking::<T>::bond_and_stake(
             RawOrigin::Signed(staker_acc).into(),
             contract_id.clone(),
-            stake_balance.clone(),
+            stake_balance,
         )?;
     }
 
@@ -144,7 +144,7 @@ benchmarks! {
         let staker = stakers[0].clone();
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
         DappsStaking::<T>::unregister(RawOrigin::Root.into(), contract_id.clone())?;
     }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
     verify {
@@ -162,7 +162,7 @@ benchmarks! {
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
         let amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount.clone())
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount)
     verify {
         assert_last_event::<T>(Event::<T>::BondAndStake(staker, contract_id, amount).into());
     }
@@ -177,9 +177,9 @@ benchmarks! {
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
         let amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), amount)?;
 
-    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount.clone())
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount)
     verify {
         assert_last_event::<T>(Event::<T>::UnbondAndUnstake(staker, contract_id, amount).into());
     }
@@ -195,8 +195,8 @@ benchmarks! {
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
         let unstake_amount = stake_amount / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount.clone())?;
-        DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), unstake_amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
+        DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id, unstake_amount)?;
 
         let current_era = DappsStaking::<T>::current_era();
         advance_to_era::<T>(current_era + 1 + T::UnbondingPeriod::get());
