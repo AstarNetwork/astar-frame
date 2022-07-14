@@ -42,7 +42,8 @@ interface DappsStaking {
 
     // Extrinsic calls
 
-    /// @notice Register provided contract.
+    /// @notice Register is root origin only and not allowed via evm precompile.
+    ///         This should always fail.
     function register(address) external;
 
     /// @notice Stake provided amount on the contract.

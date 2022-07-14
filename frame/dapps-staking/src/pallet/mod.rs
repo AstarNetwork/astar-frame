@@ -5,6 +5,7 @@ use frame_support::{
     dispatch::DispatchResult,
     ensure,
     pallet_prelude::*,
+    storage::child::KillStorageResult,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
         ReservableCurrency, WithdrawReasons,
@@ -350,10 +351,21 @@ pub mod pallet {
 
         fn on_runtime_upgrade() -> Weight {
             // lightweight deletions
+            let mut consumed_weight = T::DbWeight::get().writes(2);
             StorageVersion::<T>::put(Version::default());
             PreApprovalIsEnabled::<T>::kill();
-            PreApprovedDevelopers::<T>::remove_all(None);
-            0
+
+            let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
+            match PreApprovedDevelopers::<T>::remove_all(None) {
+                KillStorageResult::AllRemoved(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                }
+                KillStorageResult::SomeRemaining(removed_entries_num) => {
+                    consumed_weight += deletion_weight * removed_entries_num as u64;
+                }
+            }
+
+            consumed_weight
         }
 
         #[cfg(feature = "try-runtime")]
