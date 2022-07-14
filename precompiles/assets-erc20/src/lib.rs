@@ -104,6 +104,12 @@ pub struct Erc20AssetsPrecompileSet<Runtime, Instance: 'static = ()>(
     PhantomData<(Runtime, Instance)>,
 );
 
+impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<Runtime, Instance> PrecompileSet for Erc20AssetsPrecompileSet<Runtime, Instance>
 where
     Instance: 'static,
