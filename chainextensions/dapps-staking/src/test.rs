@@ -2,18 +2,19 @@ use super::*;
 
 use frame_support::{
     construct_runtime, parameter_types,
+    assert_ok,
     traits::{ConstU32, Nothing},
     weights::{constants::WEIGHT_PER_SECOND, RuntimeDbWeight, Weight},
     PalletId,
 };
 use frame_system::limits::{BlockLength, BlockWeights};
-use sp_core::{H160, H256};
+use sp_core::{H160, H256, Bytes};
 
 use codec::{Decode, Encode};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup, Hash},
     AccountId32, Perbill,
 };
 
@@ -27,6 +28,8 @@ use pallet_contracts::{
     weights::WeightInfo,
     DefaultContractAccessWeight,
 };
+use std::cell::RefCell;
+
 use pallet_dapps_staking::weights;
 
 pub(crate) type BlockNumber = u64;
@@ -54,6 +57,11 @@ pub(crate) const REGISTER_DEPOSIT: Balance = 10 * AST;
 
 pub const READ_WEIGHT: u64 = 3;
 pub const WRITE_WEIGHT: u64 = 7;
+
+pub const ALICE: AccountId32 = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId32 = AccountId32::new([2u8; 32]);
+
+pub const GAS_LIMIT: Weight = 100_000_000_000;
 
 /// Charge fee for stored bytes and items.
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -219,7 +227,7 @@ impl pallet_contracts::Config for TestRuntime {
     type CallStack = [pallet_contracts::Frame<Self>; 31];
     type WeightPrice = ();
     type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-    type ChainExtension = MockChainExtension;
+    type ChainExtension = TestExtension;
     type DeletionQueueDepth = DeletionQueueDepth;
     type DeletionWeightLimit = DeletionWeightLimit;
     type Schedule = Schedule;
@@ -262,7 +270,36 @@ impl ExternalityBuilder {
     // }
 }
 
-pub struct MockChainExtension;
+
+thread_local! {
+	static TEST_EXTENSION: RefCell<TestExtension> = Default::default();
+}
+
+pub struct TestExtension {
+	enabled: bool,
+	last_seen_buffer: Vec<u8>,
+	last_seen_inputs: (u32, u32, u32, u32),
+}
+
+impl TestExtension {
+	fn disable() {
+		TEST_EXTENSION.with(|e| e.borrow_mut().enabled = false)
+	}
+
+	fn last_seen_buffer() -> Vec<u8> {
+		TEST_EXTENSION.with(|e| e.borrow().last_seen_buffer.clone())
+	}
+
+	fn last_seen_inputs() -> (u32, u32, u32, u32) {
+		TEST_EXTENSION.with(|e| e.borrow().last_seen_inputs.clone())
+	}
+}
+
+impl Default for TestExtension {
+	fn default() -> Self {
+		Self { enabled: true, last_seen_buffer: vec![], last_seen_inputs: (0, 0, 0, 0) }
+	}
+}
 
 enum ExtensionId {
     DappsStaking = 34,
@@ -279,7 +316,7 @@ impl TryFrom<u32> for ExtensionId {
     }
 }
 
-impl ChainExtension<TestRuntime> for MockChainExtension {
+impl ChainExtension<TestRuntime> for TestExtension {
     fn call<E: Ext>(func_id: u32, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = TestRuntime>,
@@ -304,12 +341,27 @@ construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Contract: pallet_contracts::{Pallet, Call, Storage, Event<T>},
+        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         DappsStaking: pallet_dapps_staking::{Pallet, Call, Storage, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
     }
 );
+
+// ----------------------- Helper functions ---------------------------------------
+/// Load a given wasm module represented by a .wat file and returns a wasm binary contents along
+/// with it's hash.
+///
+/// The fixture files are located under the `fixtures/` directory.
+fn compile_module<T>(fixture_name: &str) -> wat::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+where
+	T: frame_system::Config,
+{
+	let fixture_path = ["fixtures/", fixture_name, ".wat"].concat();
+	let wasm_binary = wat::parse_file(fixture_path)?;
+	let code_hash = T::Hashing::hash(&wasm_binary);
+	Ok((wasm_binary, code_hash))
+}
 
 // ----------------------- T E S T ---------------------------------------
 
@@ -321,4 +373,35 @@ fn current_era_is_ok() {
 
         assert_eq!(0u32, DappsStaking::current_era());
     })
+}
+
+
+#[test]
+fn chain_extension_works() {
+	let (code, hash) = compile_module::<TestRuntime>("dapps_staking").unwrap();
+    ExternalityBuilder::default().build().execute_with(|| {
+		let min_balance = <TestRuntime as pallet_contracts::Config>::Currency::minimum_balance();
+		let _ = Balances::deposit_creating(&ALICE, 1000 * min_balance);
+		assert_ok!(Contracts::instantiate_with_code(
+			Origin::signed(ALICE),
+			min_balance * 100,
+			GAS_LIMIT,
+			None,
+			code,
+			vec![],
+			vec![],
+		),);
+		let addr = Contracts::contract_address(&ALICE, &hash, &[]);
+
+		// The contract takes a up to 2 byte buffer where the first byte passed is used as
+		// as func_id to the chain extension which behaves differently based on the
+		// func_id.
+
+		// 0 = read input buffer and pass it through as output
+		let result =
+			Contracts::bare_call(ALICE, addr.clone(), 0, GAS_LIMIT, None, vec![0, 99], false);
+		let gas_consumed = result.gas_consumed;
+		assert_eq!(TestExtension::last_seen_buffer(), vec![0, 99]);
+		assert_eq!(result.result.unwrap().data, Bytes(vec![0, 99]));
+	});
 }
