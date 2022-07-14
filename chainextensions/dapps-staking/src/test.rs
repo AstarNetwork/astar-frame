@@ -118,7 +118,7 @@ impl frame_system::Config for TestRuntime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Config for TestRuntime {
     type MaxReserves = ();
@@ -238,12 +238,12 @@ impl pallet_contracts::Config for TestRuntime {
 }
 
 pub struct ExternalityBuilder {
-    balances: Vec<(AccountId32, Balance)>,
+    existential_deposit: u64,
 }
 
 impl Default for ExternalityBuilder {
     fn default() -> ExternalityBuilder {
-        ExternalityBuilder { balances: vec![] }
+        Self { existential_deposit: ExistentialDeposit::get() }
     }
 }
 
@@ -254,7 +254,7 @@ impl ExternalityBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<TestRuntime> {
-            balances: self.balances,
+            balances: vec![],
         }
         .assimilate_storage(&mut storage)
         .ok();
@@ -264,10 +264,10 @@ impl ExternalityBuilder {
         ext
     }
 
-    // pub(crate) fn with_balances(mut self, balances: Vec<(AccountId32, Balance)>) -> Self {
-    //     self.balances = balances;
-    //     self
-    // }
+	pub fn existential_deposit(mut self, existential_deposit: u64) -> Self {
+		self.existential_deposit = existential_deposit;
+		self
+	}
 }
 
 
@@ -379,7 +379,7 @@ fn current_era_is_ok() {
 #[test]
 fn chain_extension_works() {
 	let (code, hash) = compile_module::<TestRuntime>("dapps_staking").unwrap();
-    ExternalityBuilder::default().build().execute_with(|| {
+    ExternalityBuilder::default().existential_deposit(500).build().execute_with(|| {
 		let min_balance = <TestRuntime as pallet_contracts::Config>::Currency::minimum_balance();
 		let _ = Balances::deposit_creating(&ALICE, 1000 * min_balance);
 		assert_ok!(Contracts::instantiate_with_code(
@@ -400,7 +400,7 @@ fn chain_extension_works() {
 		// 0 = read input buffer and pass it through as output
 		let result =
 			Contracts::bare_call(ALICE, addr.clone(), 0, GAS_LIMIT, None, vec![0, 99], false);
-		let gas_consumed = result.gas_consumed;
+		// let gas_consumed = result.gas_consumed;
 		assert_eq!(TestExtension::last_seen_buffer(), vec![0, 99]);
 		assert_eq!(result.result.unwrap().data, Bytes(vec![0, 99]));
 	});
