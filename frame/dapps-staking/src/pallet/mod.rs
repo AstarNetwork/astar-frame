@@ -3,7 +3,7 @@
 use super::*;
 use frame_support::{
     dispatch::DispatchResult,
-    ensure,
+    ensure, log,
     pallet_prelude::*,
     storage::child::KillStorageResult,
     traits::{
