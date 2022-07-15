@@ -48,7 +48,7 @@ pub mod pallet {
             + ReservableCurrency<Self::AccountId>;
 
         /// Describes smart contract in the context required by dapps staking.
-        type SmartContract: IsContract + Parameter + Member;
+        type SmartContract: Default + Parameter + Member;
 
         /// Number of blocks per era.
         #[pallet::constant]

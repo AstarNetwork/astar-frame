@@ -154,8 +154,6 @@ impl<AccountId> Default for MockSmartContract<AccountId> {
     }
 }
 
-impl<AccountId> pallet_dapps_staking::IsContract for MockSmartContract<AccountId> {}
-
 pub struct ExternalityBuilder;
 
 impl ExternalityBuilder {

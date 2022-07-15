@@ -80,9 +80,6 @@ pub type BalanceOf<T> =
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
 
-/// Simple trait used to check whether the underlying struct represents a valid smart contract on-chain.
-pub trait IsContract: Default {}
-
 /// DApp State descriptor
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
 enum DAppState {
