@@ -6,7 +6,7 @@ pragma solidity >=0.7.0;
 /// Predeployed at the address 0x0000000000000000000000000000000000005001
 /// For better understanding check the source code:
 /// repo: https://github.com/AstarNetwork/astar-frame
-/// code: precompiles/dapps-staking/src
+/// code: frame/dapps-staking/src/pallet
 interface DappsStaking {
 
     // Storage getters
