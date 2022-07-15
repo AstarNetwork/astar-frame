@@ -99,10 +99,15 @@ pub trait AddressToAssetId<AssetId> {
 
 /// This means that every address that starts with 0xFFFFFFFF will go through an additional db read,
 /// but the probability for this to happen is 2^-32 for random addresses
-#[derive(Default)]
 pub struct Erc20AssetsPrecompileSet<Runtime, Instance: 'static = ()>(
     PhantomData<(Runtime, Instance)>,
 );
+
+impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
 impl<Runtime, Instance> PrecompileSet for Erc20AssetsPrecompileSet<Runtime, Instance>
 where
