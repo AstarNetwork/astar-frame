@@ -54,12 +54,16 @@ interface DappsStaking {
     /// @notice Withdraw all funds that have completed the unbonding process.
     function withdraw_unbonded() external;
 
-    /// @notice Claim one era of unclaimed staker rewards for the specifeid contract.
+    /// @notice Claim earned staker rewards for the oldest unclaimed era.
+    ///         In order to claim multiple eras, this call has to be called multiple times.
     ///         Staker account is derived from the caller address.
-    function claim_staker(address) external;
+    /// @param smart_contract smart contract address used for staking
+    function claim_staker(address smart_contract) external;
 
     /// @notice Claim one era of unclaimed dapp rewards for the specified contract and era.
-    function claim_dapp(address, uint128) external;
+    /// @param smart_contract smart contract address
+    /// @param era, The era to be claimed
+    function claim_dapp(address smart_contract, uint128 era) external;
 
     /// Instruction how to handle reward payout for staker.
     /// `FreeBalance` - Reward will be paid out to the staker (free balance).
