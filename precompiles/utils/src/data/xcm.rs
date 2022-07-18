@@ -21,6 +21,7 @@
 use crate::{revert, Bytes, EvmData, EvmDataReader, EvmDataWriter, EvmResult};
 
 use frame_support::ensure;
+use sp_runtime::WeakBoundedVec;
 use sp_std::vec::Vec;
 use xcm::latest::{Junction, Junctions, MultiLocation, NetworkId};
 
@@ -40,9 +41,9 @@ pub(crate) fn network_id_to_bytes(network_id: NetworkId) -> Vec<u8> {
             encoded.push(0u8);
             encoded
         }
-        NetworkId::Named(mut name) => {
+        NetworkId::Named(name) => {
             encoded.push(1u8);
-            encoded.append(&mut name);
+            encoded.append(&mut name.into_inner());
             encoded
         }
         NetworkId::Polkadot => {
@@ -69,7 +70,8 @@ pub(crate) fn network_id_from_bytes(encoded_bytes: Vec<u8>) -> EvmResult<Network
     match network_selector[0] {
         0 => Ok(NetworkId::Any),
         1 => Ok(NetworkId::Named(
-            encoded_network_id.read_till_end()?.to_vec(),
+            WeakBoundedVec::try_from(encoded_network_id.read_till_end()?.to_vec())
+                .map_err(|_| revert("Named Network Id name too long."))?,
         )),
         2 => Ok(NetworkId::Polkadot),
         3 => Ok(NetworkId::Kusama),
@@ -145,7 +147,8 @@ impl EvmData for Junction {
                 Ok(Junction::GeneralIndex(u128::from_be_bytes(general_index)))
             }
             6 => Ok(Junction::GeneralKey(
-                encoded_junction.read_till_end()?.to_vec(),
+                WeakBoundedVec::try_from(encoded_junction.read_till_end()?.to_vec())
+                    .map_err(|_| revert("Junction GeneralKey too long."))?,
             )),
             7 => Ok(Junction::OnlyChild),
             _ => Err(revert("No selector for this")),
@@ -188,9 +191,9 @@ impl EvmData for Junction {
                 encoded.append(&mut id.to_be_bytes().to_vec());
                 encoded.as_slice().into()
             }
-            Junction::GeneralKey(mut key) => {
+            Junction::GeneralKey(key) => {
                 encoded.push(6u8);
-                encoded.append(&mut key);
+                encoded.append(&mut key.into_inner());
                 encoded.as_slice().into()
             }
             Junction::OnlyChild => {
