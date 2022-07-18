@@ -192,13 +192,15 @@ pub mod pallet {
         false
     }
 
-    /// Deprecated. Need to be cleaned up with OnRuntimeUpgrade.
+    /// Deprecated.
+    /// Need to be cleaned up with OnRuntimeUpgrade.
     /// Enable or disable pre-approval list for new contract registration
     #[pallet::storage]
     #[pallet::getter(fn pre_approval_is_enabled)]
     pub(crate) type PreApprovalIsEnabled<T> = StorageValue<_, bool, ValueQuery, PreApprovalOnEmpty>;
 
-    /// Deprecated, need to be cleanup with OnRuntimeUpgrade.
+    /// Deprecated.
+    /// Need to be cleanup with OnRuntimeUpgrade.
     /// List of pre-approved developers who can register contracts.
     #[pallet::storage]
     #[pallet::getter(fn pre_approved_developers)]
