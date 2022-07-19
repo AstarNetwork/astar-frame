@@ -80,7 +80,8 @@ fn register_contract<T: Config>(
     let smart_contract = smart_contract::<T>(index);
     T::Currency::make_free_balance_be(&developer, BalanceOf::<T>::max_value());
     DappsStaking::<T>::register(
-        RawOrigin::Signed(developer.clone()).into(),
+        RawOrigin::Root.into(),
+        developer.clone(),
         smart_contract.clone(),
     )?;
 
@@ -121,7 +122,7 @@ benchmarks! {
         let developer_id = whitelisted_caller();
         let contract_id = T::SmartContract::default();
         T::Currency::make_free_balance_be(&developer_id, BalanceOf::<T>::max_value());
-    }: _(RawOrigin::Signed(developer_id.clone()), contract_id.clone())
+    }: _(RawOrigin::Root, developer_id.clone(), contract_id.clone())
     verify {
         assert_last_event::<T>(Event::<T>::NewContract(developer_id, contract_id).into());
     }
@@ -149,20 +150,6 @@ benchmarks! {
     verify {
         let staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
         assert!(staker_info.latest_staked_value().is_zero());
-    }
-
-    enable_developer_pre_approval {
-        let pre_approval_enabled = true;
-    }: _(RawOrigin::Root, pre_approval_enabled)
-    verify {
-        assert!(PreApprovalIsEnabled::<T>::get());
-    }
-
-    developer_pre_approval {
-        let pre_approved_id: T::AccountId = account("pre_approved", 100, SEED);
-    }: _(RawOrigin::Root, pre_approved_id.clone())
-    verify {
-        assert!(PreApprovedDevelopers::<T>::contains_key(&pre_approved_id));
     }
 
     bond_and_stake {

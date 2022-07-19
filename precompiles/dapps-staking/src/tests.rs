@@ -1,3 +1,4 @@
+extern crate alloc;
 use crate::{
     mock::{
         advance_to_era, initialize_first_block, precompile_address, DappsStaking, EraIndex,
@@ -5,6 +6,7 @@ use crate::{
     },
     *,
 };
+use fp_evm::ExitError;
 use frame_support::assert_ok;
 use pallet_dapps_staking::RewardDestination;
 use precompile_utils::testing::*;
@@ -111,14 +113,25 @@ fn read_era_staked_is_ok() {
 }
 
 #[test]
-fn register_is_ok() {
+fn register_via_precompile_fails() {
     ExternalityBuilder::default()
         .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
         .build()
         .execute_with(|| {
             initialize_first_block();
 
-            register_and_verify(TestAccount::Alex, TEST_CONTRACT);
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alex,
+                    precompile_address(),
+                    EvmDataWriter::new_with_selector(Action::Register)
+                        .write(Address(TEST_CONTRACT.clone()))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_error(ExitError::Other(alloc::borrow::Cow::Borrowed(
+                    "register via evm precompile is not allowed",
+                )));
         });
 }
 
@@ -368,16 +381,9 @@ fn nomination_transfer() {
 
 /// helper function to register and verify if registration is valid
 fn register_and_verify(developer: TestAccount, contract: H160) {
-    precompiles()
-        .prepare_test(
-            developer.clone(),
-            precompile_address(),
-            EvmDataWriter::new_with_selector(Action::Register)
-                .write(Address(contract.clone()))
-                .build(),
-        )
-        .expect_no_logs()
-        .execute_returns(EvmDataWriter::new().write(true).build());
+    let smart_contract =
+        decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
+    DappsStaking::register(Origin::root(), developer.clone().into(), smart_contract).unwrap();
 
     // check the storage after the register
     let dev_account_id: AccountId32 = developer.into();

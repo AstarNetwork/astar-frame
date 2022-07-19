@@ -3,7 +3,7 @@
 use super::*;
 use frame_support::{
     dispatch::DispatchResult,
-    ensure,
+    ensure, log,
     pallet_prelude::*,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
@@ -47,7 +47,7 @@ pub mod pallet {
             + ReservableCurrency<Self::AccountId>;
 
         /// Describes smart contract in the context required by dapps staking.
-        type SmartContract: IsContract + Parameter + Member;
+        type SmartContract: Default + Parameter + Member;
 
         /// Number of blocks per era.
         #[pallet::constant]
@@ -191,11 +191,15 @@ pub mod pallet {
         false
     }
 
+    /// Deprecated.
+    /// Need to be cleaned up with OnRuntimeUpgrade.
     /// Enable or disable pre-approval list for new contract registration
     #[pallet::storage]
     #[pallet::getter(fn pre_approval_is_enabled)]
     pub(crate) type PreApprovalIsEnabled<T> = StorageValue<_, bool, ValueQuery, PreApprovalOnEmpty>;
 
+    /// Deprecated.
+    /// Need to be cleanup with OnRuntimeUpgrade.
     /// List of pre-approved developers who can register contracts.
     #[pallet::storage]
     #[pallet::getter(fn pre_approved_developers)]
@@ -264,8 +268,6 @@ pub mod pallet {
         NothingToWithdraw,
         /// The contract is already registered by other account
         AlreadyRegisteredContract,
-        /// User attempts to register with address which is not contract
-        ContractIsNotValid,
         /// This account was already used to register contract
         AlreadyUsedDeveloperAccount,
         /// Smart contract not owned by the account id.
@@ -333,6 +335,52 @@ pub mod pallet {
                 T::DbWeight::get().reads(4)
             }
         }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<(), &'static str> {
+            log::info!(">>> Pre Upgrade");
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
+
+            assert_eq!(Version::V3_0_0, StorageVersion::<T>::get());
+
+            Ok(())
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            // lightweight deletions
+            let mut consumed_weight = T::DbWeight::get().writes(2);
+            StorageVersion::<T>::put(Version::default());
+            PreApprovalIsEnabled::<T>::kill();
+
+            let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
+            let result = PreApprovedDevelopers::<T>::clear(u32::MAX, None);
+            consumed_weight += deletion_weight * result.unique as u64;
+
+            consumed_weight
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade() -> Result<(), &'static str> {
+            log::info!(">>> Post Upgrade");
+
+            assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());
+
+            // pre approved developers count should be 0
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
+            assert_eq!(current_pre_approved_developers_count, 0);
+
+            Ok(())
+        }
     }
 
     #[pallet::call]
@@ -346,10 +394,11 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
+            developer: T::AccountId,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
-            let developer = ensure_signed(origin)?;
+            ensure_root(origin)?;
 
             ensure!(
                 !RegisteredDevelopers::<T>::contains_key(&developer),
@@ -359,14 +408,6 @@ pub mod pallet {
                 !RegisteredDapps::<T>::contains_key(&contract_id),
                 Error::<T>::AlreadyRegisteredContract,
             );
-            ensure!(contract_id.is_valid(), Error::<T>::ContractIsNotValid);
-
-            if Self::pre_approval_is_enabled() {
-                ensure!(
-                    PreApprovedDevelopers::<T>::contains_key(&developer),
-                    Error::<T>::RequiredContractPreApproval,
-                );
-            }
 
             T::Currency::reserve(&developer, T::RegisterDeposit::get())?;
 
@@ -880,41 +921,6 @@ pub mod pallet {
             ensure_root(origin)?;
             ForceEra::<T>::put(Forcing::ForceNew);
             Ok(())
-        }
-
-        /// Adds developer account to the list of whitelisted dev accounts which can register their dapp for dApp staking.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::developer_pre_approval())]
-        pub fn developer_pre_approval(
-            origin: OriginFor<T>,
-            developer: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-
-            ensure!(
-                !PreApprovedDevelopers::<T>::contains_key(&developer),
-                Error::<T>::AlreadyPreApprovedDeveloper
-            );
-            PreApprovedDevelopers::<T>::insert(developer, ());
-
-            Ok(().into())
-        }
-
-        /// Enable or disable _pre-approval_ check.
-        /// If disabled, dApp registration is fully permisionless.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::enable_developer_pre_approval())]
-        pub fn enable_developer_pre_approval(
-            origin: OriginFor<T>,
-            enabled: bool,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-            PreApprovalIsEnabled::<T>::put(enabled);
-            Ok(().into())
         }
 
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.

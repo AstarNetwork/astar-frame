@@ -359,6 +359,21 @@ fn register_is_ok() {
 }
 
 #[test]
+fn register_with_non_root_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let ok_contract = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_noop!(
+            DappsStaking::register(Origin::signed(developer), developer, ok_contract),
+            BadOrigin
+        );
+    })
+}
+
+#[test]
 fn register_twice_with_same_account_fails() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
@@ -375,7 +390,7 @@ fn register_twice_with_same_account_fails() {
 
         // now register different contract with same account
         assert_noop!(
-            DappsStaking::register(Origin::signed(developer), contract2),
+            DappsStaking::register(Origin::root(), developer, contract2),
             Error::<TestRuntime>::AlreadyUsedDeveloperAccount
         );
     })
@@ -398,56 +413,9 @@ fn register_same_contract_twice_fails() {
 
         // now register same contract by different developer
         assert_noop!(
-            DappsStaking::register(Origin::signed(developer2), contract),
+            DappsStaking::register(Origin::root(), developer2, contract),
             Error::<TestRuntime>::AlreadyRegisteredContract
         );
-    })
-}
-
-#[test]
-fn register_with_pre_approve_enabled() {
-    ExternalityBuilder::build().execute_with(|| {
-        initialize_first_block();
-        let developer = 1;
-        let contract = MockSmartContract::Evm(H160::repeat_byte(0x01));
-
-        // enable pre-approval for the developers
-        assert_ok!(DappsStaking::enable_developer_pre_approval(
-            Origin::root(),
-            true
-        ));
-        assert!(DappsStaking::pre_approval_is_enabled());
-
-        // register new developer without pre-approval, should fail
-        assert_noop!(
-            DappsStaking::register(Origin::signed(developer), contract.clone()),
-            Error::<TestRuntime>::RequiredContractPreApproval,
-        );
-
-        // preapprove developer
-        assert_ok!(DappsStaking::developer_pre_approval(
-            Origin::root(),
-            developer.clone()
-        ));
-
-        // try to pre-approve again same developer, should fail
-        assert_noop!(
-            DappsStaking::developer_pre_approval(Origin::root(), developer.clone()),
-            Error::<TestRuntime>::AlreadyPreApprovedDeveloper
-        );
-
-        // register new contract by pre-approved developer
-        assert_register(developer, &contract);
-
-        // disable pre_approval and register contract2
-        assert_ok!(DappsStaking::enable_developer_pre_approval(
-            Origin::root(),
-            false
-        ));
-
-        let developer2 = 2;
-        let contract2 = MockSmartContract::Evm(H160::repeat_byte(0x02));
-        assert_register(developer2, &contract2);
     })
 }
 
@@ -1974,11 +1942,11 @@ fn maintenance_mode_is_ok() {
         //
         // 1
         assert_noop!(
-            DappsStaking::register(Origin::signed(account), contract_id),
+            DappsStaking::register(Origin::root(), account, contract_id),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::unregister(Origin::signed(account), contract_id),
+            DappsStaking::unregister(Origin::root(), contract_id),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
@@ -2022,14 +1990,6 @@ fn maintenance_mode_is_ok() {
         // 3
         assert_noop!(
             DappsStaking::force_new_era(Origin::root()),
-            Error::<TestRuntime>::Disabled
-        );
-        assert_noop!(
-            DappsStaking::developer_pre_approval(Origin::root(), account),
-            Error::<TestRuntime>::Disabled
-        );
-        assert_noop!(
-            DappsStaking::enable_developer_pre_approval(Origin::root(), true),
             Error::<TestRuntime>::Disabled
         );
         // shouldn't do anything since we're in maintenance mode

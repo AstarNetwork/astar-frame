@@ -70,12 +70,9 @@ pub(crate) fn assert_register(developer: AccountId, contract_id: &MockSmartContr
     ));
 
     // Verify op is successful
-    assert_ok!(DappsStaking::enable_developer_pre_approval(
-        Origin::root(),
-        false
-    ));
     assert_ok!(DappsStaking::register(
-        Origin::signed(developer),
+        Origin::root(),
+        developer,
         contract_id.clone()
     ));
 

@@ -30,10 +30,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking RegisteredDevelopers (r:1 w:1)
 	// Storage: DappsStaking RegisteredDapps (r:1 w:1)
-	// Storage: DappsStaking PreApprovalIsEnabled (r:1 w:0)
 	fn register() -> Weight {
 		(32_139_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
