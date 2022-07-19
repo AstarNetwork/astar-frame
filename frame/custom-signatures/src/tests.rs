@@ -29,9 +29,9 @@ frame_support::construct_runtime!(
        NodeBlock = Block,
        UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        CustomSignatures: custom_signatures::{Pallet, Call, Event<T>},
+        Balances: pallet_balances,
+        System: frame_system,
+        CustomSignatures: custom_signatures,
     }
 );
 

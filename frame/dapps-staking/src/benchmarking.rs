@@ -18,13 +18,13 @@ const DAPP_BLOCK_REWARD: u32 = 9876u32;
 /// Also initializes the first block which should start a new era.
 fn initialize<T: Config>() {
     // Remove everything from storage.
-    Ledger::<T>::remove_all(None);
-    RegisteredDevelopers::<T>::remove_all(None);
-    RegisteredDapps::<T>::remove_all(None);
-    PreApprovedDevelopers::<T>::remove_all(None);
-    GeneralEraInfo::<T>::remove_all(None);
-    ContractEraStake::<T>::remove_all(None);
-    GeneralStakerInfo::<T>::remove_all(None);
+    let _ = Ledger::<T>::clear(u32::max_value(), None);
+    let _ = RegisteredDevelopers::<T>::clear(u32::max_value(), None);
+    let _ = RegisteredDapps::<T>::clear(u32::max_value(), None);
+    let _ = PreApprovedDevelopers::<T>::clear(u32::max_value(), None);
+    let _ = GeneralEraInfo::<T>::clear(u32::max_value(), None);
+    let _ = ContractEraStake::<T>::clear(u32::max_value(), None);
+    let _ = GeneralStakerInfo::<T>::clear(u32::max_value(), None);
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
     PreApprovalIsEnabled::<T>::kill();
