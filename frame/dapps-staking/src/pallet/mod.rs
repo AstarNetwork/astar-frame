@@ -5,7 +5,6 @@ use frame_support::{
     dispatch::DispatchResult,
     ensure, log,
     pallet_prelude::*,
-    storage::child::KillStorageResult,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
         ReservableCurrency, WithdrawReasons,
@@ -359,14 +358,8 @@ pub mod pallet {
             PreApprovalIsEnabled::<T>::kill();
 
             let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
-            match PreApprovedDevelopers::<T>::remove_all(None) {
-                KillStorageResult::AllRemoved(removed_entries_num) => {
-                    consumed_weight += deletion_weight * removed_entries_num as u64;
-                }
-                KillStorageResult::SomeRemaining(removed_entries_num) => {
-                    consumed_weight += deletion_weight * removed_entries_num as u64;
-                }
-            }
+            let result = PreApprovedDevelopers::<T>::clear(u32::MAX, None);
+            consumed_weight += deletion_weight * result.unique as u64;
 
             consumed_weight
         }
