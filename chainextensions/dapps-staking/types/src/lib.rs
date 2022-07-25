@@ -71,37 +71,37 @@ impl TryFrom<DispatchError> for DSError {
             DispatchError::Module(ModuleError { message, .. }) => message,
             _ => Some("No module error Info"),
         };
-        match error_text {
-            Some("Disabled") => return Ok(DSError::Disabled),
-            Some("NoMaintenanceModeChange") => return Ok(DSError::NoMaintenanceModeChange),
-            Some("UpgradeTooHeavy") => return Ok(DSError::UpgradeTooHeavy),
-            Some("StakingWithNoValue") => return Ok(DSError::StakingWithNoValue),
-            Some("InsufficientValue") => return Ok(DSError::InsufficientValue),
-            Some("MaxNumberOfStakersExceeded") => return Ok(DSError::MaxNumberOfStakersExceeded),
-            Some("NotOperatedContract") => return Ok(DSError::NotOperatedContract),
-            Some("NotStakedContract") => return Ok(DSError::NotStakedContract),
-            Some("NotUnregisteredContract") => return Ok(DSError::NotUnregisteredContract),
-            Some("UnclaimedRewardsRemaining") => return Ok(DSError::UnclaimedRewardsRemaining),
-            Some("UnstakingWithNoValue") => return Ok(DSError::UnstakingWithNoValue),
-            Some("NothingToWithdraw") => return Ok(DSError::NothingToWithdraw),
-            Some("AlreadyRegisteredContract") => return Ok(DSError::AlreadyRegisteredContract),
-            Some("ContractIsNotValid") => return Ok(DSError::ContractIsNotValid),
-            Some("AlreadyUsedDeveloperAccount") => return Ok(DSError::AlreadyUsedDeveloperAccount),
-            Some("NotOwnedContract") => return Ok(DSError::NotOwnedContract),
-            Some("UnknownEraReward") => return Ok(DSError::UnknownEraReward),
-            Some("UnexpectedStakeInfoEra") => return Ok(DSError::UnexpectedStakeInfoEra),
-            Some("TooManyUnlockingChunks") => return Ok(DSError::TooManyUnlockingChunks),
-            Some("AlreadyClaimedInThisEra") => return Ok(DSError::AlreadyClaimedInThisEra),
-            Some("EraOutOfBounds") => return Ok(DSError::EraOutOfBounds),
-            Some("TooManyEraStakeValues") => return Ok(DSError::TooManyEraStakeValues),
-            Some("RequiredContractPreApproval") => return Ok(DSError::RequiredContractPreApproval),
-            Some("AlreadyPreApprovedDeveloper") => return Ok(DSError::AlreadyPreApprovedDeveloper),
-            Some("NotActiveStaker") => return Ok(DSError::NotActiveStaker),
+        return match error_text {
+            Some("Disabled") => Ok(DSError::Disabled),
+            Some("NoMaintenanceModeChange") => Ok(DSError::NoMaintenanceModeChange),
+            Some("UpgradeTooHeavy") => Ok(DSError::UpgradeTooHeavy),
+            Some("StakingWithNoValue") => Ok(DSError::StakingWithNoValue),
+            Some("InsufficientValue") => Ok(DSError::InsufficientValue),
+            Some("MaxNumberOfStakersExceeded") => Ok(DSError::MaxNumberOfStakersExceeded),
+            Some("NotOperatedContract") => Ok(DSError::NotOperatedContract),
+            Some("NotStakedContract") => Ok(DSError::NotStakedContract),
+            Some("NotUnregisteredContract") => Ok(DSError::NotUnregisteredContract),
+            Some("UnclaimedRewardsRemaining") => Ok(DSError::UnclaimedRewardsRemaining),
+            Some("UnstakingWithNoValue") => Ok(DSError::UnstakingWithNoValue),
+            Some("NothingToWithdraw") => Ok(DSError::NothingToWithdraw),
+            Some("AlreadyRegisteredContract") => Ok(DSError::AlreadyRegisteredContract),
+            Some("ContractIsNotValid") => Ok(DSError::ContractIsNotValid),
+            Some("AlreadyUsedDeveloperAccount") => Ok(DSError::AlreadyUsedDeveloperAccount),
+            Some("NotOwnedContract") => Ok(DSError::NotOwnedContract),
+            Some("UnknownEraReward") => Ok(DSError::UnknownEraReward),
+            Some("UnexpectedStakeInfoEra") => Ok(DSError::UnexpectedStakeInfoEra),
+            Some("TooManyUnlockingChunks") => Ok(DSError::TooManyUnlockingChunks),
+            Some("AlreadyClaimedInThisEra") => Ok(DSError::AlreadyClaimedInThisEra),
+            Some("EraOutOfBounds") => Ok(DSError::EraOutOfBounds),
+            Some("TooManyEraStakeValues") => Ok(DSError::TooManyEraStakeValues),
+            Some("RequiredContractPreApproval") => Ok(DSError::RequiredContractPreApproval),
+            Some("AlreadyPreApprovedDeveloper") => Ok(DSError::AlreadyPreApprovedDeveloper),
+            Some("NotActiveStaker") => Ok(DSError::NotActiveStaker),
             Some("NominationTransferToSameContract") => {
-                return Ok(DSError::NominationTransferToSameContract)
+                Ok(DSError::NominationTransferToSameContract)
             }
-            _ => return Err(DispatchError::Other("DappsStakingExtension: Unknown error")),
-        }
+            _ => Err(DispatchError::Other("DappsStakingExtension: Unknown error")),
+        };
     }
 }
 
@@ -124,4 +124,10 @@ pub struct DappsStakingValueInput<Balance> {
 pub struct DappsStakingAccountInput {
     pub contract: [u8; 32],
     pub staker: [u8; 32],
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+pub struct DappsStakingEraInput {
+    pub contract: [u8; 32],
+    pub era: u32,
 }
