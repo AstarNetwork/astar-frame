@@ -16,7 +16,7 @@ fn wrong_assets_len_or_fee_index_reverts() {
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawSS58)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
                     .write(vec![Address::from(H160::repeat_byte(0xF1))])
                     .write(Vec::<U256>::new())
                     .write(H256::repeat_byte(0xF1))
@@ -32,7 +32,7 @@ fn wrong_assets_len_or_fee_index_reverts() {
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawSS58)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
                     .write(H256::repeat_byte(0xF1))
@@ -54,7 +54,7 @@ fn correct_arguments_works() {
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawSS58)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
                     .write(H256::repeat_byte(0xF1))
@@ -71,7 +71,7 @@ fn correct_arguments_works() {
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawH160)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdrawEvm)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
                     .write(Address::from(H160::repeat_byte(0xDE)))

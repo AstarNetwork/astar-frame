@@ -25,8 +25,8 @@ mod tests;
 #[precompile_utils::generate_function_selector]
 #[derive(Debug, PartialEq)]
 pub enum Action {
-    AssetsWithdrawSS58 = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
-    AssetsWithdrawH160 = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
+    AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
+    AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
 }
 
 /// A precompile that expose XCM related functions.
@@ -52,18 +52,18 @@ where
 
         match selector {
             // Dispatchables
-            Action::AssetsWithdrawSS58 => Self::assets_withdraw(handle, BeneficiaryType::SS58),
-            Action::AssetsWithdrawH160 => Self::assets_withdraw(handle, BeneficiaryType::H160),
+            Action::AssetsWithdrawNative => Self::assets_withdraw(handle, BeneficiaryType::AccountId32),
+            Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::AccountKey20),
         }
     }
 }
 
 /// The supported beneficiary account types
 enum BeneficiaryType {
-    /// 256 bit public key is expected
-    SS58,
-    /// 160 bit address is expected
-    H160,
+    /// 256 bit (32 byte) public key
+    AccountId32,
+    /// 160 bit (20 byte) address is expected
+    AccountKey20,
 }
 
 impl<R, C> XcmPrecompile<R, C>
@@ -107,14 +107,14 @@ where
         }
 
         let beneficiary: MultiLocation = match beneficiary_type {
-            BeneficiaryType::SS58 => {
+            BeneficiaryType::AccountId32 => {
                 let recipient: [u8; 32] = input.read::<H256>()?.into();
                 X1(Junction::AccountId32 {
                     network: Any,
                     id: recipient,
                 })
             }
-            BeneficiaryType::H160 => {
+            BeneficiaryType::AccountKey20 => {
                 let recipient: H160 = input.read::<Address>()?.into();
                 X1(Junction::AccountKey20 {
                     network: Any,
