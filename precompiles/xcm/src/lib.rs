@@ -52,8 +52,12 @@ where
 
         match selector {
             // Dispatchables
-            Action::AssetsWithdrawNative => Self::assets_withdraw(handle, BeneficiaryType::AccountId32),
-            Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::AccountKey20),
+            Action::AssetsWithdrawNative => {
+                Self::assets_withdraw(handle, BeneficiaryType::AccountId32)
+            }
+            Action::AssetsWithdrawEvm => {
+                Self::assets_withdraw(handle, BeneficiaryType::AccountKey20)
+            }
         }
     }
 }
