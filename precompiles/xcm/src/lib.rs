@@ -4,7 +4,7 @@
 use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
-use sp_core::{H256, U256};
+use sp_core::{H160, H256, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
@@ -25,7 +25,8 @@ mod tests;
 #[precompile_utils::generate_function_selector]
 #[derive(Debug, PartialEq)]
 pub enum Action {
-    AssetsWithdraw = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
+    AssetsWithdrawSS58 = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
+    AssetsWithdrawH160 = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
 }
 
 /// A precompile that expose XCM related functions.
@@ -51,9 +52,18 @@ where
 
         match selector {
             // Dispatchables
-            Action::AssetsWithdraw => Self::assets_withdraw(handle),
+            Action::AssetsWithdrawSS58 => Self::assets_withdraw(handle, BeneficiaryType::SS58),
+            Action::AssetsWithdrawH160 => Self::assets_withdraw(handle, BeneficiaryType::H160),
         }
     }
+}
+
+/// The supported beneficiary account types
+enum BeneficiaryType {
+    /// 256 bit public key is expected
+    SS58,
+    /// 160 bit address is expected
+    H160,
 }
 
 impl<R, C> XcmPrecompile<R, C>
@@ -67,7 +77,10 @@ where
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
-    fn assets_withdraw(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+    fn assets_withdraw(
+        handle: &mut impl PrecompileHandle,
+        beneficiary_type: BeneficiaryType,
+    ) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(6)?;
 
@@ -93,7 +106,24 @@ where
             return Err(revert("Assets resolution failure."));
         }
 
-        let recipient: [u8; 32] = input.read::<H256>()?.into();
+        let beneficiary: MultiLocation = match beneficiary_type {
+            BeneficiaryType::SS58 => {
+                let recipient: [u8; 32] = input.read::<H256>()?.into();
+                X1(Junction::AccountId32 {
+                    network: Any,
+                    id: recipient,
+                })
+            }
+            BeneficiaryType::H160 => {
+                let recipient: H160 = input.read::<Address>()?.into();
+                X1(Junction::AccountKey20 {
+                    network: Any,
+                    key: recipient.to_fixed_bytes(),
+                })
+            }
+        }
+        .into();
+
         let is_relay = input.read::<bool>()?;
         let parachain_id: u32 = input.read::<U256>()?.low_u32();
         let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
@@ -108,12 +138,6 @@ where
         } else {
             X1(Junction::Parachain(parachain_id)).into_exterior(1)
         };
-
-        let beneficiary: MultiLocation = X1(Junction::AccountId32 {
-            network: Any,
-            id: recipient,
-        })
-        .into();
 
         let assets: MultiAssets = assets
             .iter()

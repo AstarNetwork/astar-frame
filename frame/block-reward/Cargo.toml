@@ -6,7 +6,7 @@ edition = "2021"
 license = "Apache-2.0"
 homepage = "https://astar.network"
 repository = "https://github.com/AstarNetwork/Astar"
-description = "FRAME pallet for managing block reward issuance & distribution"
+description = "FRAME pallet for managing blcok reward issuance & distribution"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
