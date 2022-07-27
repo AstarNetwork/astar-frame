@@ -61,6 +61,8 @@ pub enum DSError {
     NotActiveStaker,
     /// Transfering nomination to the same contract
     NominationTransferToSameContract,
+    /// Unexpected reward destination value
+    RewardDestinationValueOutOfBounds,
 }
 
 impl TryFrom<DispatchError> for DSError {
@@ -130,4 +132,11 @@ pub struct DappsStakingAccountInput {
 pub struct DappsStakingEraInput {
     pub contract: [u8; 32],
     pub era: u32,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+pub struct DappsStakingNominationInput<Balance> {
+    pub origin_contract: [u8; 32],
+    pub target_contract: [u8; 32],
+    pub value: Balance,
 }
