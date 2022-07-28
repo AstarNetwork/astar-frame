@@ -1,0 +1,20 @@
+[package]
+name = "chain-extension-traits"
+version = "4.0.0"
+authors = ["Stake Technologies <devops@stake.co.jp>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://astar.network"
+repository = "https://github.com/AstarNetwork/astar-frame"
+description = "Trait definitions for chain extension for WASM contracts"
+
+[dependencies]
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false, features = ["unstable-interface"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26",  default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "pallet-contracts/std",
+    "sp-runtime/std",
+]

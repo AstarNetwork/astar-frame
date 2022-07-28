@@ -1,0 +1,27 @@
+[package]
+name = "chain-extension-types"
+version = "4.0.0"
+authors = ["Stake Technologies <devops@stake.co.jp>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://astar.network"
+repository = "https://github.com/AstarNetwork/astar-frame"
+description = "Types definitions for chain extension for WASM contracts"
+
+[dependencies]
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26",  default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
+scale-info = { version = "2.1.0", default-features = false, features = ["derive"] }
+
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "frame-support/std",
+    "scale-info/std",
+    "sp-core/std",
+    "sp-runtime/std",
+]
