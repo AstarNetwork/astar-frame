@@ -53,11 +53,9 @@ where
         match selector {
             // Dispatchables
             Action::AssetsWithdrawNative => {
-                Self::assets_withdraw(handle, BeneficiaryType::AccountId32)
+                Self::assets_withdraw(handle, BeneficiaryType::Account32)
             }
-            Action::AssetsWithdrawEvm => {
-                Self::assets_withdraw(handle, BeneficiaryType::AccountKey20)
-            }
+            Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::Account20),
         }
     }
 }
@@ -65,9 +63,9 @@ where
 /// The supported beneficiary account types
 enum BeneficiaryType {
     /// 256 bit (32 byte) public key
-    AccountId32,
+    Account32,
     /// 160 bit (20 byte) address is expected
-    AccountKey20,
+    Account20,
 }
 
 impl<R, C> XcmPrecompile<R, C>
@@ -111,14 +109,14 @@ where
         }
 
         let beneficiary: MultiLocation = match beneficiary_type {
-            BeneficiaryType::AccountId32 => {
+            BeneficiaryType::Account32 => {
                 let recipient: [u8; 32] = input.read::<H256>()?.into();
                 X1(Junction::AccountId32 {
                     network: Any,
                     id: recipient,
                 })
             }
-            BeneficiaryType::AccountKey20 => {
+            BeneficiaryType::Account20 => {
                 let recipient: H160 = input.read::<Address>()?.into();
                 X1(Junction::AccountKey20 {
                     network: Any,
