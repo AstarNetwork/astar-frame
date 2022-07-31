@@ -215,7 +215,6 @@ fn approve() {
                         .write(U256::from(500))
                         .build(),
                 )
-                .expect_cost(31253756u64)
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_APPROVAL,
                     Account::Alice,
@@ -255,7 +254,6 @@ fn approve_saturating() {
                         .write(U256::MAX)
                         .build(),
                 )
-                .expect_cost(31253756u64)
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_APPROVAL,
                     Account::Alice,
@@ -383,7 +381,6 @@ fn transfer() {
                         .write(U256::from(400))
                         .build(),
                 )
-                .expect_cost(44055756u64) // 1 weight => 1 gas in mock
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_TRANSFER,
                     Account::Alice,
@@ -508,7 +505,6 @@ fn transfer_from() {
                         .write(U256::from(400))
                         .build(),
                 )
-                .expect_cost(55282756u64) // 1 weight => 1 gas in mock
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_TRANSFER,
                     Account::Alice,
@@ -585,7 +581,6 @@ fn transfer_from_non_incremental_approval() {
                         .write(U256::from(500))
                         .build(),
                 )
-                .expect_cost(31253756u64)
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_APPROVAL,
                     Account::Alice,
@@ -607,7 +602,6 @@ fn transfer_from_non_incremental_approval() {
                         .write(U256::from(300))
                         .build(),
                 )
-                .expect_cost(62037756u64)
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_APPROVAL,
                     Account::Alice,
@@ -718,7 +712,6 @@ fn transfer_from_self() {
                         .write(U256::from(400))
                         .build(),
                 )
-                .expect_cost(44055756u64) // 1 weight => 1 gas in mock
                 .expect_log(LogsBuilder::new(Account::AssetId(0u128).into()).log3(
                     SELECTOR_LOG_TRANSFER,
                     Account::Alice,

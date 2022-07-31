@@ -134,9 +134,9 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
                             Some((asset_location, units_per_second));
                     }
 
-                    return Ok(unused);
+                    Ok(unused)
                 } else {
-                    return Err(XcmError::TooExpensive);
+                    Err(XcmError::TooExpensive)
                 }
             }
             _ => Err(XcmError::TooExpensive),

@@ -20,6 +20,7 @@ use super::*;
 use crate::data::xcm::{network_id_from_bytes, network_id_to_bytes};
 use hex_literal::hex;
 use sp_core::{H256, U256};
+use sp_runtime::WeakBoundedVec;
 use sp_std::convert::TryInto;
 use xcm::latest::{Junction, Junctions, NetworkId};
 
@@ -874,8 +875,12 @@ fn network_id_decoder_works() {
     );
 
     assert_eq!(
-        network_id_from_bytes(network_id_to_bytes(NetworkId::Named(b"myname".to_vec()))),
-        Ok(NetworkId::Named(b"myname".to_vec()))
+        network_id_from_bytes(network_id_to_bytes(NetworkId::Named(
+            WeakBoundedVec::try_from(b"myname".to_vec()).unwrap()
+        ))),
+        Ok(NetworkId::Named(
+            WeakBoundedVec::try_from(b"myname".to_vec()).unwrap()
+        ))
     );
 
     assert_eq!(

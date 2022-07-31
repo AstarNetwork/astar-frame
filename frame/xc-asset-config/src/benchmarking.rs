@@ -58,7 +58,7 @@ benchmarks! {
 
     }: _(RawOrigin::Root, Box::new(asset_location.clone().versioned()))
     verify {
-        assert!(!AssetLocationUnitsPerSecond::<T>::contains_key(&asset_location.clone().versioned()));
+        assert!(!AssetLocationUnitsPerSecond::<T>::contains_key(&asset_location.versioned()));
     }
 
     remove_asset {
@@ -73,7 +73,7 @@ benchmarks! {
     verify {
         assert!(!AssetLocationToId::<T>::contains_key(&asset_location.clone().versioned()));
         assert!(!AssetIdToLocation::<T>::contains_key(asset_id));
-        assert!(!AssetLocationUnitsPerSecond::<T>::contains_key(&asset_location.clone().versioned()));
+        assert!(!AssetLocationUnitsPerSecond::<T>::contains_key(&asset_location.versioned()));
     }
 
 }

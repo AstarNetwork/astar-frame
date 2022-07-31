@@ -46,7 +46,7 @@ impl<Runtime: pallet_evm::Config> Sr25519Precompile<Runtime> {
         input.expect_arguments(3)?;
 
         // Parse arguments
-        let public: sr25519::Public = sr25519::Public::unchecked_from(input.read::<H256>()?).into();
+        let public: sr25519::Public = sr25519::Public::unchecked_from(input.read::<H256>()?);
         let signature_bytes: Vec<u8> = input.read::<Bytes>()?.into();
         let message: Vec<u8> = input.read::<Bytes>()?.into();
 

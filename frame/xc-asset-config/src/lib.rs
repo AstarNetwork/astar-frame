@@ -85,7 +85,7 @@ pub mod pallet {
 
     impl<T: Config> XcAssetLocation<T::AssetId> for Pallet<T> {
         fn get_xc_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
-            AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
+            AssetIdToLocation::<T>::get(asset_id).and_then(|x| x.try_into().ok())
         }
 
         fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
@@ -198,7 +198,7 @@ pub mod pallet {
             let asset_location = *asset_location;
 
             AssetIdToLocation::<T>::insert(&asset_id, asset_location.clone());
-            AssetLocationToId::<T>::insert(&asset_location, asset_id.clone());
+            AssetLocationToId::<T>::insert(&asset_location, asset_id);
 
             T::XcAssetChanged::xc_asset_registered(asset_id);
 
@@ -252,7 +252,7 @@ pub mod pallet {
 
             // Insert new asset type info
             AssetIdToLocation::<T>::insert(&asset_id, new_asset_location.clone());
-            AssetLocationToId::<T>::insert(&new_asset_location, asset_id.clone());
+            AssetLocationToId::<T>::insert(&new_asset_location, asset_id);
 
             // Remove previous asset type info
             AssetLocationToId::<T>::remove(&previous_asset_location);
