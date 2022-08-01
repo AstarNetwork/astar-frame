@@ -15,76 +15,170 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
-use frame_support::pallet;
-pub use pallet::*;
+use sp_runtime::{traits::Member, RuntimeDebug};
 
-/// Abstract execution engine.
-pub trait AbstractVM {
-    /// This constant use for mathing VMs in XVM call.
-    const char[4] name;
+pub mod pallet;
+pub use pallet::pallet::*;
+
+#[cfg(feature = "evm")]
+pub mod evm;
+
+/// XVM context consist of unique ID and optional execution arguments.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+pub struct XvmContext<VmId> {
+    /// VM identifier.
+    pub id: VmId,
+    /// Encoded VM execution environment.
+    pub env: Option<Vec<u8>>,
 }
 
 /// The engine that support synchronous smart contract execution.
 /// For example, EVM.
-pub trait<T, A, R, E> SyncVM : AbstractVM
-where
-    A: Decode,
-    R, E: Encode,
-{
+///
+/// An impl code should realize input data conversion using provided 
+/// metadata. 
+pub trait SyncVM<VmId, AccountId> {
+    /// Unique VM identifier.
+    fn id() -> VmId;
+
     /// Make a call to VM contract and return result or error. 
-    fn xvm_call(from: T, to: T, args: A) -> Result<R, E>;
-}
-
-/// The engine that support asynchronous smart contract execution.
-/// For example, XCVM.
-pub trait<A, M> AsyncVM : AbstractVM 
-where
-    T: Decode,
-    M: Encode,
-{
-    /// Send a message.
-    fn xvm_send(from: A, to: A, message: T);
-
-    /// Query for incoming messages.
-    fn xvm_query(inbox: A) -> Vec<M>;
+    ///
+    ///
+    fn xvm_call(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        input: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> Result<Vec<u8>, Vec<u8>>;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
-impl SyncVM for Tuple {
-    for_tuples!( #(
-    )* );
+impl<VmId: Member + Default, AccountId: Member> SyncVM<VmId, AccountId> for Tuple {
+    fn id() -> VmId {
+        Default::default()
+    }
+
+    fn xvm_call(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        input: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> Result<Vec<u8>, Vec<u8>> {
+        for_tuples!( #(
+            if Tuple::id() == context.id {
+                log::trace!(
+                    target: "xvm::SyncVm::xvm_call",
+                    "VM found, run XVM call: {:?}, {:?}, {:?}, {:?}, {:?}",
+                    context, from, to, input, metadata,
+                );
+                return Tuple::xvm_call(context, from, to, input, metadata)
+            }
+        )* );
+        log::trace!(
+            target: "xvm::SyncVm::xvm_call",
+            "VM with ID {:?} not found", context.id
+        );
+        Err(b"VM is not found".to_vec())
+    }
 }
 
-#[pallet]
-pub mod pallet {
+/*
+struct EVM<T>(sp_std::marker::PhantomData<T>);
+impl<T: pallet_evm::Config> SyncVM for EVM<T> {
+    fn xvm_call(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        input: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> Result<Vec<u8>, Vec<u8>> {
 
-    use crate::weights::WeightInfo;
-    use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    }
+}
+*/
 
-    #[pallet::pallet]
-    #[pallet::without_storage_info]
-    pub struct Pallet<T>(PhantomData<T>);
+/// The engine that support asynchronous smart contract execution.
+/// For example, XCVM.
+pub trait AsyncVM<VmId, AccountId> {
+    /// Unique VM identifier.
+    fn id() -> VmId;
 
-    #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-        type SyncVM: SyncVM;
-        type AsyncVM: AsyncVM;
-        type WeightInfo: WeightInfo;
+    /// Send a message.
+    fn xvm_send(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        message: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> bool;
+
+    /// Query for incoming messages.
+    fn xvm_query(
+        context: XvmContext<VmId>,
+        inbox: AccountId,
+    ) -> Vec<Vec<u8>>;
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+impl<VmId: Member + Default, AccountId: Member> AsyncVM<VmId, AccountId> for Tuple {
+    fn id() -> VmId {
+        Default::default()
     }
 
-    #[pallet::error]
-    pub enum Error<T> {
+    fn xvm_send(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        message: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> bool {
+        for_tuples!( #(
+            if Tuple::id() == context.id {
+                log::trace!(
+                    target: "xvm::AsyncVM::xvm_send",
+                    "VM found, send message: {:?}, {:?}, {:?}, {:?}, {:?}",
+                    context, from, to, message, metadata,
+                );
+                return Tuple::xvm_send(context, from, to, message, metadata)
+            }
+        )* );
+        log::trace!(
+            target: "xvm::AsyncVM::xvm_send",
+            "VM with ID {:?} not found", context.id
+        );
+        false
     }
 
-    #[pallet::event]
-    #[pallet::generate_deposit(pub(crate) fn deposit_event)]
-    pub enum Event<T: Config> {
+    fn xvm_query(
+        context: XvmContext<VmId>,
+        inbox: AccountId,
+    ) -> Vec<Vec<u8>> {
+        for_tuples!( #(
+            if Tuple::id() == context.id {
+                log::trace!(
+                    target: "xvm::AsyncVM::xvm_query",
+                    "VM found, query messages: {:?} {:?}",
+                    context, inbox,
+                );
+                return Tuple::xvm_query(context, inbox)
+            }
+        )* );
+        log::trace!(
+            target: "xvm::AsyncVM::xvm_query",
+            "VM with ID {:?} not found", context.id
+        );
+        Default::default()
     }
+}
 
-
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
+/// Universal VM parameter codec.
+///
+/// Input data is SCALE encoded, output is specified for each VM.
+pub trait XvmCodec {
+    fn encode(input: Vec<u8>, metadata: Vec<u8>) -> Vec<u8> {
+        // TODO
+        Default::default()
     }
 }
