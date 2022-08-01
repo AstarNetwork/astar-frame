@@ -1,4 +1,4 @@
-//! # XVM pallet 
+//! # XVM pallet
 //!
 //! ## Overview
 //!
@@ -14,14 +14,19 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use sp_runtime::{traits::Member, RuntimeDebug};
 
 pub mod pallet;
 pub use pallet::pallet::*;
 
+/// EVM call adapter instance.
 #[cfg(feature = "evm")]
 pub mod evm;
+
+/// Wasm call adapter instance.
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 /// XVM context consist of unique ID and optional execution arguments.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -35,13 +40,13 @@ pub struct XvmContext<VmId> {
 /// The engine that support synchronous smart contract execution.
 /// For example, EVM.
 ///
-/// An impl code should realize input data conversion using provided 
-/// metadata. 
+/// An impl code should realize input data conversion using provided
+/// metadata.
 pub trait SyncVM<VmId, AccountId> {
     /// Unique VM identifier.
     fn id() -> VmId;
 
-    /// Make a call to VM contract and return result or error. 
+    /// Make a call to VM contract and return result or error.
     ///
     ///
     fn xvm_call(
@@ -84,21 +89,6 @@ impl<VmId: Member + Default, AccountId: Member> SyncVM<VmId, AccountId> for Tupl
     }
 }
 
-/*
-struct EVM<T>(sp_std::marker::PhantomData<T>);
-impl<T: pallet_evm::Config> SyncVM for EVM<T> {
-    fn xvm_call(
-        context: XvmContext<VmId>,
-        from: AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-        metadata: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
-
-    }
-}
-*/
-
 /// The engine that support asynchronous smart contract execution.
 /// For example, XCVM.
 pub trait AsyncVM<VmId, AccountId> {
@@ -115,10 +105,7 @@ pub trait AsyncVM<VmId, AccountId> {
     ) -> bool;
 
     /// Query for incoming messages.
-    fn xvm_query(
-        context: XvmContext<VmId>,
-        inbox: AccountId,
-    ) -> Vec<Vec<u8>>;
+    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> Vec<Vec<u8>>;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
@@ -151,10 +138,7 @@ impl<VmId: Member + Default, AccountId: Member> AsyncVM<VmId, AccountId> for Tup
         false
     }
 
-    fn xvm_query(
-        context: XvmContext<VmId>,
-        inbox: AccountId,
-    ) -> Vec<Vec<u8>> {
+    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> Vec<Vec<u8>> {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -177,8 +161,6 @@ impl<VmId: Member + Default, AccountId: Member> AsyncVM<VmId, AccountId> for Tup
 ///
 /// Input data is SCALE encoded, output is specified for each VM.
 pub trait XvmCodec {
-    fn encode(input: Vec<u8>, metadata: Vec<u8>) -> Vec<u8> {
-        // TODO
-        Default::default()
-    }
+    /// Convert generic XVM input into VM native.
+    fn encode(input: Vec<u8>, metadata: Vec<u8>) -> Vec<u8>;
 }
