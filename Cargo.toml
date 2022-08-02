@@ -9,6 +9,7 @@ members = [
 	"frame/xc-asset-config",
 	"frame/vesting",
 	"primitives/xcm",
+	"primitives/xvm",
 	"precompiles/assets-erc20",
 	"precompiles/dapps-staking",
 	"precompiles/substrate-ecdsa",
@@ -16,4 +17,8 @@ members = [
 	"precompiles/utils",
 	"precompiles/xcm",
 	"precompiles/xvm",
+
+	# Chain extensions
+	"chain-extensions/*",
+	"contracts/*",
 ]
