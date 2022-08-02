@@ -4,7 +4,7 @@ use crate::*;
 use sp_core::{H160, U256};
 use sp_runtime::traits::Get;
 
-struct EVM<I, T, C>(sp_std::marker::PhantomData<(I, T, C)>);
+pub struct EVM<I, T, C>(sp_std::marker::PhantomData<(I, T, C)>);
 
 impl<VmId, I, T, C> SyncVM<VmId, T::AccountId> for EVM<I, T, C>
 where

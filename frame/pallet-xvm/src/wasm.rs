@@ -8,7 +8,7 @@ use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
 use sp_std::fmt::Debug;
 
-struct WASM<I, T, C>(sp_std::marker::PhantomData<(I, T, C)>);
+pub struct WASM<I, T, C>(sp_std::marker::PhantomData<(I, T, C)>);
 
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
