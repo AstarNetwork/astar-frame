@@ -164,3 +164,10 @@ pub trait XvmCodec {
     /// Convert generic XVM input into VM native.
     fn encode(input: Vec<u8>, metadata: Vec<u8>) -> Vec<u8>;
 }
+
+/// Identity codec implementation: ignoring metadata, keep input as is.
+impl XvmCodec for () {
+    fn encode(input: Vec<u8>, _metadata: Vec<u8>) -> Vec<u8> {
+        input
+    }
+}
