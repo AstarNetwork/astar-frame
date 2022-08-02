@@ -24,10 +24,9 @@ where
         metadata: Vec<u8>,
     ) -> Result<Vec<u8>, Vec<u8>> {
         let data = C::encode(input, metadata);
-        let value = U256::from(0);
+        let value = U256::from(0u64);
         let gas_limit = 4000000u64;
-        let max_fee_per_gas = U256::from(1);
-        let max_priority_fee_per_gas = U256::from(1);
+        let max_fee_per_gas = U256::from(1u64);
         let nonce = frame_system::Pallet::<T>::account(from.clone()).nonce;
         let evm_to = Decode::decode(&mut to.as_ref())
             .map_err(|_| b"`to` argument decode failure".to_vec())?;

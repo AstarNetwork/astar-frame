@@ -16,6 +16,7 @@
 
 use codec::{Decode, Encode};
 use sp_runtime::{traits::Member, RuntimeDebug};
+use sp_std::prelude::*;
 
 pub mod pallet;
 pub use pallet::pallet::*;
