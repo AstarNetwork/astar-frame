@@ -5,6 +5,7 @@ members = [
 	"frame/custom-signatures",
 	"frame/dapps-staking",
 	"frame/pallet-xcm",
+	"frame/pallet-xvm",
 	"frame/xc-asset-config",
 	"frame/vesting",
 	"primitives/xcm",
@@ -14,4 +15,5 @@ members = [
 	"precompiles/sr25519",
 	"precompiles/utils",
 	"precompiles/xcm",
+	"precompiles/xvm",
 ]
