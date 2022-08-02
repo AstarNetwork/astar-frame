@@ -25,8 +25,8 @@ where
     ) -> Result<Vec<u8>, Vec<u8>> {
         log::trace!(
             target: "xvm::EVM::xvm_call",
-            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}, {:?}", 
-            context, from, to, input, metadata,
+            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}", 
+            from, to, input, metadata,
         );
         let data = C::encode(input, metadata);
         let value = U256::from(0u64);
