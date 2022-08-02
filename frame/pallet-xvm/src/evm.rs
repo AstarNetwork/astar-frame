@@ -23,6 +23,11 @@ where
         input: Vec<u8>,
         metadata: Vec<u8>,
     ) -> Result<Vec<u8>, Vec<u8>> {
+        log::trace!(
+            target: "xvm::EVM::xvm_call",
+            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}, {:?}", 
+            context, from, to, input, metadata,
+        );
         let data = C::encode(input, metadata);
         let value = U256::from(0u64);
         let gas_limit = 4000000u64;
@@ -31,7 +36,7 @@ where
         let evm_to = Decode::decode(&mut to.as_ref())
             .map_err(|_| b"`to` argument decode failure".to_vec())?;
 
-        pallet_evm::Pallet::<T>::call(
+        let res = pallet_evm::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Root.into(),
             H160::from_slice(&from.encode()[0..20]),
             H160::from_slice(&to[0..20]),
@@ -42,6 +47,11 @@ where
             None,
             None,
             Vec::new(),
+        );
+
+        log::trace!(
+            target: "xvm::EVM::xvm_call",
+            "EVM XVM call result: {:?}", res
         );
 
         // TODO: return error if call failure

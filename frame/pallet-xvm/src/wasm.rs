@@ -33,16 +33,26 @@ where
         input: Vec<u8>,
         metadata: Vec<u8>,
     ) -> Result<Vec<u8>, Vec<u8>> {
+        log::trace!(
+            target: "xvm::WASM::xvm_call",
+            "Start WASM XVM: {:?}, {:?}, {:?}, {:?}, {:?}", 
+            context, from, to, input, metadata,
+        );
         let data = C::encode(input, metadata);
         let gas_limit = 500000000000;
         let dest = Decode::decode(&mut to.as_ref()).unwrap();
-        pallet_contracts::Pallet::<T>::call(
+        let res = pallet_contracts::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Signed(from).into(),
             dest,
             Default::default(),
             gas_limit,
             None,
             data,
+        );
+
+        log::trace!(
+            target: "xvm::WASM::xvm_call",
+            "WASM XVM call result: {:?}", res
         );
 
         // TODO: return error if call failure
