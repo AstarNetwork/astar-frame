@@ -15,6 +15,6 @@ interface XVM {
         bytes calldata context,
         bytes calldata to,
         bytes calldata input,
-        bytes calldata metadata,
+        bytes calldata metadata
     ) external;
 }

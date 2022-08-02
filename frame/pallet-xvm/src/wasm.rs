@@ -34,7 +34,7 @@ where
         metadata: Vec<u8>,
     ) -> Result<Vec<u8>, Vec<u8>> {
         let data = C::encode(input, metadata);
-        let gas_limit = 50000000;
+        let gas_limit = 500000000000;
         let dest = Decode::decode(&mut to.as_ref()).unwrap();
         pallet_contracts::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Signed(from).into(),
