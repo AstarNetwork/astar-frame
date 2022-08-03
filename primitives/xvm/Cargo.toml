@@ -1,0 +1,27 @@
+[package]
+name = "xvm-primitives"
+version = "0.1.0"
+authors = ["Stake Technologies <devops@stake.co.jp>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://astar.network"
+repository = "https://github.com/AstarNetwork/astar-frame"
+description = "Primitive types used by XVM & smart contracts"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+log = "0.4.16"
+num-traits = { version = "0.2", default-features = false }
+scale-info = { version = "2.1.0", default-features = false, features = ["derive"] }
+
+[lib]
+name = "xvm_primitives"
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"num-traits/std",
+
+]
