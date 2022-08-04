@@ -35,18 +35,23 @@ contract XcBurrito is ERC20Wrapper, ERC20Permit{
         internal
         override(ERC20)
     {
+        // add here your pre-mint hooks hooks if needed
+
         require(
             IERC20Plus(xcBurrito).mint(_to, _amount), "Minting xc token failed"
         );
+
+        // add here your post-mint hooks hooks if needed
     }
 
     function _burn(address _account, uint256 _amount)
         internal
         override(ERC20)
     {
-
         require(
             IERC20Plus(xcBurrito).burn(_account, _amount), "Burning xc token failed"
         );
     }
+
+    receive() external payable{}
 }
