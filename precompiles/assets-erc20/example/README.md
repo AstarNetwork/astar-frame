@@ -60,7 +60,7 @@ To deploy XcBurrito contract you need 2 input parameters
     - Follow instructions on how to [Generate XC20 Address](https://docs.astar.network/docs/xcm/integration/tools). If your asset_id is 17 (=0x11), your EVM address will be `0xffffffff00000000000000000000000000000011`
 
 ### 3. Transfer xc asset ownership to the XcBurrito smart contract
-To enable xcBurrito contract to be able to mint/burn you need to call `setTeam()` extrinsic on pallet-assets.
+To enable xcBurrito contract to be able to mint/burn you need to call `setTeam()` extrinsic on pallet-assets. Since the EVM contract has 24 bytes (H160), we need to transform EVM address into SS58 format to be able to call this extrinsic.
 <img width="1205" alt="Screenshot 2022-08-04 at 09 32 11" src="https://user-images.githubusercontent.com/34627453/182795050-f10dad6e-dbd9-4ac9-b526-d51a66503cb9.png">
 After you set the team you should renounce the ownership over the xc20 asset by calling `transferOwnership()` extrinsic on pallet-assets.
 
