@@ -61,7 +61,10 @@ To deploy XcBurrito contract you need 2 input parameters
 
 ### 3. Transfer xc asset ownership to the XcBurrito smart contract
 To enable xcBurrito contract to be able to mint/burn you need to call `setTeam()` extrinsic on pallet-assets.
+<img width="1205" alt="Screenshot 2022-08-04 at 09 32 11" src="https://user-images.githubusercontent.com/34627453/182795050-f10dad6e-dbd9-4ac9-b526-d51a66503cb9.png">
 After you set the team you should renounce the ownership over the xc20 asset by calling `transferOwnership()` extrinsic on pallet-assets.
+
+<img width="1205" alt="Screenshot 2022-08-04 at 09 32 41" src="https://user-images.githubusercontent.com/34627453/182795097-d145073b-cdf0-4c28-916f-66abb5c68abc.png">
 
 Now XcBurrito contract can start minting xc20 tokens for the callers who own Burrito ERC20 token.
 
