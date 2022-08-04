@@ -15,7 +15,7 @@ const GENERAL_INDEX: MultiLocation = MultiLocation {
     parents: 2,
     interior: Junctions::X1(GeneralIndex(20)),
 };
-const RELAY_ASSET: AssetId = AssetId::max_value();
+const RELAY_ASSET: AssetId = AssetId::MAX;
 
 /// Helper struct used for testing `AssetLocationIdConverter`
 struct AssetLocationMapper;
