@@ -15,7 +15,7 @@ const GENERAL_INDEX: MultiLocation = MultiLocation {
     parents: 2,
     interior: Junctions::X1(GeneralIndex(20)),
 };
-const RELAY_ASSET: AssetId = AssetId::max_value();
+const RELAY_ASSET: AssetId = AssetId::MAX;
 
 /// Helper struct used for testing `AssetLocationIdConverter`
 struct AssetLocationMapper;
@@ -62,7 +62,7 @@ fn asset_location_to_id() {
     // Test cases where the MultiLocation is valid
     assert_eq!(
         AssetLocationIdConverter::<AssetId, AssetLocationMapper>::convert_ref(PARENT),
-        Ok(u128::max_value())
+        Ok(u128::MAX)
     );
     assert_eq!(
         AssetLocationIdConverter::<AssetId, AssetLocationMapper>::convert_ref(PARACHAIN),
@@ -84,7 +84,7 @@ fn asset_location_to_id() {
 fn asset_id_to_location() {
     // Test cases where the AssetId is valid
     assert_eq!(
-        AssetLocationIdConverter::<AssetId, AssetLocationMapper>::reverse_ref(u128::max_value()),
+        AssetLocationIdConverter::<AssetId, AssetLocationMapper>::reverse_ref(u128::MAX),
         Ok(PARENT)
     );
     assert_eq!(

@@ -96,7 +96,7 @@ where
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
-        if amounts_raw.iter().any(|x| *x > u128::max_value().into()) {
+        if amounts_raw.iter().any(|x| *x > u128::MAX.into()) {
             return Err(revert("Asset amount is too big"));
         }
         let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();

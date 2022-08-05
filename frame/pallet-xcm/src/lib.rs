@@ -500,9 +500,9 @@ pub mod pallet {
 						WithdrawAsset(assets),
 						InitiateTeleport { assets: Wild(All), dest, xcm: Xcm(vec![]) },
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn teleport_assets(
@@ -538,9 +538,9 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn reserve_transfer_assets(
@@ -584,9 +584,9 @@ pub mod pallet {
                         WithdrawAsset(assets),
 						InitiateReserveWithdraw { assets: Wild(All), reserve: dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn reserve_withdraw_assets(
@@ -748,9 +748,9 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn limited_reserve_transfer_assets(
@@ -798,9 +798,9 @@ pub mod pallet {
 						WithdrawAsset(assets),
 						InitiateTeleport { assets: Wild(All), dest, xcm: Xcm(vec![]) },
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn limited_teleport_assets(
@@ -845,9 +845,9 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::max_value(), |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
 				},
-				_ => Weight::max_value(),
+				_ => Weight::MAX,
 			}
 		})]
         pub fn limited_reserve_withdraw_assets(
