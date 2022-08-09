@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "chain-extensions/*",
+    "chain-extensions/impls/dapps-staking",
+    "chain-extensions/trait",
     "frame/block-reward",
     "frame/collator-selection",
     "frame/custom-signatures",

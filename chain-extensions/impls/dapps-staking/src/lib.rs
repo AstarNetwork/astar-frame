@@ -4,12 +4,12 @@ use sp_runtime::{
     DispatchError,
 };
 
-use chain_extension_traits::ChainExtensionExec;
-use chain_extension_types::{
+use chain_extension_trait::ChainExtensionExec;
+use codec::{Decode, Encode};
+use dapps_staking_chain_extension_types::{
     Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
     DappsStakingValueInput,
 };
-use codec::{Decode, Encode};
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{Environment, Ext, InitState, SysConfig, UncheckedFrom};
@@ -65,7 +65,6 @@ impl TryFrom<u32> for DappsStakingFunc {
     }
 }
 
-// pub struct DappsStakingExtension;
 pub struct DappsStakingExtension<R>(PhantomData<R>);
 
 impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExtension<T> {
@@ -79,7 +78,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
         let mut env = env.buf_in_buf_out();
 
         match func_id {
-            // DappsStaking - read_current_era()
             DappsStakingFunc::CurrentEra => {
                 let era_index = pallet_dapps_staking::CurrentEra::<T>::get();
                 env.write(&era_index.encode(), false, None).map_err(|_| {
@@ -89,7 +87,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 })?;
             }
 
-            // DappsStaking - read_unbonding_period()
             DappsStakingFunc::UnbondingPeriod => {
                 let unbonding_period = T::UnbondingPeriod::get();
                 env.write(&unbonding_period.encode(), false, None)
@@ -100,7 +97,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     })?;
             }
 
-            // DappsStaking - read_era_reward()
             DappsStakingFunc::EraRewards => {
                 let arg: u32 = env.read_as()?;
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<T>::get(arg)
@@ -115,11 +111,12 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 })?;
             }
 
-            // DappsStaking - read_era_staked()
             DappsStakingFunc::EraStaked => {
                 let arg: u32 = env.read_as()?;
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<T>::get(arg)
-                    .ok_or(DispatchError::Other("[ChainExtension] DappsStakingExtension EraStaked general_era_info call failed"));
+                    .ok_or(DispatchError::Other(
+                    "[ChainExtension] DappsStakingExtension EraStaked general_era_info call failed",
+                ));
                 let staked_amount = era_info.map_or(Zero::zero(), |r| r.staked);
                 env.write(&staked_amount.encode(), false, None)
                     .map_err(|_| {
@@ -129,7 +126,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     })?;
             }
 
-            // DappsStaking - read_staked_amount()
             DappsStakingFunc::StakedAmount => {
                 let staker: T::AccountId = env.read_as()?;
                 let ledger = pallet_dapps_staking::Ledger::<T>::get(&staker);
@@ -156,7 +152,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     })?;
             }
 
-            // DappsStaking - read_contract_stake()
             DappsStakingFunc::ReadContractStake => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
@@ -172,7 +167,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 })?;
             }
 
-            // DappsStaking - register()
             DappsStakingFunc::Register => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
@@ -205,7 +199,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - bond_and_stake()
             DappsStakingFunc::BondAndStake => {
                 let args: DappsStakingValueInput<BalanceOf<T>> = env.read_as()?;
                 let contract = Self::decode_smart_contract(args.contract)?;
@@ -273,7 +266,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - withdraw_unbonded()
             DappsStakingFunc::WithdrawUnbonded => {
                 let caller = env.ext().caller().clone();
 
@@ -302,7 +294,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - claim_staker()
             DappsStakingFunc::ClaimStaker => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
@@ -334,7 +325,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - claim_dapp()
             DappsStakingFunc::ClaimDapp => {
                 let args: DappsStakingEraInput = env.read_as()?;
                 let contract = Self::decode_smart_contract(args.contract)?;
@@ -368,7 +358,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - set_reward_destination()
             DappsStakingFunc::SetRewardDestination => {
                 let reward_destination_raw: u8 = env.read_as()?;
                 let base_weight =
@@ -415,7 +404,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 };
             }
 
-            // DappsStaking - nomination_transfer()
             DappsStakingFunc::NominationTransfer => {
                 let args: DappsStakingNominationInput<BalanceOf<T>> = env.read_as()?;
                 let origin_smart_contract = Self::decode_smart_contract(args.origin_contract)?;

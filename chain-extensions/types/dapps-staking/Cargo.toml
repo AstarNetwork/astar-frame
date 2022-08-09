@@ -9,10 +9,10 @@ repository = "https://github.com/AstarNetwork/astar-frame"
 description = "Types definitions for dapps-staking chain-extension"
 
 [dependencies]
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26",  default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27",  default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
 scale-info = { version = "2.1.0", default-features = false, features = ["derive"] }
 
 

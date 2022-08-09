@@ -4,7 +4,7 @@ use sp_runtime::DispatchError;
 
 /// A Trait used to implement a chain-extension for a pallet
 ///
-/// To create a chain-extension for a pallet this trait must be impmlemented
+/// To create a chain-extension for a pallet this trait must be implemented
 ///
 /// T is the Config trait of the pallet
 pub trait ChainExtensionExec<T: SysConfig> {
