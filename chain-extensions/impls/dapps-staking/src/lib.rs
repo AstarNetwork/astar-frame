@@ -28,7 +28,6 @@ enum DappsStakingFunc {
     StakedAmount,
     StakedAmountOnContract,
     ReadContractStake,
-    Register,
     BondAndStake,
     UnbondAndUnstake,
     WithdrawUnbonded,
@@ -50,14 +49,13 @@ impl TryFrom<u32> for DappsStakingFunc {
             5 => Ok(DappsStakingFunc::StakedAmount),
             6 => Ok(DappsStakingFunc::StakedAmountOnContract),
             7 => Ok(DappsStakingFunc::ReadContractStake),
-            8 => Ok(DappsStakingFunc::Register),
-            9 => Ok(DappsStakingFunc::BondAndStake),
-            10 => Ok(DappsStakingFunc::UnbondAndUnstake),
-            11 => Ok(DappsStakingFunc::WithdrawUnbonded),
-            12 => Ok(DappsStakingFunc::ClaimStaker),
-            13 => Ok(DappsStakingFunc::ClaimDapp),
-            14 => Ok(DappsStakingFunc::SetRewardDestination),
-            15 => Ok(DappsStakingFunc::NominationTransfer),
+            8 => Ok(DappsStakingFunc::BondAndStake),
+            9 => Ok(DappsStakingFunc::UnbondAndUnstake),
+            10 => Ok(DappsStakingFunc::WithdrawUnbonded),
+            11 => Ok(DappsStakingFunc::ClaimStaker),
+            12 => Ok(DappsStakingFunc::ClaimDapp),
+            13 => Ok(DappsStakingFunc::SetRewardDestination),
+            14 => Ok(DappsStakingFunc::NominationTransfer),
             _ => Err(DispatchError::Other(
                 "DappsStakingExtension: Unimplemented func_id",
             )),
@@ -165,38 +163,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                         "[ChainExtension] DappsStakingExtension ReadContractStake failed to write result",
                     )
                 })?;
-            }
-
-            DappsStakingFunc::Register => {
-                let contract_bytes: [u8; 32] = env.read_as()?;
-                let contract = Self::decode_smart_contract(contract_bytes)?;
-
-                let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::register();
-                env.charge_weight(base_weight)?;
-
-                let caller = env.ext().caller().clone();
-                let call_result = pallet_dapps_staking::Pallet::<T>::register(
-                    RawOrigin::Signed(caller).into(),
-                    contract,
-                );
-
-                return match call_result {
-                    Err(e) => {
-                        let mapped_error = DSError::try_from(e.error)?;
-                        let res = Result::<(), DSError>::Err(mapped_error);
-                        env.write(&res.encode(), false, None).map_err(|_| {
-                            DispatchError::Other("[ChainExtension] DappsStakingExtension Register failed to write result")
-                        })?;
-                        Err(e.error)
-                    }
-                    _ => {
-                        let res = Result::<(), DSError>::Ok(());
-                        env.write(&res.encode(), false, None).map_err(|_| {
-                            DispatchError::Other("[ChainExtension] DappsStakingExtension Register failed to write result")
-                        })?;
-                        Ok(())
-                    }
-                };
             }
 
             DappsStakingFunc::BondAndStake => {
