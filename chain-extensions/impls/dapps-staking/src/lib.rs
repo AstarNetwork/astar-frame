@@ -261,7 +261,8 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::WithdrawUnbonded => {
                 let caller = env.ext().caller().clone();
 
-                let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::withdraw_unbonded();
+                let base_weight =
+                    <T as pallet_dapps_staking::Config>::WeightInfo::withdraw_unbonded();
                 env.charge_weight(base_weight)?;
 
                 let call_result = pallet_dapps_staking::Pallet::<T>::withdraw_unbonded(
