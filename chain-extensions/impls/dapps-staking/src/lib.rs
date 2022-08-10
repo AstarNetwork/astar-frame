@@ -265,13 +265,18 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let contract = Self::decode_smart_contract(contract_bytes)?;
                 let base_weight = T::WeightInfo::claim_staker_with_restake()
                     .max(T::WeightInfo::claim_staker_without_restake());
-                env.charge_weight(base_weight)?;
+                let charged_weight = env.charge_weight(base_weight)?;
 
                 let caller = env.ext().caller().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::claim_staker(
                     RawOrigin::Signed(caller).into(),
                     contract,
                 );
+                env.adjust_weight(
+                    charged_weight,
+                    call_result.unwrap().actual_weight.unwrap_or(0),
+                );
+
                 return match call_result {
                     Err(e) => {
                         let mapped_error = DSError::try_from(e.error)?;
