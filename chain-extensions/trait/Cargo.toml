@@ -10,11 +10,11 @@ description = "Trait definition for chain extension for WASM contracts"
 
 [dependencies]
 pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false, features = ["unstable-interface"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27",  default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
 
 [features]
 default = ["std"]
 std = [
-    "pallet-contracts/std",
-    "sp-runtime/std",
+	"pallet-contracts/std",
+	"sp-runtime/std",
 ]
