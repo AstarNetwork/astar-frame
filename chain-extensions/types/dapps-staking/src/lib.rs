@@ -65,8 +65,6 @@ pub enum DSError {
     NominationTransferToSameContract = 26,
     /// Unexpected reward destination value
     RewardDestinationValueOutOfBounds = 27,
-    /// Failed to write result on buffer
-    FailedToWriteOnBuffer = 28,
     /// Unknown error
     UnknownError = 99,
 }

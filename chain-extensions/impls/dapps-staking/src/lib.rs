@@ -86,11 +86,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 env.charge_weight(base_weight)?;
 
                 let era_index = pallet_dapps_staking::CurrentEra::<T>::get();
-                let write = env.write(&era_index.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&era_index.encode(), false, None)?;
             }
 
             DappsStakingFunc::UnbondingPeriod => {
@@ -98,11 +94,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 env.charge_weight(base_weight)?;
 
                 let unbonding_period = T::UnbondingPeriod::get();
-                let write = env.write(&unbonding_period.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&unbonding_period.encode(), false, None)?;
             }
 
             DappsStakingFunc::EraRewards => {
@@ -115,11 +107,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let reward = era_info.map_or(Zero::zero(), |r| {
                     r.rewards.stakers.saturating_add(r.rewards.dapps)
                 });
-                let write = env.write(&reward.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&reward.encode(), false, None)?;
             }
 
             DappsStakingFunc::EraStaked => {
@@ -130,11 +118,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
 
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<T>::get(arg);
                 let staked_amount = era_info.map_or(Zero::zero(), |r| r.staked);
-                let write = env.write(&staked_amount.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&staked_amount.encode(), false, None)?;
             }
 
             DappsStakingFunc::StakedAmount => {
@@ -144,11 +128,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 env.charge_weight(base_weight)?;
 
                 let ledger = pallet_dapps_staking::Ledger::<T>::get(&staker);
-                let write = env.write(&ledger.locked.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&ledger.locked.encode(), false, None)?;
             }
 
             DappsStakingFunc::StakedAmountOnContract => {
@@ -162,11 +142,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let staking_info =
                     pallet_dapps_staking::GeneralStakerInfo::<T>::get(&staker, &contract);
                 let staked_amount = staking_info.latest_staked_value();
-                let write = env.write(&staked_amount.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&staked_amount.encode(), false, None)?;
             }
 
             DappsStakingFunc::ReadContractStake => {
@@ -181,11 +157,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     pallet_dapps_staking::Pallet::<T>::contract_stake_info(&contract, current_era)
                         .unwrap_or_default();
                 let total = TryInto::<u128>::try_into(staking_info.total).unwrap_or(0);
-                let write = env.write(&total.encode(), false, None);
-                return match write {
-                    Err(_) => Ok(RetVal::Converging(DSError::FailedToWriteOnBuffer as u32)),
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
+                env.write(&total.encode(), false, None)?;
             }
 
             DappsStakingFunc::BondAndStake => {
