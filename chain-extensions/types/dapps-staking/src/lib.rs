@@ -7,62 +7,66 @@ use sp_runtime::{DispatchError, ModuleError};
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
 pub enum DSError {
+    /// Success
+    Success = 0,
     /// Disabled
-    Disabled,
+    Disabled = 1,
     /// No change in maintenance mode
-    NoMaintenanceModeChange,
+    NoMaintenanceModeChange = 2,
     /// Upgrade is too heavy, reduce the weight parameter.
-    UpgradeTooHeavy,
+    UpgradeTooHeavy = 3,
     /// Can not stake with zero value.
-    StakingWithNoValue,
+    StakingWithNoValue = 4,
     /// Can not stake with value less than minimum staking value
-    InsufficientValue,
+    InsufficientValue = 5,
     /// Number of stakers per contract exceeded.
-    MaxNumberOfStakersExceeded,
+    MaxNumberOfStakersExceeded = 6,
     /// Targets must be operated contracts
-    NotOperatedContract,
+    NotOperatedContract = 7,
     /// Contract isn't staked.
-    NotStakedContract,
+    NotStakedContract = 8,
     /// Contract isn't unregistered.
-    NotUnregisteredContract,
+    NotUnregisteredContract = 9,
     /// Unclaimed rewards should be claimed before withdrawing stake.
-    UnclaimedRewardsRemaining,
+    UnclaimedRewardsRemaining = 10,
     /// Unstaking a contract with zero value
-    UnstakingWithNoValue,
+    UnstakingWithNoValue = 11,
     /// There are no previously unbonded funds that can be unstaked and withdrawn.
-    NothingToWithdraw,
+    NothingToWithdraw = 12,
     /// The contract is already registered by other account
-    AlreadyRegisteredContract,
+    AlreadyRegisteredContract = 13,
     /// User attempts to register with address which is not contract
-    ContractIsNotValid,
+    ContractIsNotValid = 14,
     /// This account was already used to register contract
-    AlreadyUsedDeveloperAccount,
+    AlreadyUsedDeveloperAccount = 15,
     /// Smart contract not owned by the account id.
-    NotOwnedContract,
+    NotOwnedContract = 16,
     /// Report issue on github if this is ever emitted
-    UnknownEraReward,
+    UnknownEraReward = 17,
     /// Report issue on github if this is ever emitted
-    UnexpectedStakeInfoEra,
+    UnexpectedStakeInfoEra = 18,
     /// Contract has too many unlocking chunks. Withdraw the existing chunks if possible
     /// or wait for current chunks to complete unlocking process to withdraw them.
-    TooManyUnlockingChunks,
+    TooManyUnlockingChunks = 19,
     /// Contract already claimed in this era and reward is distributed
-    AlreadyClaimedInThisEra,
+    AlreadyClaimedInThisEra = 20,
     /// Era parameter is out of bounds
-    EraOutOfBounds,
+    EraOutOfBounds = 21,
     /// Too many active `EraStake` values for (staker, contract) pairing.
     /// Claim existing rewards to fix this problem.
-    TooManyEraStakeValues,
+    TooManyEraStakeValues = 22,
     /// To register a contract, pre-approval is needed for this address
-    RequiredContractPreApproval,
+    RequiredContractPreApproval = 23,
     /// Developer's account is already part of pre-approved list
-    AlreadyPreApprovedDeveloper,
+    AlreadyPreApprovedDeveloper = 24,
     /// Account is not actively staking
-    NotActiveStaker,
+    NotActiveStaker = 25,
     /// Transfering nomination to the same contract
-    NominationTransferToSameContract,
+    NominationTransferToSameContract = 26,
     /// Unexpected reward destination value
-    RewardDestinationValueOutOfBounds,
+    RewardDestinationValueOutOfBounds = 27,
+    /// Unknown error
+    UnknownError = 99,
 }
 
 impl TryFrom<DispatchError> for DSError {
@@ -102,7 +106,7 @@ impl TryFrom<DispatchError> for DSError {
             Some("NominationTransferToSameContract") => {
                 Ok(DSError::NominationTransferToSameContract)
             }
-            _ => Err(DispatchError::Other("DappsStakingExtension: Unknown error")),
+            _ => Ok(DSError::UnknownError),
         };
     }
 }

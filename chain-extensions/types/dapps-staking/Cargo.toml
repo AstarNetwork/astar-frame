@@ -1,6 +1,6 @@
 [package]
 name = "dapps-staking-chain-extension-types"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
 license = "Apache-2.0"
