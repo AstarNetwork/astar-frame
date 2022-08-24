@@ -83,7 +83,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-    pub const Priority: TransactionPriority = TransactionPriority::max_value();
+    pub const Priority: TransactionPriority = TransactionPriority::MAX;
     pub const CallFee: Balance = 42;
     pub const CallMagicNumber: u16 = 0xff50;
 }
