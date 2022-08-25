@@ -12,9 +12,9 @@ precompile-utils = { path = "../utils", default-features = false }
 
 # Substrate
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-core = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-io = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-std = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27", default-features = false }
 
 # Frontier
 fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.27", default-features = false }
@@ -28,11 +28,11 @@ serde = "1.0.140"
 
 precompile-utils = { path = "../utils", features = ["testing"] }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+frame-support = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27" }
+frame-system = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27" }
+pallet-balances = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27" }
+pallet-timestamp = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27" }
+sp-runtime = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.27" }
 
 [features]
 default = ["std"]
