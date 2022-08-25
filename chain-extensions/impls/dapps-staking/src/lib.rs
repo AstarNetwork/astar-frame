@@ -168,7 +168,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::bond_and_stake();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::bond_and_stake(
                     RawOrigin::Signed(caller).into(),
                     contract,
