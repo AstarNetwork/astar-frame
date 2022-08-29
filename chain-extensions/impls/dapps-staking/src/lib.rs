@@ -7,8 +7,7 @@ use sp_runtime::{
 use chain_extension_trait::ChainExtensionExec;
 use codec::{Decode, Encode};
 use dapps_staking_chain_extension_types::{
-    Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
-    DappsStakingValueInput,
+    Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingValueInput,
 };
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
@@ -36,7 +35,6 @@ enum DappsStakingFunc {
     ClaimStaker,
     ClaimDapp,
     SetRewardDestination,
-    NominationTransfer,
 }
 
 impl TryFrom<u32> for DappsStakingFunc {
@@ -57,7 +55,6 @@ impl TryFrom<u32> for DappsStakingFunc {
             11 => Ok(DappsStakingFunc::ClaimStaker),
             12 => Ok(DappsStakingFunc::ClaimDapp),
             13 => Ok(DappsStakingFunc::SetRewardDestination),
-            14 => Ok(DappsStakingFunc::NominationTransfer),
             _ => Err(DispatchError::Other(
                 "DappsStakingExtension: Unimplemented func_id",
             )),
@@ -298,32 +295,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let call_result = pallet_dapps_staking::Pallet::<T>::set_reward_destination(
                     RawOrigin::Signed(caller).into(),
                     reward_destination,
-                );
-                return match call_result {
-                    Err(e) => {
-                        let mapped_error = DSError::try_from(e.error)?;
-                        Ok(RetVal::Converging(mapped_error as u32))
-                    }
-                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
-                };
-            }
-
-            DappsStakingFunc::NominationTransfer => {
-                let args: DappsStakingNominationInput<BalanceOf<T>> = env.read_as()?;
-                let origin_smart_contract = Self::decode_smart_contract(args.origin_contract)?;
-                let target_smart_contract = Self::decode_smart_contract(args.target_contract)?;
-                let value: BalanceOf<T> = args.value;
-
-                let base_weight =
-                    <T as pallet_dapps_staking::Config>::WeightInfo::nomination_transfer();
-                env.charge_weight(base_weight)?;
-
-                let caller = env.ext().address().clone();
-                let call_result = pallet_dapps_staking::Pallet::<T>::nomination_transfer(
-                    RawOrigin::Signed(caller).into(),
-                    origin_smart_contract,
-                    value,
-                    target_smart_contract,
                 );
                 return match call_result {
                     Err(e) => {
