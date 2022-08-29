@@ -10,10 +10,7 @@ use dapps_staking_chain_extension_types::{
     Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
     DappsStakingValueInput,
 };
-use frame_support::{
-    log,
-    traits::{Currency, Get},
-};
+use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
@@ -167,7 +164,6 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let args: DappsStakingValueInput<BalanceOf<T>> = env.read_as()?;
                 let contract = Self::decode_smart_contract(args.contract)?;
                 let value: BalanceOf<T> = args.value;
-                log::debug!(target: "runtime", "BondAndStake value {:?}", value);
 
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::bond_and_stake();
                 env.charge_weight(base_weight)?;
