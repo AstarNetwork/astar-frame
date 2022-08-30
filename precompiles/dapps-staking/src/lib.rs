@@ -13,7 +13,7 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    error, revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
@@ -175,22 +175,10 @@ where
     }
 
     /// Register contract with the dapp-staking pallet
-    fn register(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
-        let mut input = handle.read_input()?;
-        input.expect_arguments(1)?;
-
-        // parse contract's address
-        let contract_h160 = input.read::<Address>()?.0;
-        let contract_id = Self::decode_smart_contract(contract_h160)?;
-        log::trace!(target: "ds-precompile", "register {:?}", contract_id);
-
-        // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::register { contract_id };
-
-        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
-
-        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    /// Register is root origin only. This should always fail when called via evm precompile.
+    fn register(_: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        // register is root-origin call. it should always fail when called via evm precompiles.
+        Err(error("register via evm precompile is not allowed"))
     }
 
     /// Lock up and stake balance of the origin account.
@@ -304,9 +292,7 @@ where
         } else if reward_destination_raw == 1 {
             RewardDestination::StakeBalance
         } else {
-            return Err(precompile_utils::error(
-                "Unexpected reward destination value.",
-            ));
+            return Err(error("Unexpected reward destination value."));
         };
 
         // Build call with origin.

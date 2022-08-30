@@ -246,15 +246,6 @@ impl<AccountId32> Default for MockSmartContract<AccountId32> {
     }
 }
 
-impl<AccountId32> pallet_dapps_staking::IsContract for MockSmartContract<AccountId32> {
-    fn is_valid(&self) -> bool {
-        match self {
-            MockSmartContract::Wasm(_account) => false,
-            MockSmartContract::Evm(_account) => true,
-        }
-    }
-}
-
 parameter_types! {
     pub const RegisterDeposit: Balance = REGISTER_DEPOSIT;
     pub const BlockPerEra: BlockNumber = BLOCKS_PER_ERA;

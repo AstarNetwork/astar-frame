@@ -31,8 +31,6 @@
 //! - `claim_staker` - claims staker reward for a single era
 //! - `claim_dapp` - claims dapp rewards for the specified era
 //! - `force_new_era` - forces new era on the start of the next block
-//! - `developer_pre_approval` - adds developer account to the pre-approved developers
-//! - `enable_developer_pre_approval` - enables or disables developer pre-approval check for dApp registration
 //! - `maintenance_mode` - enables or disables pallet maintenance mode
 //! - `set_reward_destination` - sets reward destination for the staker rewards
 //! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)
@@ -81,12 +79,6 @@ pub type BalanceOf<T> =
 
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
-
-/// Simple trait used to check whether the underlying struct represents a valid smart contract on-chain.
-pub trait IsContract: Default {
-    /// Used to check whether this smart contract is valid on-chain or not.
-    fn is_valid(&self) -> bool;
-}
 
 /// DApp State descriptor
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -180,11 +172,12 @@ pub enum Version {
     V1_0_0,
     V2_0_0,
     V3_0_0,
+    V4_0_0,
 }
 
 impl Default for Version {
     fn default() -> Self {
-        Version::V3_0_0
+        Version::V4_0_0
     }
 }
 
