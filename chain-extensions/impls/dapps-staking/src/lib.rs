@@ -318,7 +318,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     <T as pallet_dapps_staking::Config>::WeightInfo::nomination_transfer();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::nomination_transfer(
                     RawOrigin::Signed(caller).into(),
                     origin_smart_contract,
