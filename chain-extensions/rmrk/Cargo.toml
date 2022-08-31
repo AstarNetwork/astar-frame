@@ -1,0 +1,51 @@
+[package]
+name = "pallet-chain-extension-rmrk"
+version = "0.1.0"
+authors = ["Stake Technologies <devops@stake.co.jp>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://astar.network"
+repository = "https://github.com/AstarNetwork/astar-frame"
+description = "RMRK chain extension for WASM contracts"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+log = "0.4.16"
+num-traits = { version = "0.2", default-features = false }
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false, features = ["unstable-interface"] }
+pallet-contracts-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+pallet-contracts-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+pallet-uniques = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27", default-features = false }
+scale-info = { version = "2.1.0", default-features = false, features = ["derive"] }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+
+# RMRK
+chain-extension-trait = { git = "https://github.com/AstarNetwork/astar-frame", branch = "polkadot-v0.9.27", default-features = false }
+pallet-rmrk-core = { git = "https://github.com/AstarNetwork/rmrk-substrate", branch = "polkadot-v0.9.27", default-features = false }
+rmrk-chain-extension-types = { path = "../types/rmrk", default-features = false }
+rmrk-traits = { git = "https://github.com/AstarNetwork/rmrk-substrate", branch = "polkadot-v0.9.27", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"chain-extension-trait/std",
+	"frame-support/std",
+	"frame-system/std",
+	"num-traits/std",
+	"pallet-contracts/std",
+	"pallet-contracts-primitives/std",
+	"pallet-contracts-rpc-runtime-api/std",
+	"pallet-rmrk-core/std",
+	"pallet-uniques/std",
+	"rmrk-traits/std",
+	"rmrk-chain-extension-types/std",
+	"scale-info/std",
+	"sp-std/std",
+	"sp-core/std",
+	"sp-runtime/std",
+]
