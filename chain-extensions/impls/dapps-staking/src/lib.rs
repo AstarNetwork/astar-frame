@@ -168,7 +168,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::bond_and_stake();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::bond_and_stake(
                     RawOrigin::Signed(caller).into(),
                     contract,
@@ -192,7 +192,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     <T as pallet_dapps_staking::Config>::WeightInfo::unbond_and_unstake();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::unbond_and_unstake(
                     RawOrigin::Signed(caller).into(),
                     contract,
@@ -208,7 +208,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             }
 
             DappsStakingFunc::WithdrawUnbonded => {
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
 
                 let base_weight =
                     <T as pallet_dapps_staking::Config>::WeightInfo::withdraw_unbonded();
@@ -234,7 +234,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     .max(T::WeightInfo::claim_staker_without_restake());
                 let charged_weight = env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::claim_staker(
                     RawOrigin::Signed(caller).into(),
                     contract,
@@ -262,7 +262,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::claim_dapp();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::claim_dapp(
                     RawOrigin::Signed(caller).into(),
                     contract,
@@ -294,7 +294,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     return Ok(RetVal::Converging(error as u32));
                 };
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::set_reward_destination(
                     RawOrigin::Signed(caller).into(),
                     reward_destination,
@@ -318,7 +318,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     <T as pallet_dapps_staking::Config>::WeightInfo::nomination_transfer();
                 env.charge_weight(base_weight)?;
 
-                let caller = env.ext().caller().clone();
+                let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::nomination_transfer(
                     RawOrigin::Signed(caller).into(),
                     origin_smart_contract,
