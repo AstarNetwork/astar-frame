@@ -120,7 +120,7 @@ pub mod pallet_test_notifier {
 }
 
 construct_runtime!(
-    pub enum Test where
+    pub struct Test where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,

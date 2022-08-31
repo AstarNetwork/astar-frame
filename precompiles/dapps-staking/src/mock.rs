@@ -308,7 +308,7 @@ impl ExternalityBuilder {
 }
 
 construct_runtime!(
-    pub enum TestRuntime where
+    pub struct TestRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,

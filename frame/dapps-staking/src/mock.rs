@@ -41,7 +41,7 @@ pub(crate) const STAKER_BLOCK_REWARD: Balance = 531911;
 pub(crate) const DAPP_BLOCK_REWARD: Balance = 773333;
 
 construct_runtime!(
-    pub enum TestRuntime where
+    pub struct TestRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,

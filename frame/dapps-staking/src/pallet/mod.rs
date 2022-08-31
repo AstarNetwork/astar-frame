@@ -3,7 +3,7 @@
 use super::*;
 use frame_support::{
     dispatch::DispatchResult,
-    ensure, log,
+    ensure,
     pallet_prelude::*,
     traits::{
         Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency,
@@ -338,6 +338,8 @@ pub mod pallet {
 
         #[cfg(feature = "try-runtime")]
         fn pre_upgrade() -> Result<(), &'static str> {
+            use frame_support::log;
+
             log::info!(">>> Pre Upgrade");
             let current_pre_approved_developers_count =
                 PreApprovedDevelopers::<T>::iter_keys().count() as u64;
@@ -366,6 +368,8 @@ pub mod pallet {
 
         #[cfg(feature = "try-runtime")]
         fn post_upgrade() -> Result<(), &'static str> {
+            use frame_support::log;
+
             log::info!(">>> Post Upgrade");
 
             assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());

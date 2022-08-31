@@ -67,7 +67,9 @@ impl TryFrom<u32> for DappsStakingFunc {
 
 pub struct DappsStakingExtension<R>(PhantomData<R>);
 
-impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExtension<T> {
+impl<T: pallet_dapps_staking::Config + frame_system::Config> ChainExtensionExec<T>
+    for DappsStakingExtension<T>
+{
     fn execute_func<E>(
         func_id: u32,
         env: Environment<E, InitState>,
