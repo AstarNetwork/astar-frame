@@ -19,7 +19,8 @@ type Block = frame_system::mocking::MockBlock<Test>;
 const EXISTENTIAL_DEPOSIT: Balance = 2;
 
 construct_runtime!(
-    pub struct Test where
+    pub struct Test
+    where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
