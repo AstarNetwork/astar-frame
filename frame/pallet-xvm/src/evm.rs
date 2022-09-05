@@ -30,7 +30,7 @@ where
         );
         let data = C::convert(input, metadata)?;
         let value = U256::from(0u64);
-        let max_fee_per_gas = U256::from(345089869u64);
+        let max_fee_per_gas = U256::from(3450898690u64);
         let gas_limit = 4000000u64;
         let nonce = frame_system::Pallet::<T>::account(from.clone()).nonce;
         let evm_to = Decode::decode(&mut to.as_ref())
