@@ -5,13 +5,13 @@ use codec::Decode;
 use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
-use pallet_xvm::{XvmContext};
+use pallet_xvm::XvmContext;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
 use precompile_utils::{
-    revert, succeed, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
-    RuntimeHelper, Bytes,
+    revert, succeed, Bytes, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
+    RuntimeHelper,
 };
 
 #[cfg(test)]
@@ -44,9 +44,7 @@ where
 
         match selector {
             // Dispatchables
-            Action::XvmCall => {
-                Self::xvm_call(handle)
-            }
+            Action::XvmCall => Self::xvm_call(handle),
         }
     }
 }
@@ -58,16 +56,15 @@ where
     <R as frame_system::Config>::Call:
         From<pallet_xvm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 {
-    fn xvm_call(
-        handle: &mut impl PrecompileHandle,
-    ) -> EvmResult<PrecompileOutput> {
+    fn xvm_call(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(4)?;
 
         // Read arguments and check it
         let context_raw = input.read::<Bytes>()?;
-        let context: XvmContext<<R as pallet_xvm::Config>::VmId> = Decode::decode(&mut context_raw.0.as_ref())
-            .map_err(|_| revert("can not decode XVM context"))?;
+        let context: XvmContext<<R as pallet_xvm::Config>::VmId> =
+            Decode::decode(&mut context_raw.0.as_ref())
+                .map_err(|_| revert("can not decode XVM context"))?;
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
         let call_metadata = input.read::<Bytes>()?.0;

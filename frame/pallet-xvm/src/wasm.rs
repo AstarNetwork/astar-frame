@@ -35,7 +35,7 @@ where
     ) -> Result<Vec<u8>, Vec<u8>> {
         log::trace!(
             target: "xvm::WASM::xvm_call",
-            "Start WASM XVM: {:?}, {:?}, {:?}, {:?}", 
+            "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
             from, to, input, metadata,
         );
         let data = C::convert(input, metadata)?;

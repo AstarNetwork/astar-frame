@@ -25,7 +25,7 @@ where
     ) -> Result<Vec<u8>, Vec<u8>> {
         log::trace!(
             target: "xvm::EVM::xvm_call",
-            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}", 
+            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}",
             from, to, input, metadata,
         );
         let data = C::convert(input, metadata)?;

@@ -3,9 +3,7 @@
 use super::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-    construct_runtime, parameter_types, traits::Everything,
-};
+use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
@@ -138,9 +136,7 @@ where
 {
     fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
         match handle.code_address() {
-            a if a == PRECOMPILE_ADDRESS => Some(
-                XvmPrecompile::<R>::execute(handle),
-            ),
+            a if a == PRECOMPILE_ADDRESS => Some(XvmPrecompile::<R>::execute(handle)),
             _ => None,
         }
     }

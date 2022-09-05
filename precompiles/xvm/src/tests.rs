@@ -35,7 +35,6 @@ fn wrong_argument_reverts() {
             )
             .expect_no_logs()
             .execute_reverts(|output| output == b"can not decode XVM context");
-
     })
 }
 
