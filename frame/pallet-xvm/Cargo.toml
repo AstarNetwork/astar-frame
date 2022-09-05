@@ -19,7 +19,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
 
 # Benchmarks
-frame-benchmarking = { git = "https://github.com/AstarNetwork/substrate", branch = "polkadot-v0.9.28", optional = true, default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true, default-features = false }
 
 # EVM support 
 pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.28", default-features = false, optional = true }
