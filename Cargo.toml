@@ -1,7 +1,9 @@
 [workspace]
 members = [
 	"chain-extensions/impls/dapps-staking",
+	"chain-extensions/impls/xvm",
 	"chain-extensions/trait",
+	"chain-extensions/types/*",
 	"frame/block-reward",
 	"frame/collator-selection",
 	"frame/custom-signatures",
@@ -18,4 +20,6 @@ members = [
 	"precompiles/utils",
 	"precompiles/xcm",
 	"precompiles/xvm",
+
+	"contracts/*",
 ]

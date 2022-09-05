@@ -1,0 +1,44 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+use codec::{Decode, Encode};
+use sp_runtime::{DispatchError, ModuleError};
+use sp_std::vec::Vec; // TODO use ink_prelude::vec::Vec; ?
+
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
+pub enum XvmExecutionResult {
+    /// Success
+    Success = 0,
+    // TODO: expand this with concrete XVM errors
+    /// Error not (yet) covered by a dedidacted code
+    UnknownError = 255,
+}
+
+impl TryFrom<DispatchError> for XvmExecutionResult {
+    type Error = DispatchError;
+
+    fn try_from(input: DispatchError) -> Result<Self, Self::Error> {
+        let error_text = match input {
+            DispatchError::Module(ModuleError { message, .. }) => message,
+            _ => Some("No module error Info"),
+        };
+        return match error_text {
+            // TODO: expan this with concrete XVM errors (see dapps-staking types for example)
+            _ => Ok(XvmExecutionResult::UnknownError),
+        };
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug)]
+pub struct XvmCallArgs {
+    /// virtual machine identifier
+    pub vm_id: u8,
+    /// Call destination (e.g. address)
+    pub to: Vec<u8>,
+    /// Encoded call params
+    pub input: Vec<u8>,
+    /// Metadata for the encoded params
+    pub metadata: Vec<u8>,
+}
+
+pub const FRONTIER_VM_ID: u8 = 0x0F;
+pub const PARITY_WASM_VM_ID: u8 = 0x1F;
