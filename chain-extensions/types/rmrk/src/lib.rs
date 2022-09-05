@@ -4,9 +4,9 @@ use sp_runtime::{DispatchError, ModuleError};
 
 pub enum RmrkFunc {
     // getters
-    NextNftId,
+    // NextNftId,
     CollectionIndex,
-    NextResourceId,
+    // NextResourceId,
     Collections,
     Nfts,
     Priorities,
@@ -44,9 +44,9 @@ impl TryFrom<u32> for RmrkFunc {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         return match value {
             // getters
-            0x0001 => Ok(RmrkFunc::NextNftId),
+            // 0x0001 => Ok(RmrkFunc::NextNftId),
             0x0002 => Ok(RmrkFunc::CollectionIndex),
-            0x0003 => Ok(RmrkFunc::NextResourceId),
+            // 0x0003 => Ok(RmrkFunc::NextResourceId),
             0x0004 => Ok(RmrkFunc::Collections),
             0x0005 => Ok(RmrkFunc::Nfts),
             0x0006 => Ok(RmrkFunc::Priorities),
@@ -85,7 +85,7 @@ impl TryFrom<u32> for RmrkFunc {
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
 pub enum RmrkError {
     /// Error names should be descriptive.
-    NoneValue,
+    Success,
     /// Errors should have helpful documentation associated with them.
     StorageOverflow,
     TooLong,
@@ -127,7 +127,7 @@ impl TryFrom<DispatchError> for RmrkError {
             _ => Some("No module error Info"),
         };
         match error_text {
-            Some("NoneValue") => Ok(RmrkError::NoneValue),
+            Some("NoneValue") => Ok(RmrkError::Success),
             Some("StorageOverflow") => Ok(RmrkError::StorageOverflow),
             Some("TooLong") => Ok(RmrkError::TooLong),
             Some("NoAvailableCollectionId") => Ok(RmrkError::NoAvailableCollectionId),
