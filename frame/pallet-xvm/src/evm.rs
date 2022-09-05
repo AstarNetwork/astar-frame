@@ -33,13 +33,13 @@ where
         let max_fee_per_gas = U256::from(3450898690u64);
         let gas_limit = 4000000u64;
         let nonce = frame_system::Pallet::<T>::account(from.clone()).nonce;
-        let evm_to = Decode::decode(&mut to.as_ref())
+        let evm_to: H160 = Decode::decode(&mut to.as_ref())
             .map_err(|_| b"`to` argument decode failure".to_vec())?;
 
         let res = pallet_evm::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Root.into(),
             H160::from_slice(&from.encode()[0..20]),
-            H160::from_slice(&to[0..20]),
+            evm_to,
             data,
             value,
             gas_limit,
