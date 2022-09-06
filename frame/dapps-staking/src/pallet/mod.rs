@@ -186,6 +186,26 @@ pub mod pallet {
     #[pallet::getter(fn storage_version)]
     pub(crate) type StorageVersion<T> = StorageValue<_, Version, ValueQuery>;
 
+    #[pallet::type_value]
+    pub(crate) fn PreApprovalOnEmpty() -> bool {
+        false
+    }
+
+    /// Deprecated.
+    /// Need to be cleaned up with OnRuntimeUpgrade.
+    /// Enable or disable pre-approval list for new contract registration
+    #[pallet::storage]
+    #[pallet::getter(fn pre_approval_is_enabled)]
+    pub(crate) type PreApprovalIsEnabled<T> = StorageValue<_, bool, ValueQuery, PreApprovalOnEmpty>;
+
+    /// Deprecated.
+    /// Need to be cleanup with OnRuntimeUpgrade.
+    /// List of pre-approved developers who can register contracts.
+    #[pallet::storage]
+    #[pallet::getter(fn pre_approved_developers)]
+    pub(crate) type PreApprovedDevelopers<T: Config> =
+        StorageMap<_, Twox64Concat, T::AccountId, (), ValueQuery>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -266,6 +286,10 @@ pub mod pallet {
         /// Too many active `EraStake` values for (staker, contract) pairing.
         /// Claim existing rewards to fix this problem.
         TooManyEraStakeValues,
+        /// To register a contract, pre-approval is needed for this address
+        RequiredContractPreApproval,
+        /// Developer's account is already part of pre-approved list
+        AlreadyPreApprovedDeveloper,
         /// Account is not actively staking
         NotActiveStaker,
         /// Transfering nomination to the same contract
@@ -310,6 +334,56 @@ pub mod pallet {
             } else {
                 T::DbWeight::get().reads(4)
             }
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<(), &'static str> {
+            use frame_support::log;
+
+            log::info!(">>> Pre Upgrade");
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
+
+            assert_eq!(Version::V3_0_0, StorageVersion::<T>::get());
+
+            Ok(())
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            // lightweight deletions
+            let mut consumed_weight = T::DbWeight::get().writes(2);
+            StorageVersion::<T>::put(Version::default());
+            PreApprovalIsEnabled::<T>::kill();
+
+            let deletion_weight = T::DbWeight::get().writes(1) * 11 / 10;
+            let result = PreApprovedDevelopers::<T>::clear(u32::MAX, None);
+            consumed_weight += deletion_weight * result.unique as u64;
+
+            consumed_weight
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade() -> Result<(), &'static str> {
+            use frame_support::log;
+
+            log::info!(">>> Post Upgrade");
+
+            assert_eq!(Version::V4_0_0, StorageVersion::<T>::get());
+
+            // pre approved developers count should be 0
+            let current_pre_approved_developers_count =
+                PreApprovedDevelopers::<T>::iter_keys().count() as u64;
+            log::info!(
+                "PreApprovedDevelopers: {}",
+                current_pre_approved_developers_count
+            );
+            assert_eq!(current_pre_approved_developers_count, 0);
+
+            Ok(())
         }
     }
 
