@@ -17,14 +17,13 @@ impl TryFrom<DispatchError> for XvmExecutionResult {
     type Error = DispatchError;
 
     fn try_from(input: DispatchError) -> Result<Self, Self::Error> {
-        let error_text = match input {
+        let _error_text = match input {
             DispatchError::Module(ModuleError { message, .. }) => message,
             _ => Some("No module error Info"),
         };
-        return match error_text {
-            // TODO: expan this with concrete XVM errors (see dapps-staking types for example)
-            _ => Ok(XvmExecutionResult::UnknownError),
-        };
+
+        // TODO: expand this with concrete XVM errors (see dapps-staking types for example)
+        Ok(XvmExecutionResult::UnknownError)
     }
 }
 

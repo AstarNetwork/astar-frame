@@ -2,7 +2,7 @@
 
 use ink_env::{DefaultEnvironment, Environment};
 use ink_lang as ink;
-use xvm_chain_extension_types::{XvmCallArgs, XvmExecutionResult};
+use xvm_chain_extension_types::XvmCallArgs;
 
 #[ink::chain_extension]
 pub trait XvmChainExtension {
@@ -69,14 +69,17 @@ mod xvm_chain_extension_contract {
 
         #[ink(message)]
         pub fn call_evm(&mut self, address: AccountId) -> Result<(), ExtensionError> {
-            let res = self.env().extension().xvm_call(XvmCallArgs {
-                vm_id: xvm_chain_extension_types::FRONTIER_VM_ID,
-                to: address.encode(), // TODO: is this correct?
-                input: Default::default(),
-                metadata: Default::default(),
-            });
+            self.env()
+                .extension()
+                .xvm_call(XvmCallArgs {
+                    vm_id: xvm_chain_extension_types::FRONTIER_VM_ID,
+                    to: address.encode(), // TODO: is this correct?
+                    input: Default::default(),
+                    metadata: Default::default(),
+                })
+                .map_err(|_| ExtensionError::XvmCallFailed)?;
 
-            Ok(res?)
+            Ok(())
         }
     }
 }
