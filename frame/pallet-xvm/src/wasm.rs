@@ -27,7 +27,7 @@ where
     }
 
     fn xvm_call(
-        context: XvmContext<VmId>,
+        _context: XvmContext<VmId>,
         from: T::AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
