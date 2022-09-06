@@ -6,6 +6,8 @@ edition = "2021"
 version = "0.4.3"
 
 [dependencies]
+# There's a problem with --all-features when this is moved under dev-deps
+evm = { git = "https://github.com/rust-blockchain/evm", rev = "01bcbd2205a212c34451d3b4fabc962793b057d3", optional = true }
 impl-trait-for-tuples = "0.2.2"
 log = "0.4.16"
 num_enum = { version = "0.5.3", default-features = false }
@@ -32,8 +34,6 @@ xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.2
 
 [dev-dependencies]
 hex-literal = "0.3.1"
-# If this is moved from dev-deps, ensure the same version as frontier is used to avoid duplicated deps
-evm = { git = "https://github.com/rust-blockchain/evm", rev = "01bcbd2205a212c34451d3b4fabc962793b057d3", default-features = false, features = ["with-codec"] }
 
 [features]
 default = ["std"]

@@ -147,10 +147,7 @@ impl PrecompileHandle for MockHandle {
         context: &Context,
     ) -> (ExitReason, Vec<u8>) {
         if self
-            .record_cost(super::call_cost(
-                context.apparent_value,
-                &evm::Config::london(),
-            ))
+            .record_cost(call_cost(context.apparent_value, &evm::Config::london()))
             .is_err()
         {
             return (ExitReason::Error(ExitError::OutOfGas), vec![]);
