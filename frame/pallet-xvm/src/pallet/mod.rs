@@ -25,13 +25,12 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-        /// Unique VM identifier.
-        type VmId: Member + Parameter + From<u8>;
         /// Supported synchronous VM list, for example (EVM, WASM)
-        type SyncVM: SyncVM<Self::VmId, Self::AccountId>;
+        type SyncVM: SyncVM<Self::AccountId>;
         /// Supported asynchronous VM list.
-        type AsyncVM: AsyncVM<Self::VmId, Self::AccountId>;
+        type AsyncVM: AsyncVM<Self::AccountId>;
+        /// General event type.
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
 
     #[pallet::error]
@@ -50,45 +49,40 @@ pub mod pallet {
         #[pallet::weight(100_000)]
         pub fn xvm_call(
             origin: OriginFor<T>,
-            context: XvmContext<T::VmId>,
+            context: XvmContext,
             to: Vec<u8>,
             input: Vec<u8>,
-            metadata: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            let result = T::SyncVM::xvm_call(context, from, to, input, metadata);
+            let result = T::SyncVM::xvm_call(context, from, to, input);
 
             Self::deposit_event(Event::<T>::XvmCall { result });
-
             Ok(().into())
         }
 
         #[pallet::weight(100_000)]
         pub fn xvm_send(
             origin: OriginFor<T>,
-            context: XvmContext<T::VmId>,
+            context: XvmContext,
             to: Vec<u8>,
             message: Vec<u8>,
-            metadata: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            let result = T::AsyncVM::xvm_send(context, from, to, message, metadata);
+            let result = T::AsyncVM::xvm_send(context, from, to, message);
 
             Self::deposit_event(Event::<T>::XvmSend { result });
-
             Ok(().into())
         }
 
         #[pallet::weight(100_000)]
         pub fn xvm_query(
             origin: OriginFor<T>,
-            context: XvmContext<T::VmId>,
+            context: XvmContext,
         ) -> DispatchResultWithPostInfo {
             let inbox = ensure_signed(origin)?;
             let result = T::AsyncVM::xvm_query(context, inbox);
 
             Self::deposit_event(Event::<T>::XvmQuery { result });
-
             Ok(().into())
         }
     }
