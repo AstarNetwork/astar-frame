@@ -6,6 +6,7 @@ use chain_extension_trait::ChainExtensionExec;
 
 use codec::Encode;
 use frame_support::BoundedVec;
+use frame_support::log;
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState, RetVal, RetVal::Converging, SysConfig, UncheckedFrom,
@@ -295,20 +296,20 @@ impl<
                 let weight = 100_000_000_000; // TODO update after RMRK pallet implements weights
                 env.charge_weight(weight)?;
 
-                sp_std::if_std! {println!(
+                log::trace!(target: "runtime",
                     "[RmrkExtension] create_collection metadata{:?}, symbol{:?}, caller{:?}, weight {:?}",
                     metadata, symbol, contract, weight
-                );}
+                );
                 let result = pallet_rmrk_core::Pallet::<T>::create_collection(
                     RawOrigin::Signed(contract).into(),
                     metadata.try_into().unwrap(),
                     max,
                     symbol.try_into().unwrap(),
                 );
-                sp_std::if_std! {println!(
+                log::trace!(target: "runtime",
                     "[RmrkExtension] create_result {:?}",
                     result
-                );}
+                );
 
                 return match result {
                     Ok(_) => Ok(Converging(RmrkError::Success as u32)),
