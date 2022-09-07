@@ -8,19 +8,18 @@ use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
 use sp_std::fmt::Debug;
 
-pub struct WASM<I, T, C>(sp_std::marker::PhantomData<(I, T, C)>);
+pub struct WASM<I, T>(sp_std::marker::PhantomData<(I, T)>);
 
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 
-impl<VmId, I, T, C> SyncVM<VmId, T::AccountId> for WASM<I, T, C>
+impl<I, T> SyncVM<VmId, T::AccountId> for WASM<I, T>
 where
     I: Get<VmId>,
     T: pallet_contracts::Config + frame_system::Config,
     T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
     <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
-    C: XvmCodec,
 {
     fn id() -> VmId {
         I::get()
@@ -31,14 +30,12 @@ where
         from: T::AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
-        metadata: Vec<u8>,
     ) -> Result<Vec<u8>, Vec<u8>> {
         log::trace!(
             target: "xvm::WASM::xvm_call",
             "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
-            from, to, input, metadata,
+            from, to, input,
         );
-        let data = C::convert(input, metadata)?;
         let gas_limit = 500000000000;
         let dest = Decode::decode(&mut to.as_ref()).unwrap();
         let res = pallet_contracts::Pallet::<T>::call(
@@ -47,7 +44,7 @@ where
             Default::default(),
             gas_limit,
             None,
-            data,
+            input,
         );
 
         log::trace!(

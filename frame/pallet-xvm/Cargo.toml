@@ -2,7 +2,7 @@
 name = "pallet-xvm"
 authors = ["Stake Technologies"]
 edition = "2021"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 impl-trait-for-tuples = "0.2"
