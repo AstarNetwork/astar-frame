@@ -38,6 +38,7 @@ hex-literal = "0.3.1"
 [features]
 default = ["std"]
 std = [
+	"evm/std",
 	"codec/std",
 	"fp-evm/std",
 	"frame-support/std",
