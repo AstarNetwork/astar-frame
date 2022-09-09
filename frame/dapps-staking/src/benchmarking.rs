@@ -21,13 +21,11 @@ fn initialize<T: Config>() {
     let _ = Ledger::<T>::clear(u32::MAX, None);
     let _ = RegisteredDevelopers::<T>::clear(u32::MAX, None);
     let _ = RegisteredDapps::<T>::clear(u32::MAX, None);
-    let _ = PreApprovedDevelopers::<T>::clear(u32::MAX, None);
     let _ = GeneralEraInfo::<T>::clear(u32::MAX, None);
     let _ = ContractEraStake::<T>::clear(u32::MAX, None);
     let _ = GeneralStakerInfo::<T>::clear(u32::MAX, None);
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
-    PreApprovalIsEnabled::<T>::kill();
 
     // Initialize the first block.
     payout_block_rewards::<T>();

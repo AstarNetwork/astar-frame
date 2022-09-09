@@ -1,0 +1,56 @@
+[package]
+name = "pallet-xvm"
+authors = ["Stake Technologies"]
+edition = "2021"
+version = "0.1.0"
+
+[dependencies]
+impl-trait-for-tuples = "0.2"
+log = { version = "0.4", default-features = false }
+serde = { version = "1.0.106", optional = true }
+
+# Substrate
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+
+# Benchmarks
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true, default-features = false }
+
+# EVM support 
+pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.28", default-features = false, optional = true }
+
+# Substrate WASM VM support
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false, optional = true }
+
+[dev-dependencies]
+
+[features]
+default = ["std"]
+evm = [
+	"pallet-evm",
+]
+wasm = [
+	"pallet-contracts",
+]
+std = [
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-contracts/std",
+	"pallet-evm/std",
+	"scale-info/std",
+	"serde",
+	"sp-core/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
+
+runtime-benchmarks = [
+	"frame-benchmarking",
+]
+try-runtime = ["frame-support/try-runtime"]
