@@ -30,7 +30,7 @@ where
         from: T::AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
+    ) -> XvmResult {
         log::trace!(
             target: "xvm::WASM::xvm_call",
             "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
@@ -45,7 +45,11 @@ where
             gas_limit,
             None,
             input,
-        );
+        )
+        .map_err(|_| XvmCallError {
+            error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+            consumed_weight: PLACEHOLDER_WEIGHT,             // TODO: get correct weight?
+        })?;
 
         log::trace!(
             target: "xvm::WASM::xvm_call",
@@ -54,6 +58,9 @@ where
 
         // TODO: return error if call failure
         // TODO: return value in case of constant / view call
-        Ok(Default::default())
+        Ok(XvmCallOk {
+            output: Default::default(), // TODO: vec should be filled with data in case of query? Should be generic probably.
+            consumed_weight: res.actual_weight.unwrap_or(PLACEHOLDER_WEIGHT), // TODO: this should be max static weight if `None`
+        })
     }
 }

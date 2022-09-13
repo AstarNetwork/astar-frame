@@ -33,7 +33,7 @@ where
         );
         let value = U256::from(0u64);
         let max_fee_per_gas = U256::from(3450898690u64);
-        let gas_limit = 4000000u64;
+        let gas_limit = 15_000_000_u64;
         let evm_to = Decode::decode(&mut to.as_ref()).map_err(|_| XvmCallError {
             error: XvmError::EncodingFailure,
             consumed_weight: PLACEHOLDER_WEIGHT,
@@ -53,7 +53,7 @@ where
         )
         .map_err(|_| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: PLACEHOLDER_WEIGHT,
+            consumed_weight: PLACEHOLDER_WEIGHT,             // TODO: get correct weight?
         })?;
 
         log::trace!(
