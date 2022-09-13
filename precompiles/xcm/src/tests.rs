@@ -47,7 +47,7 @@ fn wrong_assets_len_or_fee_index_reverts() {
 }
 
 #[test]
-fn correct_arguments_works() {
+fn assets_withdraw_works() {
     ExtBuilder::default().build().execute_with(|| {
         // SS58
         precompiles()
