@@ -46,7 +46,10 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(100_000)]
+        // TODO:
+        // Using `max_weight` is fine but it should be subtracted a bit in the call since the processing logic of the call itself
+        // will consume some of that weight - it won't be just other VM execution.
+        #[pallet::weight(context.max_weight)]
         pub fn xvm_call(
             origin: OriginFor<T>,
             context: XvmContext,
@@ -54,13 +57,13 @@ pub mod pallet {
             input: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            let _result = T::SyncVM::xvm_call(context, from, to, input);
+            let result = T::SyncVM::xvm_call(context, from, to, input);
 
             Self::deposit_event(Event::<T>::XvmCall {
                 result: Ok(Default::default()),
             }); // TODO: this event should probably be changed
 
-            Ok(().into())
+            Ok(Some(consumed_weight(&result)).into())
         }
 
         #[pallet::weight(100_000)]

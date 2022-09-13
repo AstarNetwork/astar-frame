@@ -14,6 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
 use sp_runtime::{traits::Member, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -42,6 +43,13 @@ pub enum XvmError {
     ExecutionError(Vec<u8>),
 }
 
+// TODO: Currently our precompile/chain-extension calls rely on direcy `Call` usage of XVM pallet.
+// This is perfectly fine when we're just calling a function in other VM and are interested whether the call was
+// successful or not.
+//
+// Problem arises IF we want to get back arbitrary read value from the other VM - `DispatchResultWithPostInfo` isn't enough for this.
+// We need to receive back a concrete value back from the other VM.
+
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmCallOk {
     /// Output of XVM call. E.g. if call was a query, this will contain query response.
@@ -61,11 +69,20 @@ pub struct XvmCallError {
 
 pub type XvmResult = Result<XvmCallOk, XvmCallError>;
 
+pub fn consumed_weight(result: &XvmResult) -> Weight {
+    match result {
+        Ok(res) => res.consumed_weight,
+        Err(err) => err.consumed_weight,
+    }
+}
+
 /// XVM context consist of unique ID and optional execution arguments.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmContext {
     /// Identifier (should be unique for each VM in tuple).
     pub id: VmId,
+    /// Max allowed weight for the call
+    pub max_weight: Weight,
     /// Encoded VM execution environment.
     pub env: Option<Vec<u8>>,
 }

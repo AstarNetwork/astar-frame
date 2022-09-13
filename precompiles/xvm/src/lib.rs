@@ -4,7 +4,7 @@
 use codec::Decode;
 use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use pallet_evm::{AddressMapping, Precompile, GasWeightMapping};
+use pallet_evm::{AddressMapping, GasWeightMapping, Precompile};
 use pallet_xvm::XvmContext;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -84,7 +84,7 @@ where
 
         // Dispatch a call.
         // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
-        // TODO: check XVM call weighing!
+        // TODO: XVM call weighing needs to be updated to consider this parameter!
         RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))

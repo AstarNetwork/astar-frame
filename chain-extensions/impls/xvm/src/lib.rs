@@ -47,11 +47,10 @@ where
 
         match func_id {
             XvmFuncId::XvmCall => {
-                // TODO: correct weight calculation directly from pallet!
-                let weight = 1_000_000_000;
-                let charged_weight = env.charge_weight(weight)?;
+                // We need to immediately charge for the worst case scenario. Gas equals Weight in pallet-contracts context.
+                let remaining_weight = env.ext().gas_meter().gas_left();
+                let charged_weight = env.charge_weight(remaining_weight)?;
 
-                // Prepare parameters
                 let caller = env.ext().caller().clone();
 
                 let XvmCallArgs {
@@ -60,13 +59,11 @@ where
                     input,
                 } = env.read_as_unbounded(env.in_len())?;
 
-                // TODO: rethink this? How do we get valid env in chain extension? Need to know which data to encode.
-                // gas limit, taking into account used gas so far?
                 let _origin_address = env.ext().address().clone();
                 let _value = env.ext().value_transferred();
-                let _gas_limit = env.ext().gas_meter().gas_left();
                 let xvm_context = XvmContext {
                     id: vm_id,
+                    max_weight: remaining_weight,
                     env: None,
                 };
 
@@ -77,14 +74,17 @@ where
                     input,
                 );
 
-                // TODO: We need to know how much of gas was spent in the other call and update the gas meter!
-                // let consumed_xvm_weight = ...;
-                // env.charge_weight(consumed_xvm_weight)?;
-                // adjust_weight
+                // Adjust the actual weight used by the call if needed.
+                let actual_weight = match call_result {
+                    Ok(e) => e.actual_weight,
+                    Err(e) => e.post_info.actual_weight,
+                };
+                if let Some(actual_weight) = actual_weight {
+                    env.adjust_weight(charged_weight, actual_weight);
+                }
 
                 return match call_result {
                     Err(e) => {
-                        e.post_info.actual_weight;
                         let mapped_error = XvmExecutionResult::try_from(e.error)?;
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
