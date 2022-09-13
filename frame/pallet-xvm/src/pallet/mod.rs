@@ -54,9 +54,12 @@ pub mod pallet {
             input: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            let result = T::SyncVM::xvm_call(context, from, to, input);
+            let _result = T::SyncVM::xvm_call(context, from, to, input);
 
-            Self::deposit_event(Event::<T>::XvmCall { result });
+            Self::deposit_event(Event::<T>::XvmCall {
+                result: Ok(Default::default()),
+            }); // TODO: this event should probably be changed
+
             Ok(().into())
         }
 
@@ -68,9 +71,12 @@ pub mod pallet {
             message: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            let result = T::AsyncVM::xvm_send(context, from, to, message);
+            let _result = T::AsyncVM::xvm_send(context, from, to, message);
 
-            Self::deposit_event(Event::<T>::XvmSend { result });
+            Self::deposit_event(Event::<T>::XvmSend {
+                result: Default::default(),
+            }); // TODO: change this
+
             Ok(().into())
         }
 
@@ -80,9 +86,12 @@ pub mod pallet {
             context: XvmContext,
         ) -> DispatchResultWithPostInfo {
             let inbox = ensure_signed(origin)?;
-            let result = T::AsyncVM::xvm_query(context, inbox);
+            let _result = T::AsyncVM::xvm_query(context, inbox);
 
-            Self::deposit_event(Event::<T>::XvmQuery { result });
+            Self::deposit_event(Event::<T>::XvmQuery {
+                result: Default::default(),
+            }); // TODO: change this
+
             Ok(().into())
         }
     }

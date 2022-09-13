@@ -24,7 +24,8 @@ where
         from: T::AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
+        metadata: Vec<u8>,
+    ) -> XvmResult {
         log::trace!(
             target: "xvm::EVM::xvm_call",
             "Start EVM XVM: {:?}, {:?}, {:?}, {:?}",
@@ -33,8 +34,10 @@ where
         let value = U256::from(0u64);
         let max_fee_per_gas = U256::from(3450898690u64);
         let gas_limit = 4000000u64;
-        let evm_to: H160 = Decode::decode(&mut to.as_ref())
-            .map_err(|_| b"`to` argument decode failure".to_vec())?;
+        let evm_to = Decode::decode(&mut to.as_ref()).map_err(|_| XvmCallError {
+            error: XvmError::EncodingFailure,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
 
         let res = pallet_evm::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Root.into(),
@@ -47,14 +50,22 @@ where
             None,
             None,
             Vec::new(),
-        );
+        )
+        .map_err(|_| XvmCallError {
+            error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
 
         log::trace!(
             target: "xvm::EVM::xvm_call",
             "EVM XVM call result: {:?}", res
         );
 
-        // TODO: return result or error if call failure
-        Ok(Default::default())
+        // TODO: return error if call failure
+        // TODO: return value in case of constant / view call
+        Ok(XvmCallOk {
+            output: Default::default(), // TODO: vec should be filled with data in case of query? Should be generic probably.
+            consumed_weight: res.actual_weight.unwrap_or(PLACEHOLDER_WEIGHT), // TODO: this should be max static weight if `None`
+        })
     }
 }

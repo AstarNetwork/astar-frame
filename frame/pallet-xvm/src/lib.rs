@@ -30,6 +30,36 @@ pub mod wasm;
 
 /// Unique VM identifier.
 type VmId = u8;
+pub const PLACEHOLDER_WEIGHT: u64 = 1_000_000;
+
+/// TODO: This isn't an exhaustive list, only a few are listed
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+pub enum XvmError {
+    VmNotRecognized,
+    EncodingFailure,
+    ContextConversionFailed,
+    OutOfGas,
+    ExecutionError(Vec<u8>),
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+pub struct XvmCallOk {
+    /// Output of XVM call. E.g. if call was a query, this will contain query response.
+    output: Vec<u8>,
+    /// Total consumed weight. This is in context of Substrate (1 unit of weight ~ 1 ps of execution time)
+    consumed_weight: u64,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+pub struct XvmCallError {
+    /// Result of XVM call
+    // TODO: use XvmError enum from pallet? Perhaps that's a better approach. Or at least provide mapping?
+    error: XvmError,
+    /// Total consumed weight. This is in context of Substrate (1 unit of weight ~ 1 ps of execution time)
+    consumed_weight: u64,
+}
+
+pub type XvmResult = Result<XvmCallOk, XvmCallError>;
 
 /// XVM context consist of unique ID and optional execution arguments.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -54,7 +84,7 @@ pub trait SyncVM<AccountId> {
         from: AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>>;
+    ) -> XvmResult;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
@@ -68,7 +98,7 @@ impl<AccountId: Member> SyncVM<AccountId> for Tuple {
         from: AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
+    ) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -83,7 +113,10 @@ impl<AccountId: Member> SyncVM<AccountId> for Tuple {
             target: "xvm::SyncVm::xvm_call",
             "VM with ID {:?} not found", context.id
         );
-        Err(b"VM is not found".to_vec())
+        Err(XvmCallError {
+            error: XvmError::VmNotRecognized,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })
     }
 }
 
@@ -94,11 +127,15 @@ pub trait AsyncVM<AccountId> {
     fn id() -> VmId;
 
     /// Send a message.
-    fn xvm_send(context: XvmContext, from: AccountId, to: Vec<u8>, message: Vec<u8>)
-        -> bool;
+    fn xvm_send(
+        context: XvmContext<VmId>,
+        from: AccountId,
+        to: Vec<u8>,
+        message: Vec<u8>,
+    ) -> XvmResult;
 
     /// Query for incoming messages.
-    fn xvm_query(context: XvmContext, inbox: AccountId) -> Vec<Vec<u8>>;
+    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> XvmResult;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
@@ -112,7 +149,7 @@ impl<AccountId: Member> AsyncVM<AccountId> for Tuple {
         from: AccountId,
         to: Vec<u8>,
         message: Vec<u8>,
-    ) -> bool {
+    ) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -127,10 +164,14 @@ impl<AccountId: Member> AsyncVM<AccountId> for Tuple {
             target: "xvm::AsyncVM::xvm_send",
             "VM with ID {:?} not found", context.id
         );
-        false
+
+        Err(XvmCallError {
+            error: XvmError::VmNotRecognized,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })
     }
 
-    fn xvm_query(context: XvmContext, inbox: AccountId) -> Vec<Vec<u8>> {
+    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -145,6 +186,10 @@ impl<AccountId: Member> AsyncVM<AccountId> for Tuple {
             target: "xvm::AsyncVM::xvm_query",
             "VM with ID {:?} not found", context.id
         );
-        Default::default()
+
+        Err(XvmCallError {
+            error: XvmError::VmNotRecognized,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })
     }
 }
