@@ -240,10 +240,13 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     contract,
                 );
 
-                env.adjust_weight(
-                    charged_weight,
-                    call_result.unwrap().actual_weight.unwrap_or(0),
-                );
+                let actual_weight = match call_result {
+                    Ok(e) => e.actual_weight,
+                    Err(e) => e.post_info.actual_weight,
+                };
+                if let Some(actual_weight) = actual_weight {
+                    env.adjust_weight(charged_weight, actual_weight);
+                }
 
                 return match call_result {
                     Err(e) => {
