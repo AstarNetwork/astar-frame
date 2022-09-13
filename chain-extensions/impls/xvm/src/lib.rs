@@ -49,7 +49,7 @@ where
             XvmFuncId::XvmCall => {
                 // TODO: correct weight calculation directly from pallet!
                 let weight = 1_000_000_000;
-                env.charge_weight(weight)?;
+                let charged_weight = env.charge_weight(weight)?;
 
                 // Prepare parameters
                 let caller = env.ext().caller().clone();
@@ -80,9 +80,11 @@ where
                 // TODO: We need to know how much of gas was spent in the other call and update the gas meter!
                 // let consumed_xvm_weight = ...;
                 // env.charge_weight(consumed_xvm_weight)?;
+                // adjust_weight
 
                 return match call_result {
                     Err(e) => {
+                        e.post_info.actual_weight;
                         let mapped_error = XvmExecutionResult::try_from(e.error)?;
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
