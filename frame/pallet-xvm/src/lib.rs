@@ -83,6 +83,8 @@ pub struct XvmContext {
     pub id: VmId,
     /// Max allowed weight for the call
     pub max_weight: Weight,
+    /// XVM call depth: TODO: ensure that we cannot nest it too deeply - at least initially.
+    pub call_depth: u8,
     /// Encoded VM execution environment.
     pub env: Option<Vec<u8>>,
 }

@@ -64,6 +64,7 @@ where
                 let xvm_context = XvmContext {
                     id: vm_id,
                     max_weight: remaining_weight,
+                    call_depth: 1,
                     env: None,
                 };
 

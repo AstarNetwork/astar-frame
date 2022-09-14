@@ -26,7 +26,7 @@ where
     }
 
     fn xvm_call(
-        _context: XvmContext<VmId>,
+        context: XvmContext<VmId>,
         from: T::AccountId,
         to: Vec<u8>,
         input: Vec<u8>,
@@ -36,7 +36,10 @@ where
             "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
             from, to, input,
         );
-        let gas_limit = 500000000000;
+        let gas_limit = context.max_weight;
+        log::trace!(
+            target: "xvm::WASM::xvm_call",
+            "WASM xvm call gas (weight) limit: {:?}", gas_limit);
         let dest = Decode::decode(&mut to.as_ref()).unwrap();
         let res = pallet_contracts::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Signed(from).into(),
@@ -46,9 +49,9 @@ where
             None,
             input,
         )
-        .map_err(|_| XvmCallError {
+        .map_err(|e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: PLACEHOLDER_WEIGHT,             // TODO: get correct weight?
+            consumed_weight: e.post_info.actual_weight.unwrap_or(gas_limit),
         })?;
 
         log::trace!(
@@ -56,11 +59,10 @@ where
             "WASM XVM call result: {:?}", res
         );
 
-        // TODO: return error if call failure
         // TODO: return value in case of constant / view call
         Ok(XvmCallOk {
-            output: Default::default(), // TODO: vec should be filled with data in case of query? Should be generic probably.
-            consumed_weight: res.actual_weight.unwrap_or(PLACEHOLDER_WEIGHT), // TODO: this should be max static weight if `None`
+            output: Default::default(), // TODO: Fill in with output from the call
+            consumed_weight: res.actual_weight.unwrap_or(gas_limit),
         })
     }
 }

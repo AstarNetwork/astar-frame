@@ -34,7 +34,10 @@ where
         );
         let value = U256::from(0u64);
         let max_fee_per_gas = U256::from(3450898690u64);
-        let gas_limit = I::GasWeightMapping::weight_to_gas(context.max_weight);
+        let gas_limit = T::GasWeightMapping::weight_to_gas(context.max_weight);
+        log::trace!(
+            target: "xvm::EVM::xvm_call",
+            "EVM xvm call gas limit: {:?} or as weight: {:?}", gas_limit, context.max_weight);
         let evm_to = Decode::decode(&mut to.as_ref()).map_err(|_| XvmCallError {
             error: XvmError::EncodingFailure,
             consumed_weight: PLACEHOLDER_WEIGHT,
@@ -54,7 +57,7 @@ where
         )
         .map_err(|e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: I::GasWeightMapping::weight_to_gas(e.post_info.consumed_weight),
+            consumed_weight: e.post_info.actual_weight.unwrap_or(context.max_weight),
         })?;
 
         log::trace!(
@@ -62,11 +65,10 @@ where
             "EVM XVM call result: {:?}", res
         );
 
-        // TODO: return error if call failure
         // TODO: return value in case of constant / view call
         Ok(XvmCallOk {
-            output: Default::default(), // TODO: vec should be filled with data in case of query? Should be generic probably.
-            consumed_weight: res.actual_weight.unwrap_or(PLACEHOLDER_WEIGHT), // TODO: this should be max static weight if `None`
+            output: Default::default(), // TODO: Fill output vec with response from the call
+            consumed_weight: res.actual_weight.unwrap_or(context.max_weight),
         })
     }
 }

@@ -57,6 +57,11 @@ pub mod pallet {
             input: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
+
+            // Executing XVM call logic itself will consume some weight so that should be subtracted from the max allowed weight of XCM call
+            let mut context = context;
+            context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
+
             let result = T::SyncVM::xvm_call(context, from, to, input);
 
             Self::deposit_event(Event::<T>::XvmCall {

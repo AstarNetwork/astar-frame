@@ -1,6 +1,7 @@
 use crate::mock::*;
 use crate::*;
 
+use codec::Encode;
 use precompile_utils::testing::*;
 use precompile_utils::EvmDataWriter;
 
@@ -40,13 +41,14 @@ fn wrong_argument_reverts() {
 
 #[test]
 fn correct_arguments_works() {
+    let context: XvmContext<u8> = Default::default();
     ExtBuilder::default().build().execute_with(|| {
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
                 EvmDataWriter::new_with_selector(Action::XvmCall)
-                    .write(Bytes(vec![0u8, 0u8]))
+                    .write(Bytes(context.encode()))
                     .write(Bytes(b"".to_vec()))
                     .write(Bytes(b"".to_vec()))
                     .write(Bytes(b"".to_vec()))

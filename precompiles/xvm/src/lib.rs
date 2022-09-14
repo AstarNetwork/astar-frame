@@ -61,15 +61,17 @@ where
         input.expect_arguments(4)?;
 
         // Read arguments and check it
+        // TODO: This approach probably needs to be revised - does contract call need to specify gas/weight? Usually it is implicit.
         let context_raw = input.read::<Bytes>()?;
-        let context: XvmContext<<R as pallet_xvm::Config>::VmId> =
+        let mut context: XvmContext<<R as pallet_xvm::Config>::VmId> =
             Decode::decode(&mut context_raw.0.as_ref())
                 .map_err(|_| revert("can not decode XVM context"))?;
 
         // Fetch the remaining gas (weight) available for execution
         let remaining_gas = handle.remaining_gas();
-        let _remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
-        // TODO: include this value into context!
+        let remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
+        context.max_weight = remaining_weight;
+        context.call_depth = 1;
 
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
@@ -84,7 +86,6 @@ where
 
         // Dispatch a call.
         // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
-        // TODO: XVM call weighing needs to be updated to consider this parameter!
         RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
