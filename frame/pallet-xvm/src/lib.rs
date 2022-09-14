@@ -31,6 +31,9 @@ pub mod wasm;
 
 /// Unique VM identifier.
 type VmId = u8;
+
+// TODO: remove later after solution is properly benchmarked
+// Just a arbitrary weight constant to avoid having ZERO weight in some parts of execution
 pub const PLACEHOLDER_WEIGHT: u64 = 1_000_000;
 
 /// TODO: This isn't an exhaustive list, only a few are listed
