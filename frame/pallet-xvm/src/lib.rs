@@ -46,7 +46,7 @@ pub enum XvmError {
     ExecutionError(Vec<u8>),
 }
 
-// TODO: Currently our precompile/chain-extension calls rely on direcy `Call` usage of XVM pallet.
+// TODO: Currently our precompile/chain-extension calls rely on direct `Call` usage of XVM pallet.
 // This is perfectly fine when we're just calling a function in other VM and are interested whether the call was
 // successful or not.
 //
@@ -70,6 +70,7 @@ pub struct XvmCallError {
     consumed_weight: u64,
 }
 
+/// Result for executing X-VM calls
 pub type XvmResult = Result<XvmCallOk, XvmCallError>;
 
 pub fn consumed_weight(result: &XvmResult) -> Weight {
