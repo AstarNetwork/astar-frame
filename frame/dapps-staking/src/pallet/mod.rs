@@ -597,10 +597,7 @@ pub mod pallet {
             // Get the staking ledger or create an entry if it doesn't exist.
             let mut ledger = Self::ledger(&staker);
             let value_to_stake = ledger.unbonding_info.sum();
-            ensure!(
-                value_to_stake > Zero::zero(),
-                Error::<T>::NothingToRebond
-            );
+            ensure!(value_to_stake > Zero::zero(), Error::<T>::NothingToRebond);
 
             let current_era = Self::current_era();
             let mut staking_info =

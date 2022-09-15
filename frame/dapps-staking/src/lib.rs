@@ -48,7 +48,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, HasCompact};
-use core::cmp::Ordering;
 use frame_support::traits::Currency;
 use frame_system::{self as system};
 use scale_info::TypeInfo;
