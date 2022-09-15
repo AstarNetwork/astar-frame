@@ -219,7 +219,7 @@ pub mod pallet {
             T::SmartContract,
         ),
         /// Account has rebonded unlocking chunks and staked funds on a smart contract.
-        RebondAndStake(T::AccountId, T::SmartContract, BalanceOf<T>)
+        RebondAndStake(T::AccountId, T::SmartContract, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -575,10 +575,10 @@ pub mod pallet {
         }
 
         /// Lock up and stake unbonded chunks of origin account.
-        /// 
+        ///
         /// `value` must be more than the `minimum_balance` specified by `MinimumStakingAmount`
         /// unless account already has bonded value equal or more than 'minimum_balance'.
-        /// 
+        ///
         /// The dispatch origin for this call must be _Signed_ by the staker's account.
         #[pallet::weight(T::WeightInfo::rebond_and_stake())]
         pub fn rebond_and_stake(
@@ -601,10 +601,11 @@ pub mod pallet {
                 !ledger.unbonding_info.is_empty(),
                 Error::<T>::NothingToRebond
             );
-            
+
             // Sort chunks descending order by unlock_era, so that chunks with bigger era_index are collected with priority.
             ledger.unbonding_info.sort(unlock_era_desc);
-            let (value_to_stake, mut remaining_chunks) = ledger.unbonding_info.collect_amount(value);
+            let (value_to_stake, mut remaining_chunks) =
+                ledger.unbonding_info.collect_amount(value);
             ensure!(
                 value_to_stake > Zero::zero(),
                 Error::<T>::StakingWithNoValue

@@ -1,5 +1,4 @@
 use super::*;
-use alloc::vec;
 use frame_support::assert_ok;
 use mock::Balance;
 
@@ -56,24 +55,102 @@ fn unbonding_info_test() {
     assert_eq!(3, first_info.len());
     assert_eq!(2, second_info.len());
     assert_eq!(unbonding_info.sum(), first_info.sum() + second_info.sum());
+
+    // Confirm collect_amount works
+    // println!("{:?}", unbonding_info);
+    // UnbondingInfo { unlocking_chunks: [UnlockingChunk { amount: 500, unlock_era: 5 }, UnlockingChunk { amount: 400, unlock_era: 8 }, UnlockingChunk { amount: 300, unlock_era: 11 }, UnlockingChunk { amount: 200, unlock_era: 14 }, UnlockingChunk { amount: 100, unlock_era: 17 }] }
+    let request_amount: Balance = 1300;
+    let (collected_amount, remaining_chunks) =
+        unbonding_info.clone().collect_amount(request_amount);
+    assert_eq!(collected_amount, request_amount);
+    assert_eq!(
+        remaining_chunks,
+        UnbondingInfo::<Balance> {
+            unlocking_chunks: vec![
+                UnlockingChunk {
+                    amount: 100,
+                    unlock_era: 14
+                },
+                UnlockingChunk {
+                    amount: 100,
+                    unlock_era: 17
+                },
+            ]
+        }
+    );
+
+    // collect amount again from remaining_chunks
+    let available_amount = remaining_chunks.clone().sum();
+    let (collected_amount, remaining_chunks) = remaining_chunks.clone().collect_amount(400);
+    assert_eq!(collected_amount, available_amount);
+    assert_eq!(
+        remaining_chunks,
+        UnbondingInfo::<Balance> {
+            unlocking_chunks: vec![]
+        }
+    );
 }
 
-// #[test]
-// fn unbonding_info_sort_test() {
-    // let mut unbonding_info = UnbondingInfo::<Balance>::default();
+#[test]
+fn unbonding_info_sort_test() {
+    let unlock_era_asc_unbonding_info = UnbondingInfo::<Balance> {
+        unlocking_chunks: vec![
+            UnlockingChunk {
+                amount: 1,
+                unlock_era: 5,
+            },
+            UnlockingChunk {
+                amount: 2,
+                unlock_era: 10,
+            },
+            UnlockingChunk {
+                amount: 3,
+                unlock_era: 15,
+            },
+            UnlockingChunk {
+                amount: 4,
+                unlock_era: 20,
+            },
+            UnlockingChunk {
+                amount: 5,
+                unlock_era: 25,
+            },
+        ],
+    };
 
-    // // Prepare unlocking chunks.
-    // let count = 5;
-    // let base_amount: Balance = 100;
-    // let base_unlock_era = 4 * count;
-    // let mut chunks = vec![];
-    // for x in 1_u32..=count as u32 {
-        // chunks.push(UnlockingChunk {
-            // amount: base_amount * x as Balance,
-            // unlock_era: base_unlock_era - 3 * x,
-        // });
-    // }
-// }
+    let unlock_era_desc_unbonding_info = UnbondingInfo::<Balance> {
+        unlocking_chunks: vec![
+            UnlockingChunk {
+                amount: 5,
+                unlock_era: 25,
+            },
+            UnlockingChunk {
+                amount: 4,
+                unlock_era: 20,
+            },
+            UnlockingChunk {
+                amount: 3,
+                unlock_era: 15,
+            },
+            UnlockingChunk {
+                amount: 2,
+                unlock_era: 10,
+            },
+            UnlockingChunk {
+                amount: 1,
+                unlock_era: 5,
+            },
+        ],
+    };
+
+    let mut unbonding_info = unlock_era_desc_unbonding_info.clone();
+    unbonding_info.sort(unlock_era_asc);
+    assert_eq!(unbonding_info, unlock_era_asc_unbonding_info);
+
+    let mut unbonding_info = unlock_era_asc_unbonding_info.clone();
+    unbonding_info.sort(unlock_era_desc);
+    assert_eq!(unbonding_info, unlock_era_desc_unbonding_info);
+}
 
 #[test]
 fn staker_info_basic() {

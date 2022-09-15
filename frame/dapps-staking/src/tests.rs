@@ -1080,7 +1080,7 @@ fn rebond_and_stake_is_ok() {
         // Advance one era and then unbond some more
         advance_to_era(initial_era + 1);
         assert_unbond_and_unstake(staker_id, &contract_id, second_unbond_value);
-        
+
         // unbond and stake
         assert_rebond_and_stake(staker_id, &contract_id, 300);
 
@@ -1090,8 +1090,7 @@ fn rebond_and_stake_is_ok() {
 
         assert!(Ledger::<TestRuntime>::get(&staker_id)
             .unbonding_info
-            .is_empty()
-        );
+            .is_empty());
     })
 }
 

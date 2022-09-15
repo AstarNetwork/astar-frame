@@ -48,6 +48,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, HasCompact};
+use core::cmp::Ordering;
 use frame_support::traits::Currency;
 use frame_system::{self as system};
 use scale_info::TypeInfo;
@@ -56,7 +57,6 @@ use sp_runtime::{
     RuntimeDebug,
 };
 use sp_std::{ops::Add, prelude::*};
-use core::cmp::Ordering;
 
 pub mod pallet;
 pub mod weights;
@@ -409,11 +409,17 @@ pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy> {
     unlocking_chunks: Vec<UnlockingChunk<Balance>>,
 }
 
-pub fn unlock_era_asc<Balance>(a: &UnlockingChunk<Balance>, b: &UnlockingChunk<Balance>) -> Ordering {
+pub fn unlock_era_asc<Balance>(
+    a: &UnlockingChunk<Balance>,
+    b: &UnlockingChunk<Balance>,
+) -> Ordering {
     a.unlock_era.cmp(&b.unlock_era)
 }
 
-pub fn unlock_era_desc<Balance>(a: &UnlockingChunk<Balance>, b: &UnlockingChunk<Balance>) -> Ordering {
+pub fn unlock_era_desc<Balance>(
+    a: &UnlockingChunk<Balance>,
+    b: &UnlockingChunk<Balance>,
+) -> Ordering {
     b.unlock_era.cmp(&a.unlock_era)
 }
 
@@ -456,11 +462,9 @@ where
 
     fn sort<F>(&mut self, compare: F)
     where
-        F: FnMut(&UnlockingChunk<Balance>, &UnlockingChunk<Balance>) -> Ordering
+        F: FnMut(&UnlockingChunk<Balance>, &UnlockingChunk<Balance>) -> Ordering,
     {
-        self
-            .unlocking_chunks
-            .sort_by(compare);
+        self.unlocking_chunks.sort_by(compare);
     }
 
     /// Partitions the unlocking chunks into two groups:
@@ -490,29 +494,34 @@ where
 
     fn collect_amount(self, amount: Balance) -> (Balance, Self) {
         let mut remaining_chunks: Vec<UnlockingChunk<Balance>> = Default::default();
-        let collected_amount = self
-            .unlocking_chunks
-            .iter()
-            .fold(Balance::zero(), |accum, item| {
-                let next_accum = accum + item.amount;
-                if next_accum <= amount {
-                    return next_accum;
-                }
+        let collected_amount =
+            self.unlocking_chunks
+                .iter()
+                .fold(Balance::zero(), |collected, item| {
+                    let next_collected = collected + item.amount;
+                    if next_collected <= amount {
+                        return next_collected;
+                    }
 
-                if accum < amount && amount < next_accum {
-                    let excessive_amount = next_accum - amount;
-                    remaining_chunks.push(UnlockingChunk{
-                        amount: excessive_amount,
-                        unlock_era: item.unlock_era,
-                    });
-                    return amount;
-                }
+                    if collected < amount && amount < next_collected {
+                        let excessive_amount = next_collected - amount;
+                        remaining_chunks.push(UnlockingChunk {
+                            amount: excessive_amount,
+                            unlock_era: item.unlock_era,
+                        });
+                        return amount;
+                    }
 
-                remaining_chunks.push(*item);
-                accum
-            });
+                    remaining_chunks.push(*item);
+                    collected
+                });
 
-        (collected_amount, Self { unlocking_chunks: remaining_chunks })
+        (
+            collected_amount,
+            Self {
+                unlocking_chunks: remaining_chunks,
+            },
+        )
     }
 
     #[cfg(test)]
