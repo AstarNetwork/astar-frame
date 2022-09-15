@@ -100,7 +100,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	// TODO benchmarking 
 	fn rebond_and_stake() -> Weight {
-		todo!()
+		1
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
@@ -255,7 +255,7 @@ impl WeightInfo for () {
 	}
 	// TODO benchmarking 
 	fn rebond_and_stake() -> Weight {
-		todo!()
+		1
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)

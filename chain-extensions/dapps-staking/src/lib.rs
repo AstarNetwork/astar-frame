@@ -37,6 +37,7 @@ enum DappsStakingFunc {
     ClaimDapp,
     SetRewardDestination,
     NominationTransfer,
+    RebondAndStake,
 }
 
 impl TryFrom<u32> for DappsStakingFunc {
@@ -58,6 +59,7 @@ impl TryFrom<u32> for DappsStakingFunc {
             12 => Ok(DappsStakingFunc::ClaimDapp),
             13 => Ok(DappsStakingFunc::SetRewardDestination),
             14 => Ok(DappsStakingFunc::NominationTransfer),
+            15 => Ok(DappsStakingFunc::RebondAndStake),
             _ => Err(DispatchError::Other(
                 "DappsStakingExtension: Unimplemented func_id",
             )),
@@ -324,6 +326,28 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                     origin_smart_contract,
                     value,
                     target_smart_contract,
+                );
+                return match call_result {
+                    Err(e) => {
+                        let mapped_error = DSError::try_from(e.error)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(DSError::Success as u32)),
+                };
+            }
+
+            DappsStakingFunc::RebondAndStake => {
+                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract = Self::decode_smart_contract(contract_bytes)?;
+
+                let base_weight =
+                    <T as pallet_dapps_staking::Config>::WeightInfo::rebond_and_stake();
+                env.charge_weight(base_weight)?;
+
+                let caller = env.ext().address().clone();
+                let call_result = pallet_dapps_staking::Pallet::<T>::rebond_and_stake(
+                    RawOrigin::Signed(caller).into(),
+                    contract,
                 );
                 return match call_result {
                     Err(e) => {

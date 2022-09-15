@@ -65,6 +65,8 @@ pub enum DSError {
     NominationTransferToSameContract = 26,
     /// Unexpected reward destination value
     RewardDestinationValueOutOfBounds = 27,
+    /// There are no previously unbonded funds that can be reboneded and staked.
+    NothingToRebond = 28,
     /// Unknown error
     UnknownError = 99,
 }
@@ -105,7 +107,8 @@ impl TryFrom<DispatchError> for DSError {
             Some("NotActiveStaker") => Ok(DSError::NotActiveStaker),
             Some("NominationTransferToSameContract") => {
                 Ok(DSError::NominationTransferToSameContract)
-            }
+            },
+            Some("NothingToRebond") => Ok(DSError::NothingToRebond),
             _ => Ok(DSError::UnknownError),
         };
     }
