@@ -14,6 +14,7 @@ pub trait WeightInfo {
 	fn developer_pre_approval() -> Weight;
 	fn bond_and_stake() -> Weight;
 	fn unbond_and_unstake() -> Weight;
+	fn rebond_and_stake() -> Weight;
 	fn withdraw_unbonded() -> Weight;
 	fn claim_staker_without_restake() -> Weight;
 	fn claim_staker_with_restake() -> Weight;
@@ -96,6 +97,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(134_480_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+	}
+	// TODO benchmarking 
+	fn rebond_and_stake() -> Weight {
+		todo!()
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
@@ -247,6 +252,10 @@ impl WeightInfo for () {
 		(134_480_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+	}
+	// TODO benchmarking 
+	fn rebond_and_stake() -> Weight {
+		todo!()
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)

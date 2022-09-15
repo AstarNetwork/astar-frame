@@ -218,6 +218,8 @@ pub mod pallet {
             BalanceOf<T>,
             T::SmartContract,
         ),
+        /// Account has rebonded unlocking chunks and staked funds on a smart contract.
+        RebondAndStake(T::AccountId, T::SmartContract, BalanceOf<T>)
     }
 
     #[pallet::error]
@@ -270,6 +272,8 @@ pub mod pallet {
         NotActiveStaker,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
+        /// There are no previously unbonded funds that can be rebonded and re-staked.
+        NothingToRebond,
     }
 
     #[pallet::hooks]
@@ -565,6 +569,78 @@ pub mod pallet {
                 staker,
                 contract_id,
                 value_to_unstake,
+            ));
+
+            Ok(().into())
+        }
+
+        /// Lock up and stake unbonded chunks of origin account.
+        /// 
+        /// `value` must be more than the `minimum_balance` specified by `MinimumStakingAmount`
+        /// unless account already has bonded value equal or more than 'minimum_balance'.
+        /// 
+        /// The dispatch origin for this call must be _Signed_ by the staker's account.
+        #[pallet::weight(T::WeightInfo::rebond_and_stake())]
+        pub fn rebond_and_stake(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+            #[pallet::compact] value: BalanceOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let staker = ensure_signed(origin)?;
+
+            // Check that contract is ready for staking.
+            ensure!(
+                Self::is_active(&contract_id),
+                Error::<T>::NotOperatedContract
+            );
+
+            // Get the staking ledger or create an entry if it doesn't exist.
+            let mut ledger = Self::ledger(&staker);
+            ensure!(
+                !ledger.unbonding_info.is_empty(),
+                Error::<T>::NothingToRebond
+            );
+            
+            // Sort chunks descending order by unlock_era, so that chunks with bigger era_index are collected with priority.
+            ledger.unbonding_info.sort(unlock_era_desc);
+            let (value_to_stake, mut remaining_chunks) = ledger.unbonding_info.collect_amount(value);
+            ensure!(
+                value_to_stake > Zero::zero(),
+                Error::<T>::StakingWithNoValue
+            );
+
+            let current_era = Self::current_era();
+            let mut staking_info =
+                Self::contract_stake_info(&contract_id, current_era).unwrap_or_default();
+            let mut staker_info = Self::staker_info(&staker, &contract_id);
+
+            Self::stake_on_contract(
+                &mut staker_info,
+                &mut staking_info,
+                value_to_stake,
+                current_era,
+            )?;
+
+            remaining_chunks.sort(unlock_era_asc);
+            ledger.unbonding_info = remaining_chunks;
+            ledger.locked = ledger.locked.saturating_add(value_to_stake);
+
+            GeneralEraInfo::<T>::mutate(&current_era, |value| {
+                if let Some(x) = value {
+                    x.staked = x.staked.saturating_add(value_to_stake);
+                    x.locked = x.locked.saturating_add(value_to_stake);
+                }
+            });
+
+            Self::update_ledger(&staker, ledger);
+            Self::update_staker_info(&staker, &contract_id, staker_info);
+            ContractEraStake::<T>::insert(&contract_id, current_era, staking_info);
+
+            Self::deposit_event(Event::<T>::RebondAndStake(
+                staker,
+                contract_id,
+                value_to_stake,
             ));
 
             Ok(().into())

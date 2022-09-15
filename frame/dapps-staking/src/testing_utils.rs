@@ -353,6 +353,72 @@ pub(crate) fn assert_unbond_and_unstake(
     assert_eq!(init_state.era_info.locked, final_state.era_info.locked);
 }
 
+pub(crate) fn assert_rebond_and_stake(
+    staker: AccountId,
+    contract_id: &MockSmartContract<AccountId>,
+    value: Balance,
+) {
+    // Get latest staking info
+    let current_era = DappsStaking::current_era();
+    let init_state = MemorySnapshot::all(current_era, &contract_id, staker);
+    let mut init_ledger = init_state.ledger.clone();
+
+    // Define expected state after extrinsic
+    init_ledger.unbonding_info.sort(unlock_era_desc);
+    let (expected_stake_amount, mut expected_remaining_info) = init_ledger.unbonding_info.collect_amount(value);
+    expected_remaining_info.sort(unlock_era_asc);
+
+    // Ensure op is successful and event is emitted
+    assert_ok!(DappsStaking::rebond_and_stake(Origin::signed(staker), contract_id.clone(), value));
+    System::assert_last_event(mock::Event::DappsStaking(Event::RebondAndStake(
+        staker,
+        contract_id.clone(),
+        expected_stake_amount,
+    )));
+
+    // Fetch the latest unbonding info so we can compare it to initial unbonding info
+    let final_state = MemorySnapshot::all(current_era, &contract_id, staker);
+    let final_ledger = final_state.ledger.clone();
+    assert_eq!(
+        final_ledger.unbonding_info,
+        expected_remaining_info,
+    );
+    assert_eq!(
+        final_ledger.locked,
+        init_ledger.locked + expected_stake_amount
+    );
+
+    // In case staker hasn't been staking this contract until now
+    if init_state.staker_info.latest_staked_value() == 0 {
+        assert!(GeneralStakerInfo::<TestRuntime>::contains_key(
+            &staker,
+            contract_id
+        ));
+        assert_eq!(
+            final_state.contract_info.number_of_stakers,
+            init_state.contract_info.number_of_stakers + 1
+        );
+    }
+
+    // Verify the remaining states
+    assert_eq!(
+        final_state.era_info.staked,
+        init_state.era_info.staked + expected_stake_amount
+    );
+    assert_eq!(
+        final_state.era_info.locked,
+        init_state.era_info.locked + expected_stake_amount
+    );
+    assert_eq!(
+        final_state.contract_info.total,
+        init_state.contract_info.total + expected_stake_amount
+    );
+    assert_eq!(
+        final_state.staker_info.latest_staked_value(),
+        init_state.staker_info.latest_staked_value() + expected_stake_amount
+    );
+}
+
 /// Used to perform start_unbonding with success and storage assertions.
 pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let current_era = DappsStaking::current_era();

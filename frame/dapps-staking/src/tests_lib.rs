@@ -1,4 +1,5 @@
 use super::*;
+use alloc::vec;
 use frame_support::assert_ok;
 use mock::Balance;
 
@@ -56,6 +57,23 @@ fn unbonding_info_test() {
     assert_eq!(2, second_info.len());
     assert_eq!(unbonding_info.sum(), first_info.sum() + second_info.sum());
 }
+
+// #[test]
+// fn unbonding_info_sort_test() {
+    // let mut unbonding_info = UnbondingInfo::<Balance>::default();
+
+    // // Prepare unlocking chunks.
+    // let count = 5;
+    // let base_amount: Balance = 100;
+    // let base_unlock_era = 4 * count;
+    // let mut chunks = vec![];
+    // for x in 1_u32..=count as u32 {
+        // chunks.push(UnlockingChunk {
+            // amount: base_amount * x as Balance,
+            // unlock_era: base_unlock_era - 3 * x,
+        // });
+    // }
+// }
 
 #[test]
 fn staker_info_basic() {

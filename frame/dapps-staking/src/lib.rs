@@ -56,6 +56,7 @@ use sp_runtime::{
     RuntimeDebug,
 };
 use sp_std::{ops::Add, prelude::*};
+use core::cmp::Ordering;
 
 pub mod pallet;
 pub mod weights;
@@ -408,6 +409,14 @@ pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy> {
     unlocking_chunks: Vec<UnlockingChunk<Balance>>,
 }
 
+pub fn unlock_era_asc<Balance>(a: &UnlockingChunk<Balance>, b: &UnlockingChunk<Balance>) -> Ordering {
+    a.unlock_era.cmp(&b.unlock_era)
+}
+
+pub fn unlock_era_desc<Balance>(a: &UnlockingChunk<Balance>, b: &UnlockingChunk<Balance>) -> Ordering {
+    b.unlock_era.cmp(&a.unlock_era)
+}
+
 impl<Balance> UnbondingInfo<Balance>
 where
     Balance: AtLeast32BitUnsigned + Default + Copy,
@@ -445,6 +454,15 @@ where
         }
     }
 
+    fn sort<F>(&mut self, compare: F)
+    where
+        F: FnMut(&UnlockingChunk<Balance>, &UnlockingChunk<Balance>) -> Ordering
+    {
+        self
+            .unlocking_chunks
+            .sort_by(compare);
+    }
+
     /// Partitions the unlocking chunks into two groups:
     ///
     /// First group includes all chunks which have unlock era lesser or equal to the specified era.
@@ -468,6 +486,33 @@ where
                 unlocking_chunks: other_chunks,
             },
         )
+    }
+
+    fn collect_amount(self, amount: Balance) -> (Balance, Self) {
+        let mut remaining_chunks: Vec<UnlockingChunk<Balance>> = Default::default();
+        let collected_amount = self
+            .unlocking_chunks
+            .iter()
+            .fold(Balance::zero(), |accum, item| {
+                let next_accum = accum + item.amount;
+                if next_accum <= amount {
+                    return next_accum;
+                }
+
+                if accum < amount && amount < next_accum {
+                    let excessive_amount = next_accum - amount;
+                    remaining_chunks.push(UnlockingChunk{
+                        amount: excessive_amount,
+                        unlock_era: item.unlock_era,
+                    });
+                    return amount;
+                }
+
+                remaining_chunks.push(*item);
+                accum
+            });
+
+        (collected_amount, Self { unlocking_chunks: remaining_chunks })
     }
 
     #[cfg(test)]
