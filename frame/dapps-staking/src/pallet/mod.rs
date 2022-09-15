@@ -584,7 +584,6 @@ pub mod pallet {
         pub fn rebond_and_stake(
             origin: OriginFor<T>,
             contract_id: T::SmartContract,
-            #[pallet::compact] value: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
@@ -597,18 +596,10 @@ pub mod pallet {
 
             // Get the staking ledger or create an entry if it doesn't exist.
             let mut ledger = Self::ledger(&staker);
-            ensure!(
-                !ledger.unbonding_info.is_empty(),
-                Error::<T>::NothingToRebond
-            );
-
-            // Sort chunks descending order by unlock_era, so that chunks with bigger era_index are collected with priority.
-            ledger.unbonding_info.sort(unlock_era_desc);
-            let (value_to_stake, mut remaining_chunks) =
-                ledger.unbonding_info.collect_amount(value);
+            let value_to_stake = ledger.unbonding_info.sum();
             ensure!(
                 value_to_stake > Zero::zero(),
-                Error::<T>::StakingWithNoValue
+                Error::<T>::NothingToRebond
             );
 
             let current_era = Self::current_era();
@@ -623,9 +614,8 @@ pub mod pallet {
                 current_era,
             )?;
 
-            remaining_chunks.sort(unlock_era_asc);
-            ledger.unbonding_info = remaining_chunks;
             ledger.locked = ledger.locked.saturating_add(value_to_stake);
+            ledger.unbonding_info.unlocking_chunks = Vec::<UnlockingChunk<BalanceOf<T>>>::default();
 
             GeneralEraInfo::<T>::mutate(&current_era, |value| {
                 if let Some(x) = value {

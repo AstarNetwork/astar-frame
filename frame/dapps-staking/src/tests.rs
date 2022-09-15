@@ -1082,15 +1082,7 @@ fn rebond_and_stake_is_ok() {
         assert_unbond_and_unstake(staker_id, &contract_id, second_unbond_value);
 
         // unbond and stake
-        assert_rebond_and_stake(staker_id, &contract_id, 300);
-
-        // unbond and stake again.
-        // this time value exceeds the total amount of unbonding chunks, but it succeeds by consuming the total amount.
-        assert_rebond_and_stake(staker_id, &contract_id, 200);
-
-        assert!(Ledger::<TestRuntime>::get(&staker_id)
-            .unbonding_info
-            .is_empty());
+        assert_rebond_and_stake(staker_id, &contract_id);
     })
 }
 
@@ -1108,7 +1100,7 @@ fn rebond_and_stake_unexist_contract_fails() {
 
         let non_exist_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
         assert_noop!(
-            DappsStaking::rebond_and_stake(Origin::signed(staker_id), non_exist_contract_id, 200),
+            DappsStaking::rebond_and_stake(Origin::signed(staker_id), non_exist_contract_id),
             Error::<TestRuntime>::NotOperatedContract,
         );
     })
@@ -1124,7 +1116,7 @@ fn rebond_and_stake_no_unbonding_chunks_fails() {
         assert_register(10, &contract_id);
 
         assert_noop!(
-            DappsStaking::rebond_and_stake(Origin::signed(staker_id), contract_id, 200),
+            DappsStaking::rebond_and_stake(Origin::signed(staker_id), contract_id),
             Error::<TestRuntime>::NothingToRebond,
         );
     })

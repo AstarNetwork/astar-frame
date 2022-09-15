@@ -356,24 +356,18 @@ pub(crate) fn assert_unbond_and_unstake(
 pub(crate) fn assert_rebond_and_stake(
     staker: AccountId,
     contract_id: &MockSmartContract<AccountId>,
-    value: Balance,
 ) {
     // Get latest staking info
     let current_era = DappsStaking::current_era();
     let init_state = MemorySnapshot::all(current_era, &contract_id, staker);
-    let mut init_ledger = init_state.ledger.clone();
 
-    // Define expected state after extrinsic
-    init_ledger.unbonding_info.sort(unlock_era_desc);
-    let (expected_stake_amount, mut expected_remaining_info) =
-        init_ledger.unbonding_info.collect_amount(value);
-    expected_remaining_info.sort(unlock_era_asc);
+    // Define expected stake amount
+    let expected_stake_amount = init_state.ledger.unbonding_info.sum();
 
     // Ensure op is successful and event is emitted
     assert_ok!(DappsStaking::rebond_and_stake(
         Origin::signed(staker),
         contract_id.clone(),
-        value
     ));
     System::assert_last_event(mock::Event::DappsStaking(Event::RebondAndStake(
         staker,
@@ -383,11 +377,10 @@ pub(crate) fn assert_rebond_and_stake(
 
     // Fetch the latest unbonding info so we can compare it to initial unbonding info
     let final_state = MemorySnapshot::all(current_era, &contract_id, staker);
-    let final_ledger = final_state.ledger.clone();
-    assert_eq!(final_ledger.unbonding_info, expected_remaining_info,);
+    assert!(final_state.ledger.unbonding_info.is_empty());
     assert_eq!(
-        final_ledger.locked,
-        init_ledger.locked + expected_stake_amount
+        final_state.ledger.locked,
+        init_state.ledger.locked + expected_stake_amount
     );
 
     // In case staker hasn't been staking this contract until now
