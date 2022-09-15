@@ -107,7 +107,7 @@ impl TryFrom<DispatchError> for DSError {
             Some("NotActiveStaker") => Ok(DSError::NotActiveStaker),
             Some("NominationTransferToSameContract") => {
                 Ok(DSError::NominationTransferToSameContract)
-            },
+            }
             Some("NothingToRebond") => Ok(DSError::NothingToRebond),
             _ => Ok(DSError::UnknownError),
         };

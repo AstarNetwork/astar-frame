@@ -368,9 +368,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::rebond_and_stake {
-            contract_id,
-        };
+        let call = pallet_dapps_staking::Call::<R>::rebond_and_stake { contract_id };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -442,7 +440,7 @@ pub enum Action {
     SetRewardDestination = "set_reward_destination(uint8)",
     WithdrawFromUnregistered = "withdraw_from_unregistered(address)",
     NominationTransfer = "nomination_transfer(address,uint128,address)",
-    RebondAndStake = "rebond_and_stake(address)"
+    RebondAndStake = "rebond_and_stake(address)",
 }
 
 impl<R> Precompile for DappsStakingWrapper<R>
