@@ -230,7 +230,7 @@ benchmarks! {
 
         DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
         DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id, unstake_amount)?;
-    }: _(RawOrigin::Signed(staker.clone()))
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
     verify {
         assert_last_event::<T>(Event::<T>::RebondAndStake(staker, contract_id, unstake_amount).into());
     }
