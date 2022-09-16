@@ -576,8 +576,7 @@ pub mod pallet {
 
         /// Lock up and stake unbonded chunks of origin account.
         ///
-        /// `value` must be more than the `minimum_balance` specified by `MinimumStakingAmount`
-        /// unless account already has bonded value equal or more than 'minimum_balance'.
+        /// All unbonding chunks will be used and staked to the specified contract.
         ///
         /// The dispatch origin for this call must be _Signed_ by the staker's account.
         #[pallet::weight(T::WeightInfo::rebond_and_stake())]
@@ -611,7 +610,6 @@ pub mod pallet {
                 current_era,
             )?;
 
-            ledger.locked = ledger.locked.saturating_add(value_to_stake);
             ledger.unbonding_info.unlocking_chunks = Vec::<UnlockingChunk<BalanceOf<T>>>::default();
 
             GeneralEraInfo::<T>::mutate(&current_era, |value| {

@@ -378,10 +378,10 @@ pub(crate) fn assert_rebond_and_stake(
     // Fetch the latest unbonding info so we can compare it to initial unbonding info
     let final_state = MemorySnapshot::all(current_era, &contract_id, staker);
     assert!(final_state.ledger.unbonding_info.is_empty());
-    assert_eq!(
-        final_state.ledger.locked,
-        init_state.ledger.locked + expected_stake_amount
-    );
+
+    // locked amount before and after the operation should be the same.
+    // unlocking chunks are still locked unless it is withdrawn.
+    assert_eq!(final_state.ledger.locked, init_state.ledger.locked);
 
     // In case staker hasn't been staking this contract until now
     if init_state.staker_info.latest_staked_value() == 0 {
