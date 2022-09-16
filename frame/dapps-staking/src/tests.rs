@@ -1081,7 +1081,7 @@ fn rebond_and_stake_is_ok() {
         advance_to_era(initial_era + 1);
         assert_unbond_and_unstake(staker_id, &contract_id, second_unbond_value);
 
-        // unbond and stake
+        // rebond and stake
         assert_rebond_and_stake(staker_id, &contract_id);
     })
 }
