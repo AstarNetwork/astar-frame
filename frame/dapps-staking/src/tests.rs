@@ -1065,7 +1065,9 @@ fn rebond_and_stake_is_ok() {
         initialize_first_block();
 
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+        let rebond_contract_id = MockSmartContract::Evm(H160::repeat_byte(0x02));
         assert_register(10, &contract_id);
+        assert_register(11, &rebond_contract_id);
 
         let staker_id = 1;
         assert_bond_and_stake(staker_id, &contract_id, 1000);
@@ -1082,7 +1084,7 @@ fn rebond_and_stake_is_ok() {
         assert_unbond_and_unstake(staker_id, &contract_id, second_unbond_value);
 
         // rebond and stake
-        assert_rebond_and_stake(staker_id, &contract_id);
+        assert_rebond_and_stake(staker_id, &rebond_contract_id);
     })
 }
 
