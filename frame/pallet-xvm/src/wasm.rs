@@ -14,7 +14,7 @@ type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 
-impl<I, T> SyncVM<VmId, T::AccountId> for WASM<I, T>
+impl<I, T> SyncVM<T::AccountId> for WASM<I, T>
 where
     I: Get<VmId>,
     T: pallet_contracts::Config + frame_system::Config,
@@ -25,15 +25,10 @@ where
         I::get()
     }
 
-    fn xvm_call(
-        context: XvmContext<VmId>,
-        from: T::AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-    ) -> XvmResult {
+    fn xvm_call(context: XvmContext, from: T::AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult {
         log::trace!(
             target: "xvm::WASM::xvm_call",
-            "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
+            "Start WASM XVM: {:?}, {:?}, {:?}",
             from, to, input,
         );
         let gas_limit = context.max_weight;

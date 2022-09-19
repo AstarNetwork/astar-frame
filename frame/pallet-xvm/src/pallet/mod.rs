@@ -89,10 +89,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(100_000)]
-        pub fn xvm_query(
-            origin: OriginFor<T>,
-            context: XvmContext,
-        ) -> DispatchResultWithPostInfo {
+        pub fn xvm_query(origin: OriginFor<T>, context: XvmContext) -> DispatchResultWithPostInfo {
             let inbox = ensure_signed(origin)?;
             let _result = T::AsyncVM::xvm_query(context, inbox);
 

@@ -102,12 +102,7 @@ pub trait SyncVM<AccountId> {
     /// Make a call to VM contract and return result or error.
     ///
     ///
-    fn xvm_call(
-        context: XvmContext,
-        from: AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-    ) -> XvmResult;
+    fn xvm_call(context: XvmContext, from: AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
@@ -116,12 +111,7 @@ impl<AccountId: Member> SyncVM<AccountId> for Tuple {
         Default::default()
     }
 
-    fn xvm_call(
-        context: XvmContext,
-        from: AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-    ) -> XvmResult {
+    fn xvm_call(context: XvmContext, from: AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -150,15 +140,10 @@ pub trait AsyncVM<AccountId> {
     fn id() -> VmId;
 
     /// Send a message.
-    fn xvm_send(
-        context: XvmContext<VmId>,
-        from: AccountId,
-        to: Vec<u8>,
-        message: Vec<u8>,
-    ) -> XvmResult;
+    fn xvm_send(context: XvmContext, from: AccountId, to: Vec<u8>, message: Vec<u8>) -> XvmResult;
 
     /// Query for incoming messages.
-    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> XvmResult;
+    fn xvm_query(context: XvmContext, inbox: AccountId) -> XvmResult;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
@@ -167,12 +152,7 @@ impl<AccountId: Member> AsyncVM<AccountId> for Tuple {
         Default::default()
     }
 
-    fn xvm_send(
-        context: XvmContext,
-        from: AccountId,
-        to: Vec<u8>,
-        message: Vec<u8>,
-    ) -> XvmResult {
+    fn xvm_send(context: XvmContext, from: AccountId, to: Vec<u8>, message: Vec<u8>) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(
@@ -194,7 +174,7 @@ impl<AccountId: Member> AsyncVM<AccountId> for Tuple {
         })
     }
 
-    fn xvm_query(context: XvmContext<VmId>, inbox: AccountId) -> XvmResult {
+    fn xvm_query(context: XvmContext, inbox: AccountId) -> XvmResult {
         for_tuples!( #(
             if Tuple::id() == context.id {
                 log::trace!(

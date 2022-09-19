@@ -75,7 +75,6 @@ mod xvm_chain_extension_contract {
                     vm_id: xvm_chain_extension_types::FRONTIER_VM_ID,
                     to: address.encode(), // TODO: is this correct?
                     input: Default::default(),
-                    metadata: Default::default(),
                 })
                 .map_err(|_| ExtensionError::XvmCallFailed)?;
 

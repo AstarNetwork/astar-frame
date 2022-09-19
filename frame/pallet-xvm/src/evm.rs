@@ -20,17 +20,11 @@ where
         I::get()
     }
 
-    fn xvm_call(
-        context: XvmContext<VmId>,
-        from: T::AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-        metadata: Vec<u8>,
-    ) -> XvmResult {
+    fn xvm_call(context: XvmContext, from: T::AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult {
         log::trace!(
             target: "xvm::EVM::xvm_call",
-            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}",
-            from, to, input, metadata,
+            "Start EVM XVM: {:?}, {:?}, {:?}",
+            from, to, input,
         );
         let value = U256::from(0u64);
         let max_fee_per_gas = U256::from(3450898690u64);

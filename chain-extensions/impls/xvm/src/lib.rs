@@ -53,11 +53,7 @@ where
 
                 let caller = env.ext().caller().clone();
 
-                let XvmCallArgs {
-                    vm_id,
-                    to,
-                    input,
-                } = env.read_as_unbounded(env.in_len())?;
+                let XvmCallArgs { vm_id, to, input } = env.read_as_unbounded(env.in_len())?;
 
                 let _origin_address = env.ext().address().clone();
                 let _value = env.ext().value_transferred();
