@@ -35,8 +35,6 @@ pub struct XvmCallArgs {
     pub to: Vec<u8>,
     /// Encoded call params
     pub input: Vec<u8>,
-    /// Metadata for the encoded params
-    pub metadata: Vec<u8>,
 }
 
 pub const FRONTIER_VM_ID: u8 = 0x0F;

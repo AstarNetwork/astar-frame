@@ -58,7 +58,6 @@ where
                     vm_id,
                     to,
                     input,
-                    metadata,
                 } = env.read_as_unbounded(env.in_len())?;
 
                 // TODO: rethink this? How do we get valid env in chain extension? Need to know which data to encode.
@@ -67,7 +66,7 @@ where
                 let _value = env.ext().value_transferred();
                 let _gas_limit = env.ext().gas_meter().gas_left();
                 let xvm_context = XvmContext {
-                    id: T::VmId::from(vm_id),
+                    id: vm_id,
                     env: None,
                 };
 
@@ -76,7 +75,6 @@ where
                     xvm_context,
                     to,
                     input,
-                    metadata,
                 );
 
                 // TODO: We need to know how much of gas was spent in the other call and update the gas meter!
