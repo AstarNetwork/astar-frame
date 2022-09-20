@@ -81,7 +81,7 @@ pub fn consumed_weight(result: &XvmResult) -> Weight {
 }
 
 /// XVM context consist of unique ID and optional execution arguments.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Default, PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmContext {
     /// Identifier (should be unique for each VM in tuple).
     pub id: VmId,

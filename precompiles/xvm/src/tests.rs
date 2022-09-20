@@ -41,7 +41,7 @@ fn wrong_argument_reverts() {
 
 #[test]
 fn correct_arguments_works() {
-    let context: XvmContext<u8> = Default::default();
+    let context: XvmContext = Default::default();
     ExtBuilder::default().build().execute_with(|| {
         precompiles()
             .prepare_test(
