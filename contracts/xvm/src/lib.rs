@@ -1,8 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ink_env::{DefaultEnvironment, Environment};
 use ink_lang as ink;
-use xvm_chain_extension_types::XvmCallArgs;
+
+use ink_env::{DefaultEnvironment, Environment};
+use ink_prelude::vec::Vec;
+
+#[derive(Clone, PartialEq, Eq, scale::Encode, scale::Decode, Debug)]
+pub struct XvmCallArgs {
+    /// virtual machine identifier
+    pub vm_id: u8,
+    /// Call destination (e.g. address)
+    pub to: Vec<u8>,
+    /// Encoded call params
+    pub input: Vec<u8>,
+}
+
+pub const FRONTIER_VM_ID: u8 = 0x0F;
+pub const PARITY_WASM_VM_ID: u8 = 0x1F;
 
 #[ink::chain_extension]
 pub trait XvmChainExtension {
@@ -53,7 +67,7 @@ impl Environment for CustomEnvironment {
 ///
 /// This will give us access to the chain extension that we've defined.
 #[ink::contract(env = crate::CustomEnvironment)]
-mod xvm_chain_extension_contract {
+mod xvm_example {
 
     use super::*;
     use scale::Encode;
@@ -72,8 +86,8 @@ mod xvm_chain_extension_contract {
             self.env()
                 .extension()
                 .xvm_call(XvmCallArgs {
-                    vm_id: xvm_chain_extension_types::FRONTIER_VM_ID,
-                    to: address.encode(), // TODO: is this correct?
+                    vm_id: FRONTIER_VM_ID,
+                    to: address.encode(),
                     input: Default::default(),
                 })
                 .map_err(|_| ExtensionError::XvmCallFailed)?;
