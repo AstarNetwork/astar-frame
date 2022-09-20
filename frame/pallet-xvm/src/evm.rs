@@ -59,7 +59,6 @@ where
             "EVM XVM call result: {:?}", res
         );
 
-        // TODO: return value in case of constant / view call
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill output vec with response from the call
             consumed_weight: res.actual_weight.unwrap_or(context.max_weight),

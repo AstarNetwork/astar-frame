@@ -54,7 +54,6 @@ where
             "WASM XVM call result: {:?}", res
         );
 
-        // TODO: return value in case of constant / view call
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill in with output from the call
             consumed_weight: res.actual_weight.unwrap_or(gas_limit),

@@ -30,13 +30,12 @@ pub mod evm;
 pub mod wasm;
 
 /// Unique VM identifier.
-type VmId = u8;
+pub type VmId = u8;
 
 // TODO: remove later after solution is properly benchmarked
 // Just a arbitrary weight constant to avoid having ZERO weight in some parts of execution
 pub const PLACEHOLDER_WEIGHT: u64 = 1_000_000;
 
-/// TODO: This isn't an exhaustive list, only a few are listed
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub enum XvmError {
     VmNotRecognized,
@@ -44,6 +43,7 @@ pub enum XvmError {
     ContextConversionFailed,
     OutOfGas,
     ExecutionError(Vec<u8>),
+    // extend this list as part of improved error handling
 }
 
 // TODO: Currently our precompile/chain-extension calls rely on direct `Call` usage of XVM pallet.
@@ -53,6 +53,7 @@ pub enum XvmError {
 // Problem arises IF we want to get back arbitrary read value from the other VM - `DispatchResultWithPostInfo` isn't enough for this.
 // We need to receive back a concrete value back from the other VM.
 
+/// Denotes a successful XVM call execution
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmCallOk {
     /// Output of XVM call. E.g. if call was a query, this will contain query response.
@@ -61,6 +62,7 @@ pub struct XvmCallOk {
     consumed_weight: u64,
 }
 
+/// Denotes an successful XVM call execution
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmCallError {
     /// Result of XVM call
@@ -87,8 +89,6 @@ pub struct XvmContext {
     pub id: VmId,
     /// Max allowed weight for the call
     pub max_weight: Weight,
-    /// XVM call depth: TODO: ensure that we cannot nest it too deeply - at least initially.
-    pub call_depth: u8,
     /// Encoded VM execution environment.
     pub env: Option<Vec<u8>>,
 }

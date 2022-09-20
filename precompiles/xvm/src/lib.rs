@@ -70,7 +70,6 @@ where
         let remaining_gas = handle.remaining_gas();
         let remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
         context.max_weight = remaining_weight;
-        context.call_depth = 1;
 
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
