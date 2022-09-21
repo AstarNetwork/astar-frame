@@ -7,8 +7,8 @@ use sp_runtime::{
 use chain_extension_trait::ChainExtensionExec;
 use codec::{Decode, Encode};
 use dapps_staking_chain_extension_types::{
-    Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
-    DappsStakingValueInput, ContractBytes,
+    Contract, ContractBytes, DSError, DappsStakingAccountInput, DappsStakingEraInput,
+    DappsStakingNominationInput, DappsStakingValueInput,
 };
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
