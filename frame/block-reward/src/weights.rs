@@ -15,7 +15,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: RewardDistribution RewardDistributionConfigStorage (r:0 w:1)
 	fn set_configuration() -> Weight {
-		T::DbWeight::get().writes(1 as Weight)
+		T::DbWeight::get().writes(1 as u64)
 	}
 }
 
@@ -23,6 +23,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	// Storage: RewardDistribution RewardDistributionConfigStorage (r:0 w:1)
 	fn set_configuration() -> Weight {
-		RocksDbWeight::get().writes(1 as Weight)
+		RocksDbWeight::get().writes(1 as u64)
 	}
 }

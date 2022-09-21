@@ -1096,10 +1096,10 @@ pub mod pallet {
         /// This is the most primitive solution since it scales with number of dApps.
         /// It is possible to provide a hybrid solution which allows laziness but also prevents
         /// a situation where we don't have access to the required data.
-        fn rotate_staking_info(current_era: EraIndex) -> u64 {
+        fn rotate_staking_info(current_era: EraIndex) -> Weight {
             let next_era = current_era + 1;
 
-            let mut consumed_weight = 0;
+            let mut consumed_weight = Weight::zero();
 
             for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
                 // Ignore dapp if it was unregistered

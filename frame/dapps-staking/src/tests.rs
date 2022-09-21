@@ -1,5 +1,5 @@
 use super::{pallet::pallet::Error, pallet::pallet::Event, *};
-use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
+use frame_support::{assert_noop, assert_ok, traits::OnInitialize, weights::Weight};
 use mock::{Balances, MockSmartContract, *};
 use sp_core::H160;
 use sp_runtime::{
@@ -1993,7 +1993,7 @@ fn maintenance_mode_is_ok() {
             Error::<TestRuntime>::Disabled
         );
         // shouldn't do anything since we're in maintenance mode
-        assert_eq!(DappsStaking::on_initialize(3), 0);
+        assert_eq!(DappsStaking::on_initialize(3), Weight::zero());
 
         //
         // 4

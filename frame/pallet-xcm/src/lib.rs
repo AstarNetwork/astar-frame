@@ -412,7 +412,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
-            let mut weight_used = 0;
+            let mut weight_used = Weight::zero();
             if let Some(migration) = CurrentMigration::<T>::get() {
                 // Consume 10% of block at most
                 let max_weight = T::BlockWeights::get().max_block / 10;
@@ -425,13 +425,13 @@ pub mod pallet {
             // by the destinations being most sent to.
             let mut q = VersionDiscoveryQueue::<T>::take().into_inner();
             // TODO: correct weights.
-            weight_used += T::DbWeight::get().read + T::DbWeight::get().write;
+            weight_used.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
             q.sort_by_key(|i| i.1);
             while let Some((versioned_dest, _)) = q.pop() {
                 if let Ok(dest) = MultiLocation::try_from(versioned_dest) {
                     if Self::request_version_notify(dest).is_ok() {
                         // TODO: correct weights.
-                        weight_used += T::DbWeight::get().read + T::DbWeight::get().write;
+                        weight_used.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
                         break;
                     }
                 }
@@ -447,7 +447,7 @@ pub mod pallet {
             // Start a migration (this happens before on_initialize so it'll happen later in this
             // block, which should be good enough)...
             CurrentMigration::<T>::put(VersionMigrationStage::default());
-            T::DbWeight::get().write
+            T::DbWeight::get().writes(1)
         }
     }
 
@@ -500,7 +500,7 @@ pub mod pallet {
 						WithdrawAsset(assets),
 						InitiateTeleport { assets: Wild(All), dest, xcm: Xcm(vec![]) },
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -538,7 +538,7 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -584,7 +584,7 @@ pub mod pallet {
                         WithdrawAsset(assets),
 						InitiateReserveWithdraw { assets: Wild(All), reserve: dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -617,7 +617,7 @@ pub mod pallet {
         ///
         /// NOTE: A successful return to this does *not* imply that the `msg` was executed successfully
         /// to completion; only that *some* of it was executed.
-        #[pallet::weight(max_weight.saturating_add(100_000_000u64))]
+        #[pallet::weight(max_weight.saturating_add(Weight::from_ref_time(100_000_000u64)))]
         pub fn execute(
             origin: OriginFor<T>,
             message: Box<VersionedXcm<<T as SysConfig>::Call>>,
@@ -631,8 +631,8 @@ pub mod pallet {
             let outcome = T::XcmExecutor::execute_xcm_in_credit(
                 origin_location,
                 message,
-                max_weight,
-                max_weight,
+                max_weight.ref_time(),
+                max_weight.ref_time(),
             );
             let result = Ok(Some(outcome.weight_used().saturating_add(100_000_000)).into());
             Self::deposit_event(Event::Attempted(outcome));
@@ -748,7 +748,7 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -798,7 +798,7 @@ pub mod pallet {
 						WithdrawAsset(assets),
 						InitiateTeleport { assets: Wild(All), dest, xcm: Xcm(vec![]) },
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -845,7 +845,7 @@ pub mod pallet {
 					let mut message = Xcm(vec![
 						TransferReserveAsset { assets, dest, xcm: Xcm(vec![]) }
 					]);
-					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| 100_000_000 + w)
+					T::Weigher::weight(&mut message).map_or(Weight::MAX, |w| Weight::from_ref_time(100_000_000.saturating_add(w)))
 				},
 				_ => Weight::MAX,
 			}
@@ -1112,20 +1112,16 @@ pub mod pallet {
             mut stage: VersionMigrationStage,
             weight_cutoff: Weight,
         ) -> (Weight, Option<VersionMigrationStage>) {
-            let mut weight_used = 0;
+            let mut weight_used = Weight::zero();
 
             // TODO: Correct weights for the components of this:
-            let todo_sv_migrate_weight: Weight = T::DbWeight::get().read + T::DbWeight::get().write;
-            let todo_vn_migrate_weight: Weight = T::DbWeight::get().read + T::DbWeight::get().write;
-            let todo_vnt_already_notified_weight: Weight = T::DbWeight::get().read;
-            let todo_vnt_notify_weight: Weight =
-                T::DbWeight::get().read + T::DbWeight::get().write * 3;
-            let todo_vnt_migrate_weight: Weight =
-                T::DbWeight::get().read + T::DbWeight::get().write;
-            let todo_vnt_migrate_fail_weight: Weight =
-                T::DbWeight::get().read + T::DbWeight::get().write;
-            let todo_vnt_notify_migrate_weight: Weight =
-                T::DbWeight::get().read + T::DbWeight::get().write * 3;
+            let todo_sv_migrate_weight: Weight = T::DbWeight::get().reads_writes(1, 1);
+            let todo_vn_migrate_weight: Weight = T::DbWeight::get().reads_writes(1, 1);
+            let todo_vnt_already_notified_weight: Weight = T::DbWeight::get().reads(1);
+            let todo_vnt_notify_weight: Weight = T::DbWeight::get().reads_writes(1, 3);
+            let todo_vnt_migrate_weight: Weight = T::DbWeight::get().reads_writes(1, 1);
+            let todo_vnt_migrate_fail_weight: Weight = T::DbWeight::get().reads_writes(1, 1);
+            let todo_vnt_notify_migrate_weight: Weight = T::DbWeight::get().reads_writes(1, 3);
 
             use VersionMigrationStage::*;
 
@@ -1400,7 +1396,7 @@ pub mod pallet {
             let report_error = Xcm(vec![ReportError {
                 dest,
                 query_id,
-                max_response_weight,
+                max_response_weight: max_response_weight.ref_time(),
             }]);
             message.0.insert(0, SetAppendix(report_error));
             Ok(())
@@ -1451,7 +1447,7 @@ pub mod pallet {
             );
             let versioned_dest = VersionedMultiLocation::from(dest.clone());
             VersionDiscoveryQueue::<T>::mutate(|q| {
-                if let Some(index) = q.iter().position(|i| i.0 == versioned_dest) {
+                if let Some(index) = q.iter().position(|i| &i.0 == &versioned_dest) {
                     // exists - just bump the count.
                     q[index].1.saturating_inc();
                 } else {
@@ -1477,6 +1473,7 @@ pub mod pallet {
                         "Could not determine a version to wrap XCM for destination: {:?}",
                         dest,
                     );
+                    ()
                 })
                 .and_then(|v| xcm.into().into_version(v.min(XCM_VERSION)))
         }
@@ -1525,7 +1522,7 @@ pub mod pallet {
     }
 
     impl<T: Config> DropAssets for Pallet<T> {
-        fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+        fn drop_assets(origin: &MultiLocation, assets: Assets) -> u64 {
             if assets.is_empty() {
                 return 0;
             }
@@ -1561,7 +1558,7 @@ pub mod pallet {
                 1 => AssetTraps::<T>::remove(hash),
                 n => AssetTraps::<T>::insert(hash, n - 1),
             }
-            true
+            return true;
         }
     }
 
@@ -1582,8 +1579,8 @@ pub mod pallet {
             origin: &MultiLocation,
             query_id: QueryId,
             response: Response,
-            max_weight: Weight,
-        ) -> Weight {
+            max_weight: u64,
+        ) -> u64 {
             match (response, Queries::<T>::get(query_id)) {
                 (
                     Response::Version(v),
@@ -1657,7 +1654,7 @@ pub mod pallet {
                         ));
                         return 0;
                     }
-                    match maybe_notify {
+                    return match maybe_notify {
                         Some((pallet_index, call_index)) => {
                             // This is a bit horrible, but we happen to know that the `Call` will
                             // be built by `(pallet_index: u8, call_index: u8, QueryId, Response)`.
@@ -1668,6 +1665,7 @@ pub mod pallet {
                             {
                                 Queries::<T>::remove(query_id);
                                 let weight = call.get_dispatch_info().weight;
+                                let max_weight = Weight::from_ref_time(max_weight);
                                 if weight > max_weight {
                                     let e = Event::NotifyOverweight(
                                         query_id,
@@ -1699,6 +1697,7 @@ pub mod pallet {
                                     }
                                 }
                                 .unwrap_or(weight)
+                                .ref_time()
                             } else {
                                 let e =
                                     Event::NotifyDecodeFailed(query_id, pallet_index, call_index);
@@ -1714,11 +1713,11 @@ pub mod pallet {
                             Queries::<T>::insert(query_id, QueryStatus::Ready { response, at });
                             0
                         }
-                    }
+                    };
                 }
                 _ => {
                     Self::deposit_event(Event::UnexpectedResponse(origin.clone(), query_id));
-                    0
+                    return 0;
                 }
             }
         }
@@ -1785,8 +1784,8 @@ where
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_origin() -> O {
-        O::from(Origin::Xcm(Here.into()))
+    fn try_successful_origin() -> Result<O, ()> {
+        Ok(O::from(Origin::Xcm(Here.into())))
     }
 }
 
@@ -1810,8 +1809,8 @@ where
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_origin() -> O {
-        O::from(Origin::Response(Here.into()))
+    fn try_successful_origin() -> Result<O, ()> {
+        Ok(O::from(Origin::Response(Here.into())))
     }
 }
 

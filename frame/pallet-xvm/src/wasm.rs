@@ -2,7 +2,7 @@
 
 use crate::*;
 use codec::HasCompact;
-use frame_support::traits::Currency;
+use frame_support::{traits::Currency, weights::Weight};
 use pallet_contracts::chain_extension::UncheckedFrom;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
@@ -45,7 +45,7 @@ where
             frame_support::dispatch::RawOrigin::Signed(from).into(),
             dest,
             Default::default(),
-            gas_limit,
+            Weight::from_ref_time(gas_limit),
             None,
             data,
         );

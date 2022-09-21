@@ -5,8 +5,7 @@ use sp_runtime::{traits::StaticLookup, DispatchError, Permill};
 use chain_extension_trait::ChainExtensionExec;
 
 use codec::Encode;
-use frame_support::log;
-use frame_support::BoundedVec;
+use frame_support::{log, weights::Weight, BoundedVec};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState, RetVal, RetVal::Converging, SysConfig, UncheckedFrom,
@@ -293,7 +292,7 @@ impl<
 
                 let contract = env.ext().address().clone();
 
-                let weight = 100_000_000_000; // TODO update after RMRK pallet implements weights
+                let weight = Weight::from_ref_time(100_000_000_000); // TODO update after RMRK pallet implements weights
                 env.charge_weight(weight)?;
 
                 log::trace!(target: "runtime",
