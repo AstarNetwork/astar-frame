@@ -8,7 +8,7 @@ use chain_extension_trait::ChainExtensionExec;
 use codec::{Decode, Encode};
 use dapps_staking_chain_extension_types::{
     Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
-    DappsStakingValueInput,
+    DappsStakingValueInput, ContractBytes,
 };
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
@@ -148,7 +148,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             }
 
             DappsStakingFunc::ReadContractStake => {
-                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract_bytes: ContractBytes = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
 
                 let base_weight = <T as frame_system::Config>::DbWeight::get().read;
@@ -229,7 +229,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             }
 
             DappsStakingFunc::ClaimStaker => {
-                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract_bytes: ContractBytes = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
 
                 let base_weight = T::WeightInfo::claim_staker_with_restake()
@@ -340,7 +340,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             }
 
             DappsStakingFunc::RebondAndStake => {
-                let contract_bytes: [u8; 32] = env.read_as()?;
+                let contract_bytes: ContractBytes = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
 
                 let base_weight =

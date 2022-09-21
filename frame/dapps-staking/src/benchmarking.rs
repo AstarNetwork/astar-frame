@@ -228,6 +228,9 @@ benchmarks! {
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
         let unstake_amount = stake_amount / 2u32.into();
 
+        // rebond_and_stake works only when user has unlocking_chunks.
+        // before executing it, need to prepare the valid state by bond and unbond.
+        // unbonded funds remain as unlocking_chunks unless it is withdrawn.
         DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
         DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), unstake_amount)?;
     }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())

@@ -13,25 +13,25 @@ pub enum DSError {
     Disabled = 1,
     /// No change in maintenance mode
     NoMaintenanceModeChange = 2,
-    /// Upgrade is too heavy, reduce the weight parameter.
+    /// Upgrade is too heavy, reduce the weight parameter
     UpgradeTooHeavy = 3,
-    /// Can not stake with zero value.
+    /// Can not stake with zero value
     StakingWithNoValue = 4,
     /// Can not stake with value less than minimum staking value
     InsufficientValue = 5,
-    /// Number of stakers per contract exceeded.
+    /// Number of stakers per contract exceeded
     MaxNumberOfStakersExceeded = 6,
     /// Targets must be operated contracts
     NotOperatedContract = 7,
-    /// Contract isn't staked.
+    /// Contract isn't staked
     NotStakedContract = 8,
     /// Contract isn't unregistered.
     NotUnregisteredContract = 9,
-    /// Unclaimed rewards should be claimed before withdrawing stake.
+    /// Unclaimed rewards should be claimed before withdrawing stake
     UnclaimedRewardsRemaining = 10,
     /// Unstaking a contract with zero value
     UnstakingWithNoValue = 11,
-    /// There are no previously unbonded funds that can be unstaked and withdrawn.
+    /// There are no previously unbonded funds that can be unstaked and withdrawn
     NothingToWithdraw = 12,
     /// The contract is already registered by other account
     AlreadyRegisteredContract = 13,
@@ -39,21 +39,21 @@ pub enum DSError {
     ContractIsNotValid = 14,
     /// This account was already used to register contract
     AlreadyUsedDeveloperAccount = 15,
-    /// Smart contract not owned by the account id.
+    /// Smart contract not owned by the account id
     NotOwnedContract = 16,
     /// Report issue on github if this is ever emitted
     UnknownEraReward = 17,
     /// Report issue on github if this is ever emitted
     UnexpectedStakeInfoEra = 18,
     /// Contract has too many unlocking chunks. Withdraw the existing chunks if possible
-    /// or wait for current chunks to complete unlocking process to withdraw them.
+    /// or wait for current chunks to complete unlocking process to withdraw them
     TooManyUnlockingChunks = 19,
     /// Contract already claimed in this era and reward is distributed
     AlreadyClaimedInThisEra = 20,
     /// Era parameter is out of bounds
     EraOutOfBounds = 21,
-    /// Too many active `EraStake` values for (staker, contract) pairing.
-    /// Claim existing rewards to fix this problem.
+    /// Too many active `EraStake` values for (staker, contract) pairing
+    /// Claim existing rewards to fix this problem
     TooManyEraStakeValues = 22,
     /// To register a contract, pre-approval is needed for this address
     RequiredContractPreApproval = 23,
@@ -65,7 +65,7 @@ pub enum DSError {
     NominationTransferToSameContract = 26,
     /// Unexpected reward destination value
     RewardDestinationValueOutOfBounds = 27,
-    /// There are no previously unbonded funds that can be reboneded and staked.
+    /// There are no previously unbonded funds that can be reboneded and staked
     NothingToRebond = 28,
     /// Unknown error
     UnknownError = 99,
@@ -123,27 +123,29 @@ pub enum Contract<Account> {
     Wasm(Account),
 }
 
+pub type ContractBytes = [u8; 32];
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingValueInput<Balance> {
-    pub contract: [u8; 32],
+    pub contract: ContractBytes,
     pub value: Balance,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingAccountInput {
-    pub contract: [u8; 32],
+    pub contract: ContractBytes,
     pub staker: [u8; 32],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingEraInput {
-    pub contract: [u8; 32],
+    pub contract: ContractBytes,
     pub era: u32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingNominationInput<Balance> {
-    pub origin_contract: [u8; 32],
-    pub target_contract: [u8; 32],
+    pub origin_contract: ContractBytes,
+    pub target_contract: ContractBytes,
     pub value: Balance,
 }
