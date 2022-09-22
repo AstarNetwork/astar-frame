@@ -28,8 +28,10 @@ pub enum Action {
     AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
     AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
     RemoteTransact = "remote_transact(uint256,bool,address,uint256,bytes,uint64)",
-    AssetsReserveTransferNative = "assets_reserve_transfer(address[],uint256[],bytes32,bool,uint256,uint256)",
-    AssetsReserveTransferEvm = "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
+    AssetsReserveTransferNative =
+        "assets_reserve_transfer(address[],uint256[],bytes32,bool,uint256,uint256)",
+    AssetsReserveTransferEvm =
+        "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
 }
 
 /// A precompile that expose XCM related functions.
@@ -55,11 +57,17 @@ where
 
         match selector {
             // Dispatchables
-            Action::AssetsWithdrawNative => Self::assets_withdraw(handle, BeneficiaryType::Account32),
+            Action::AssetsWithdrawNative => {
+                Self::assets_withdraw(handle, BeneficiaryType::Account32)
+            }
             Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::Account20),
             Action::RemoteTransact => Self::remote_transact(handle),
-            Action::AssetsReserveTransferNative => Self::assets_reserve_transfer(handle, BeneficiaryType::Account32),
-            Action::AssetsReserveTransferEvm => Self::assets_reserve_transfer(handle, BeneficiaryType::Account20),
+            Action::AssetsReserveTransferNative => {
+                Self::assets_reserve_transfer(handle, BeneficiaryType::Account32)
+            }
+            Action::AssetsReserveTransferEvm => {
+                Self::assets_reserve_transfer(handle, BeneficiaryType::Account20)
+            }
         }
     }
 }
