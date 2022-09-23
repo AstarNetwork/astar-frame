@@ -49,4 +49,19 @@ interface XCM {
         uint256   parachain_id,
         uint256   fee_index
     ) external returns (bool);
+
+    /**
+     * TODO comprehensive docs
+     */
+    function remote_transact(
+        // TODO: Should we use a MultiLocation struct instead?
+        // It's less future proof and required destination might have to be something other than just pure parachain!
+        // TODO: related to previous TODO, but perhaps params should be revised?
+        uint256 parachain_id,
+        bool is_relay,
+        address payment_asset_id,
+        uint256 payment_amount,
+        uint64 weight,
+        bytes calldata call
+    ) external returns (bool);
 }
