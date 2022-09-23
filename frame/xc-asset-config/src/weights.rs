@@ -53,37 +53,37 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:1)
 	fn register_asset_location() -> Weight {
-		(14_557_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(14_557_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: XcAssetConfig AssetLocationToId (r:1 w:0)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	fn set_asset_units_per_second() -> Weight {
-		(17_533_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(17_533_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:1 w:2)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:2)
 	fn change_existing_asset_location() -> Weight {
-		(25_998_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(25_998_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	fn remove_payment_asset() -> Weight {
-		(11_301_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(11_301_000 as u64)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:1)
 	fn remove_asset() -> Weight {
-		(16_500_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(16_500_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 }
 
@@ -92,36 +92,36 @@ impl WeightInfo for () {
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:1)
 	fn register_asset_location() -> Weight {
-		(14_557_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(14_557_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	// Storage: XcAssetConfig AssetLocationToId (r:1 w:0)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	fn set_asset_units_per_second() -> Weight {
-		(17_533_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(17_533_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:1 w:2)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:2)
 	fn change_existing_asset_location() -> Weight {
-		(25_998_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(25_998_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	fn remove_payment_asset() -> Weight {
-		(11_301_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(11_301_000 as u64)
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: XcAssetConfig AssetIdToLocation (r:1 w:1)
 	// Storage: XcAssetConfig AssetLocationUnitsPerSecond (r:0 w:1)
 	// Storage: XcAssetConfig AssetLocationToId (r:0 w:1)
 	fn remove_asset() -> Weight {
-		(16_500_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(16_500_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 }

@@ -3,9 +3,7 @@
 use super::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-    construct_runtime, pallet_prelude::Weight, parameter_types, traits::Everything,
-};
+use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
@@ -284,11 +282,11 @@ parameter_types! {
     pub const RelayLocation: MultiLocation = Here.into();
     pub const AnyNetwork: NetworkId = NetworkId::Any;
     pub Ancestry: MultiLocation = Here.into();
-    pub UnitWeightCost: Weight = 1_000;
+    pub UnitWeightCost: u64 = 1_000;
 }
 
 parameter_types! {
-    pub const BaseXcmWeight: Weight = 1_000;
+    pub const BaseXcmWeight: u64 = 1_000;
     pub const MaxInstructions: u32 = 100;
 }
 

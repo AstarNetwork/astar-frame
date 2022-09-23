@@ -84,7 +84,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
 
         match func_id {
             DappsStakingFunc::CurrentEra => {
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let era_index = pallet_dapps_staking::CurrentEra::<T>::get();
@@ -92,7 +92,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             }
 
             DappsStakingFunc::UnbondingPeriod => {
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let unbonding_period = T::UnbondingPeriod::get();
@@ -102,7 +102,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::EraRewards => {
                 let arg: u32 = env.read_as()?;
 
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<T>::get(arg);
@@ -115,7 +115,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::EraStaked => {
                 let arg: u32 = env.read_as()?;
 
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let era_info = pallet_dapps_staking::GeneralEraInfo::<T>::get(arg);
@@ -126,7 +126,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
             DappsStakingFunc::StakedAmount => {
                 let staker: T::AccountId = env.read_as()?;
 
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let ledger = pallet_dapps_staking::Ledger::<T>::get(&staker);
@@ -138,7 +138,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let staker = T::AccountId::decode(&mut args.staker.as_ref()).unwrap();
                 let contract = Self::decode_smart_contract(args.contract)?;
 
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
                 let staking_info =
@@ -151,7 +151,7 @@ impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExte
                 let contract_bytes: ContractBytes = env.read_as()?;
                 let contract = Self::decode_smart_contract(contract_bytes)?;
 
-                let base_weight = <T as frame_system::Config>::DbWeight::get().read;
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight.saturating_add(base_weight))?;
 
                 let current_era = pallet_dapps_staking::CurrentEra::<T>::get();

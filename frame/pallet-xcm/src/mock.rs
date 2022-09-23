@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
 
-use frame_support::{construct_runtime, parameter_types, traits::Everything, weights::Weight};
+use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use polkadot_parachain::primitives::Id as ParaId;
 use polkadot_runtime_parachains::origin;
 use sp_core::H256;
@@ -120,17 +120,16 @@ pub mod pallet_test_notifier {
 }
 
 construct_runtime!(
-    pub struct Test
-    where
+    pub enum Test where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system,
-        Balances: pallet_balances,
-        ParasOrigin: origin,
-        XcmPallet: pallet_xcm,
-        TestNotifier: pallet_test_notifier,
+        System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        ParasOrigin: origin::{Pallet, Origin},
+        XcmPallet: pallet_xcm::{Pallet, Call, Storage, Event<T>, Origin, Config},
+        TestNotifier: pallet_test_notifier::{Pallet, Call, Event<T>},
     }
 );
 
@@ -222,7 +221,7 @@ parameter_types! {
     pub const RelayLocation: MultiLocation = Here.into();
     pub const AnyNetwork: NetworkId = NetworkId::Any;
     pub Ancestry: MultiLocation = Here.into();
-    pub UnitWeightCost: Weight = 1_000;
+    pub UnitWeightCost: u64 = 1_000;
 }
 
 pub type SovereignAccountOf = (
@@ -241,7 +240,7 @@ type LocalOriginConverter = (
 );
 
 parameter_types! {
-    pub const BaseXcmWeight: Weight = 1_000;
+    pub const BaseXcmWeight: u64 = 1_000;
     pub CurrencyPerSecond: (AssetId, u128) = (Concrete(RelayLocation::get()), 1);
     pub TrustedAssets: (MultiAssetFilter, MultiLocation) = (All.into(), Here.into());
     pub const MaxInstructions: u32 = 100;

@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_support::weights::Weight;
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
@@ -48,7 +49,7 @@ where
         match func_id {
             XvmFuncId::XvmCall => {
                 // TODO: correct weight calculation directly from pallet!
-                let weight = 1_000_000_000;
+                let weight = Weight::from_ref_time(1_000_000_000);
                 env.charge_weight(weight)?;
 
                 // Prepare parameters

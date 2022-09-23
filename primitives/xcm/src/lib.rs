@@ -16,13 +16,13 @@
 
 use frame_support::{
     traits::{tokens::fungibles, Get},
-    weights::{constants::WEIGHT_PER_SECOND, Weight},
+    weights::constants::WEIGHT_PER_SECOND,
 };
 use sp_runtime::traits::{Bounded, Zero};
 use sp_std::{borrow::Borrow, marker::PhantomData};
 
 // Polkadot imports
-use xcm::latest::prelude::*;
+use xcm::latest::{prelude::*, Weight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::traits::{FilterAssetLocation, MatchesFungibles, WeightTrader};
 
@@ -87,7 +87,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
 
     fn buy_weight(
         &mut self,
-        weight: Weight,
+        weight: u64,
         payment: xcm_executor::Assets,
     ) -> Result<xcm_executor::Assets, XcmError> {
         log::trace!(
@@ -108,7 +108,8 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
                 fun: Fungibility::Fungible(_),
             } => {
                 if let Some(units_per_second) = T::get_units_per_second(asset_location.clone()) {
-                    let amount = units_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+                    let amount = units_per_second.saturating_mul(weight as u128)
+                        / (WEIGHT_PER_SECOND.ref_time() as u128);
                     if amount == 0 {
                         return Ok(payment);
                     }
@@ -150,7 +151,8 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
             self.asset_location_and_units_per_second.clone()
         {
             let weight = weight.min(self.weight);
-            let amount = units_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+            let amount = units_per_second.saturating_mul(weight as u128)
+                / (WEIGHT_PER_SECOND.ref_time() as u128);
 
             self.weight = self.weight.saturating_sub(weight);
             self.consumed = self.consumed.saturating_sub(amount);

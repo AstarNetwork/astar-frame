@@ -4,7 +4,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
-    weights::RuntimeDbWeight,
+    weights::{RuntimeDbWeight, Weight},
     PalletId,
 };
 use pallet_dapps_staking::weights;
@@ -129,7 +129,7 @@ pub const WRITE_WEIGHT: u64 = 7;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
-        frame_system::limits::BlockWeights::simple_max(1024);
+        frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
     pub const TestWeights: RuntimeDbWeight = RuntimeDbWeight {
         read: READ_WEIGHT,
         write: WRITE_WEIGHT,
