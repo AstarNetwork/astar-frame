@@ -51,12 +51,16 @@ interface XCM {
     ) external returns (bool);
 
     /**
-     * TODO comprehensive docs
+     * @dev Execute a transaction on a remote chain.
+     * @param parachain_id - destination parachain Id (ignored if is_relay is true)
+     * @param is_relay - if true, destination is relay_chain, if false it is parachain (see previous argument)
+     * @param payment_asset_id - ETH address of the local asset derivate used to pay for execution in the destination chain TODO: this is very weird...
+     * @param payment_amount - amount of payment asset to use for execution payment
+     * @param weight - max weight that remote transaction is allowed to consume
+     * @param call - encoded call data (must be decodable by remote chain)
+     * @return A boolean confirming whether the XCM message sent.
      */
     function remote_transact(
-        // TODO: Should we use a MultiLocation struct instead?
-        // It's less future proof and required destination might have to be something other than just pure parachain!
-        // TODO: related to previous TODO, but perhaps params should be revised?
         uint256 parachain_id,
         bool is_relay,
         address payment_asset_id,

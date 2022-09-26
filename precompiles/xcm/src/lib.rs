@@ -13,8 +13,8 @@ use xcm_executor::traits::{Convert, InvertLocation};
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
 use precompile_utils::{
-    revert, succeed, Address, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
-    RuntimeHelper,
+    revert, succeed, Address, Bytes, EvmDataWriter, EvmResult, FunctionModifier,
+    PrecompileHandleExt, RuntimeHelper,
 };
 
 #[cfg(test)]
@@ -178,7 +178,7 @@ where
         let fee_amount = input.read::<U256>()?;
 
         let weight = input.read::<u64>()?;
-        let remote_call = input.read::<Vec<u8>>()?;
+        let remote_call: Vec<u8> = input.read::<Bytes>()?.into();
 
         log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
          fee_amount: {:?}, weight: {}, remote_call: {:?}",
