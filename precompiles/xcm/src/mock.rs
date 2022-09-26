@@ -293,7 +293,7 @@ parameter_types! {
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
     type Call = Call;
-    type XcmSender = ();
+    type XcmSender = DoNothingRouter;
     type AssetTransactor = ();
     type OriginConverter = ();
     type IsReserve = ();
@@ -314,10 +314,17 @@ parameter_types! {
 
 pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, AnyNetwork>;
 
+pub struct DoNothingRouter;
+impl SendXcm for DoNothingRouter {
+    fn send_xcm(_dest: impl Into<MultiLocation>, _msg: Xcm<()>) -> SendResult {
+        Ok(())
+    }
+}
+
 impl pallet_xcm::Config for Runtime {
     type Event = Event;
     type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-    type XcmRouter = ();
+    type XcmRouter = DoNothingRouter;
     type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
     type XcmExecuteFilter = Everything;
     type XcmExecutor = XcmExecutor<XcmConfig>;

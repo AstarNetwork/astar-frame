@@ -174,14 +174,15 @@ where
         let para_id: u32 = input.read::<U256>()?.low_u32();
         let is_relay = input.read::<bool>()?;
 
-        let fee_asset = input.read::<Address>()?;
+        let fee_asset_addr = input.read::<Address>()?;
         let fee_amount = input.read::<U256>()?;
 
         let weight = input.read::<u64>()?;
         let remote_call = input.read::<Vec<u8>>()?;
 
-        log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset: {:?}, fee_amount: {:?}, weight: {}, remote_call: {:?}",
-        para_id, is_relay, fee_asset, fee_amount, weight, remote_call);
+        log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
+         fee_amount: {:?}, weight: {}, remote_call: {:?}",
+        para_id, is_relay, fee_asset_addr, fee_amount, weight, remote_call);
 
         // Process arguments
         let dest = if is_relay {
@@ -190,19 +191,18 @@ where
             X1(Junction::Parachain(para_id)).into_exterior(1)
         };
 
-        // TODO: can this be written in a nicer format?
-        let fee_asset = R::address_to_asset_id(fee_asset.into())
-            .map(|x| {
-                C::reverse_ref(x)
-                    .map_err(|_| revert("Failed to resolve payment asset id from address"))
-            })
-            .ok_or(revert("Failed to resolve fee asset id from address"))??;
+        let fee_asset = {
+            let fee_asset_id = R::address_to_asset_id(fee_asset_addr.into())
+                .ok_or(revert("Failed to resolve fee asset id from address"))?;
+            C::reverse_ref(fee_asset_id)
+                .map_err(|_| revert("Failed to resolve fee asset multilocation from local id"))?
+        };
+
         if fee_amount > u128::MAX.into() {
             return Err(revert("Fee amount is too big"));
         }
         let fee_amount = fee_amount.low_u128();
 
-        // TODO: check if this is needed, or do SCs do this. Also, it might be incorrect.
         let ancestry = R::LocationInverter::ancestry();
         let fee_multilocation = MultiAsset {
             id: Concrete(fee_asset),
@@ -213,11 +213,10 @@ where
             .map_err(|_| revert("Failed to reanchor fee asset"))?;
 
         // Prepare XCM
-        // TODO
         let xcm = Xcm(vec![
             WithdrawAsset(fee_multilocation.clone().into()),
             BuyExecution {
-                fees: fee_multilocation.into(),
+                fees: fee_multilocation.clone().into(),
                 weight_limit: WeightLimit::Limited(weight),
             },
             Transact {
@@ -227,11 +226,13 @@ where
             },
         ]);
 
+        log::trace!(target: "xcm-precompile:remote_transact", "Processed arguments: dest: {:?}, fee asset: {:?}, XCM: {:?}", dest, fee_multilocation, xcm);
+
         // Build call with origin.
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
         let call = pallet_xcm::Call::<R>::send {
             dest: Box::new(dest.into()),
-            message: Box::new(xcm::VersionedXcm::V2(xcm)), // TODO: why doesn't into() work here? Shouldn't need to wrap manually. Check polkadot repo.
+            message: Box::new(xcm::VersionedXcm::V2(xcm)), // TODO: could this be problematic in case destination doesn't support v2?
         };
 
         // Dispatch a call.
