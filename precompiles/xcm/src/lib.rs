@@ -27,7 +27,7 @@ mod tests;
 pub enum Action {
     AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
     AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
-    RemoteTransact = "remote_transact(uint256,bool,address,uint256,uint64,bytes)",
+    RemoteTransact = "remote_transact(uint256,bool,address,uint256,uint64,bytes,uint64)",
 }
 
 /// A precompile that expose XCM related functions.
