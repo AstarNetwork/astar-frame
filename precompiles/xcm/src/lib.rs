@@ -27,7 +27,7 @@ mod tests;
 pub enum Action {
     AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
     AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
-    RemoteTransact = "remote_transact(uint256,bool,address,uint256,uint64,bytes,uint64)",
+    RemoteTransact = "remote_transact(uint256,bool,address,uint256,bytes,uint64)",
 }
 
 /// A precompile that expose XCM related functions.
@@ -177,25 +177,12 @@ where
         let fee_asset_addr = input.read::<Address>()?;
         let fee_amount = input.read::<U256>()?;
 
-        let total_weight = input.read::<u64>()?;
         let remote_call: Vec<u8> = input.read::<Bytes>()?.into();
-        let call_weight = input.read::<u64>()?;
+        let transact_weight = input.read::<u64>()?;
 
         log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
-         fee_amount: {:?}, total_weight: {}, remote_call: {:?}, call_weight: {}",
-        para_id, is_relay, fee_asset_addr, fee_amount, total_weight, remote_call, call_weight);
-
-        // Sanity check
-        if call_weight > total_weight {
-            return Err(revert("Call weight cannot be greater than total weight"));
-        }
-        {
-            // Assumption that remote XCM instruction costs 1_000_000_000 units of weight
-            let remote_xcm_weight: u64 = 4 * 1_000_000_000;
-            if total_weight < call_weight.saturating_add(remote_xcm_weight) {
-                log::warn!("Total weight might not be enough to satisfy both XCM instructions weight and Transact weight.");
-            }
-        }
+         fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
+        para_id, is_relay, fee_asset_addr, fee_amount, remote_call, transact_weight);
 
         // Process arguments
         let dest = if is_relay {
@@ -230,11 +217,11 @@ where
             WithdrawAsset(fee_multilocation.clone().into()),
             BuyExecution {
                 fees: fee_multilocation.clone().into(),
-                weight_limit: WeightLimit::Limited(total_weight),
+                weight_limit: WeightLimit::Unlimited,
             },
             Transact {
                 origin_type: OriginKind::SovereignAccount,
-                require_weight_at_most: call_weight,
+                require_weight_at_most: transact_weight,
                 call: remote_call.into(),
             },
         ]);

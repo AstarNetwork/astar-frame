@@ -55,10 +55,9 @@ interface XCM {
      * @param parachain_id - destination parachain Id (ignored if is_relay is true)
      * @param is_relay - if true, destination is relay_chain, if false it is parachain (see previous argument)
      * @param payment_asset_id - ETH address of the local asset derivate used to pay for execution in the destination chain
-     * @param payment_amount - amount of payment asset to use for execution payment
-     * @param total_weight - total weight we should buy execution time for. `payment_asset` should be sufficient to pay for this weight.
+     * @param payment_amount - amount of payment asset to use for execution payment - should cover cost of XCM instructions + Transact call weight.
      * @param call - encoded call data (must be decodable by remote chain)
-     * @param call_weight - max weight that remote call can consume. This can be measured on the destination chain.
+     * @param transact_weight - max weight that the encoded call is allowed to consume in the destination chain
      * @return bool confirmation whether the XCM message sent.
      */
     function remote_transact(
@@ -66,8 +65,7 @@ interface XCM {
         bool is_relay,
         address payment_asset_id,
         uint256 payment_amount,
-        uint64 total_weight ,
         bytes calldata call,
-        uint64 call_weight
+        uint64 transact_weight
     ) external returns (bool);
 }

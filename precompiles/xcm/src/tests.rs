@@ -98,7 +98,6 @@ fn remote_transact_works() {
                     .write(true)
                     .write(Address::from(Runtime::asset_id_to_address(1_u128)))
                     .write(U256::from(367))
-                    .write(U256::from(10_000_000_000u64))
                     .write(vec![0xff_u8, 0xaa, 0x77, 0x00])
                     .write(U256::from(3_000_000_000u64))
                     .build(),
