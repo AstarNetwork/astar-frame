@@ -84,3 +84,25 @@ fn correct_arguments_works() {
             .execute_returns(EvmDataWriter::new().write(true).build());
     });
 }
+
+#[test]
+fn remote_transact_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        // SS58
+        precompiles()
+            .prepare_test(
+                TestAccount::Alice,
+                PRECOMPILE_ADDRESS,
+                EvmDataWriter::new_with_selector(Action::RemoteTransact)
+                    .write(U256::from(0_u64))
+                    .write(true)
+                    .write(Address::from(Runtime::asset_id_to_address(1_u128)))
+                    .write(U256::from(367))
+                    .write(vec![0xff_u8, 0xaa, 0x77, 0x00])
+                    .write(U256::from(3_000_000_000u64))
+                    .build(),
+            )
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(true).build());
+    });
+}
