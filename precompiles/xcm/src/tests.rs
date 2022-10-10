@@ -85,6 +85,7 @@ fn assets_withdraw_works() {
     });
 }
 
+#[test]
 fn remote_transact_works() {
     ExtBuilder::default().build().execute_with(|| {
         // SS58
