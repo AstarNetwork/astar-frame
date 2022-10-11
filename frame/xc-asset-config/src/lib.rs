@@ -193,7 +193,7 @@ pub mod pallet {
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
             T::ManagerOrigin::ensure_origin(origin)?;
-            
+
             // Ensure such an assetId does not exist
             ensure!(
                 !AssetIdToLocation::<T>::contains_key(&asset_id),
