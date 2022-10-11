@@ -49,7 +49,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
     use crate::weights::WeightInfo;
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, traits::EnsureOrigin};
     use frame_system::pallet_prelude::*;
     use parity_scale_codec::HasCompact;
     use sp_std::boxed::Box;
@@ -109,6 +109,11 @@ pub mod pallet {
 
         /// Callback handling for cross-chain asset registration or unregistration.
         type XcAssetChanged: XcAssetChanged<Self>;
+
+        /// The required origin for managing cross-chain asset configuration
+        ///
+        /// Should most likely be root.
+        type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
 
         type WeightInfo: WeightInfo;
     }
@@ -217,7 +222,7 @@ pub mod pallet {
             asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] units_per_second: u128,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location = *asset_location;
 
@@ -243,7 +248,7 @@ pub mod pallet {
             new_asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let new_asset_location = *new_asset_location;
 
@@ -278,7 +283,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location = *asset_location;
 
@@ -294,7 +299,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location =
                 AssetIdToLocation::<T>::get(&asset_id).ok_or(Error::<T>::AssetDoesNotExist)?;
