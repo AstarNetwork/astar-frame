@@ -92,6 +92,7 @@ impl pallet_xc_asset_config::Config for Test {
     type Event = Event;
     type AssetId = AssetId;
     type XcAssetChanged = ();
+    type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 
