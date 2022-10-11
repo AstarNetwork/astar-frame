@@ -192,8 +192,8 @@ pub mod pallet {
             asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
-
+            T::ManagerOrigin::ensure_origin(origin)?;
+            
             // Ensure such an assetId does not exist
             ensure!(
                 !AssetIdToLocation::<T>::contains_key(&asset_id),
