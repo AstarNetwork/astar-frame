@@ -28,6 +28,10 @@ pub enum Action {
     AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
     AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
     RemoteTransact = "remote_transact(uint256,bool,address,uint256,bytes,uint64)",
+    AssetsReserveTransferNative =
+        "assets_reserve_transfer(address[],uint256[],bytes32,bool,uint256,uint256)",
+    AssetsReserveTransferEvm =
+        "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
 }
 
 /// A precompile that expose XCM related functions.
@@ -58,6 +62,12 @@ where
             }
             Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::Account20),
             Action::RemoteTransact => Self::remote_transact(handle),
+            Action::AssetsReserveTransferNative => {
+                Self::assets_reserve_transfer(handle, BeneficiaryType::Account32)
+            }
+            Action::AssetsReserveTransferEvm => {
+                Self::assets_reserve_transfer(handle, BeneficiaryType::Account20)
+            }
         }
     }
 }
@@ -233,6 +243,91 @@ where
         let call = pallet_xcm::Call::<R>::send {
             dest: Box::new(dest.into()),
             message: Box::new(xcm::VersionedXcm::V2(xcm)), // TODO: could this be problematic in case destination doesn't support v2?
+        };
+
+        // Dispatch a call.
+        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn assets_reserve_transfer(
+        handle: &mut impl PrecompileHandle,
+        beneficiary_type: BeneficiaryType,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(6)?;
+
+        // Read arguments and check it
+        let assets: Vec<MultiLocation> = input
+            .read::<Vec<Address>>()?
+            .iter()
+            .cloned()
+            .filter_map(|address| {
+                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
+            })
+            .collect();
+        let amounts_raw = input.read::<Vec<U256>>()?;
+        if amounts_raw.iter().any(|x| *x > u128::MAX.into()) {
+            return Err(revert("Asset amount is too big"));
+        }
+        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
+
+        // Check that assets list is valid:
+        // * all assets resolved to multi-location
+        // * all assets has corresponded amount
+        if assets.len() != amounts.len() || assets.is_empty() {
+            return Err(revert("Assets resolution failure."));
+        }
+
+        let beneficiary: MultiLocation = match beneficiary_type {
+            BeneficiaryType::Account32 => {
+                let recipient: [u8; 32] = input.read::<H256>()?.into();
+                X1(Junction::AccountId32 {
+                    network: Any,
+                    id: recipient,
+                })
+            }
+            BeneficiaryType::Account20 => {
+                let recipient: H160 = input.read::<Address>()?.into();
+                X1(Junction::AccountKey20 {
+                    network: Any,
+                    key: recipient.to_fixed_bytes(),
+                })
+            }
+        }
+        .into();
+
+        let is_relay = input.read::<bool>()?;
+        let parachain_id: u32 = input.read::<U256>()?.low_u32();
+        let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
+
+        if fee_asset_item as usize > assets.len() {
+            return Err(revert("Bad fee index."));
+        }
+
+        // Prepare pallet-xcm call arguments
+        let dest = if is_relay {
+            MultiLocation::parent()
+        } else {
+            X1(Junction::Parachain(parachain_id)).into_exterior(1)
+        };
+
+        let assets: MultiAssets = assets
+            .iter()
+            .cloned()
+            .zip(amounts.iter().cloned())
+            .map(Into::into)
+            .collect::<Vec<MultiAsset>>()
+            .into();
+
+        // Build call with origin.
+        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
+        let call = pallet_xcm::Call::<R>::reserve_transfer_assets {
+            dest: Box::new(dest.into()),
+            beneficiary: Box::new(beneficiary.into()),
+            assets: Box::new(assets.into()),
+            fee_asset_item,
         };
 
         // Dispatch a call.
