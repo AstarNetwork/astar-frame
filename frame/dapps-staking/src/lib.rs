@@ -80,6 +80,20 @@ pub type BalanceOf<T> =
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
 
+// This represents the max assumed vector length that any storage item should have. In particular, this relates to `UnbondingInfo` and `StakerInfo`.
+// In structs which are bound in size, `MaxEncodedLen` can just be derived but that's not the case for standard `vec`.
+// To fix this 100% correctly, we'd need to do one of the following:
+//
+// - Use `BoundedVec` instead of `Vec` and do storage migration
+// - Introduce a new type `S: Get<u32>` into the aforementioned structs and use it to inject max allowed size, thus allowing us to correctly calculate max encoded len
+//
+// The issue with first approach is that it requires storage migration which we want to avoid unless it's really necessary.
+// The issue with second approach is that it makes code much more difficult to work with since all of it will be ridden with injections of the `S` type.
+// 
+// Since dApps staking has been stable for long time and there are plans to redesign & refactor it, doing neither of the above makes sense, timewise.
+// So we use an assumption that Vec len won't go over the following constant.
+const MAX_ASSUMED_VEC_LEN: u32 = 10;
+
 /// DApp State descriptor
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 enum DAppState {
@@ -234,8 +248,11 @@ pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
 }
 
 impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> MaxEncodedLen for StakerInfo<Balance> {
+    // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
     fn max_encoded_len() -> usize {
-        0_usize
+		codec::Compact(MAX_ASSUMED_VEC_LEN)
+			.encoded_size()
+			.saturating_add((MAX_ASSUMED_VEC_LEN as usize).saturating_mul(Balance::max_encoded_len()))
     }
 }
 
@@ -420,7 +437,12 @@ impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> MaxEncodedL
     for UnbondingInfo<Balance>
 {
     fn max_encoded_len() -> usize {
-        0_usize
+        // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
+        fn max_encoded_len() -> usize {
+            codec::Compact(MAX_ASSUMED_VEC_LEN)
+                .encoded_size()
+                .saturating_add((MAX_ASSUMED_VEC_LEN as usize).saturating_mul(Balance::max_encoded_len()))
+        }
     }
 }
 
