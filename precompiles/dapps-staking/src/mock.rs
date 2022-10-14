@@ -234,7 +234,9 @@ impl pallet_timestamp::Config for TestRuntime {
     type WeightInfo = ();
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum MockSmartContract<AccountId32> {
     Evm(sp_core::H160),
     Wasm(AccountId32),
