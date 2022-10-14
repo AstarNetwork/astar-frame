@@ -8,7 +8,7 @@ use frame_support::{
 };
 use sp_core::{H160, H256};
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
@@ -144,7 +144,9 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxEraStakeValues = MaxEraStakeValues;
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum MockSmartContract<AccountId> {
     Evm(sp_core::H160),
     Wasm(AccountId),

@@ -227,7 +227,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> EraStake<Balance> {
 ///
 /// **NOTE:** It is important to understand that staker **DID NOT** claim any rewards during this period.
 ///
-#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, TypeInfo)] // TODO! MaxEncodedLen
+#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
     // Size of this list would be limited by a configurable constant
     stakes: Vec<EraStake<Balance>>,
@@ -235,7 +235,7 @@ pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
 
 impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> MaxEncodedLen for StakerInfo<Balance> {
     fn max_encoded_len() -> usize {
-        123_usize
+        0_usize
     }
 }
 
@@ -412,7 +412,6 @@ where
 /// This is a convenience struct that provides various utility methods to help with unbonding handling.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> {
-    // TODO
     // Vector of unlocking chunks. Sorted in ascending order in respect to unlock_era.
     unlocking_chunks: Vec<UnlockingChunk<Balance>>,
 }
