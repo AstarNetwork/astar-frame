@@ -32,7 +32,6 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(crate) trait Store)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     // Negative imbalance type of this pallet.
@@ -47,7 +46,7 @@ pub mod pallet {
             + ReservableCurrency<Self::AccountId>;
 
         /// Describes smart contract in the context required by dapps staking.
-        type SmartContract: Default + Parameter + Member;
+        type SmartContract: Default + Parameter + Member + MaxEncodedLen;
 
         /// Number of blocks per era.
         #[pallet::constant]
