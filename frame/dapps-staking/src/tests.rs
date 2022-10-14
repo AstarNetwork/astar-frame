@@ -2132,3 +2132,12 @@ pub fn set_contract_stake_info() {
         );
     })
 }
+
+#[test]
+fn custom_max_encoded_len() {
+    // 10 x (4 + 16) + 1 = 10 x 20 + 1 = 201
+    assert_eq!(UnbondingInfo::<u128>::max_encoded_len(), 201);
+
+    // 10 x (4 + 16) + 1 = 10 x 20 + 1 = 201
+    assert_eq!(StakerInfo::<u128>::max_encoded_len(), 201);
+}
