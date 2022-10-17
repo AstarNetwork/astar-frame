@@ -2135,9 +2135,15 @@ pub fn set_contract_stake_info() {
 
 #[test]
 fn custom_max_encoded_len() {
-    // 10 x (4 + 16) + 1 = 10 x 20 + 1 = 201
-    assert_eq!(UnbondingInfo::<u128>::max_encoded_len(), 201);
+    let max_unbonding_info_len = 10 * (4 + 16) + 1;
+    assert_eq!(
+        UnbondingInfo::<u128>::max_encoded_len(),
+        max_unbonding_info_len as usize
+    );
 
-    // 10 x (4 + 16) + 1 = 10 x 20 + 1 = 201
-    assert_eq!(StakerInfo::<u128>::max_encoded_len(), 201);
+    let max_staker_info_len = 10 * (4 + 16) + 1;
+    assert_eq!(
+        StakerInfo::<u128>::max_encoded_len(),
+        max_staker_info_len as usize
+    );
 }
