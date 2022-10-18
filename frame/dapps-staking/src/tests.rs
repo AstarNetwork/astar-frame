@@ -2132,3 +2132,18 @@ pub fn set_contract_stake_info() {
         );
     })
 }
+
+#[test]
+fn custom_max_encoded_len() {
+    let max_unbonding_info_len = 10 * (4 + 16) + 1;
+    assert_eq!(
+        UnbondingInfo::<u128>::max_encoded_len(),
+        max_unbonding_info_len as usize
+    );
+
+    let max_staker_info_len = 10 * (4 + 16) + 1;
+    assert_eq!(
+        StakerInfo::<u128>::max_encoded_len(),
+        max_staker_info_len as usize
+    );
+}
