@@ -87,4 +87,8 @@ interface DappsStaking {
     /// @param amount: The amount to transfer from origin to target
     /// @param target_smart_contract: The target smart contract address
     function nomination_transfer(address origin_smart_contract, uint128 amount, address target_smart_contract) external;
+
+    /// @notice Rebond and stake all funds that are in the unbonding process.
+    /// @param smart_contract: The smart contract address to stake
+    function rebond_and_stake(address smart_contract) external;
 }

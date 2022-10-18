@@ -375,6 +375,37 @@ fn nomination_transfer() {
         });
 }
 
+#[test]
+fn rebond_and_stake_is_ok() {
+    ExternalityBuilder::default()
+        .with_balances(vec![
+            (TestAccount::Alex.into(), 200 * AST),
+            (TestAccount::Dino.into(), 200 * AST),
+            (TestAccount::Bobo.into(), 200 * AST),
+        ])
+        .build()
+        .execute_with(|| {
+            initialize_first_block();
+
+            // register new contract by Alex
+            let developer = TestAccount::Alex.into();
+            register_and_verify(developer, TEST_CONTRACT);
+
+            let amount_staked = 100 * AST;
+            bond_stake_and_verify(TestAccount::Bobo, TEST_CONTRACT, amount_staked);
+
+            // unstak all
+            let era = 2;
+            advance_to_era(era);
+            unbond_unstake_and_verify(TestAccount::Bobo, TEST_CONTRACT, amount_staked);
+
+            // rebond unbonded funds
+            let era = 3;
+            advance_to_era(era);
+            rebond_and_stake_verify(TestAccount::Bobo, TEST_CONTRACT, amount_staked);
+        })
+}
+
 // ****************************************************************************************************
 // Helper functions
 // ****************************************************************************************************
@@ -590,6 +621,33 @@ fn nomination_transfer_verify(
     assert_eq!(
         final_target_staker_info.latest_staked_value() - transfer_amount,
         init_target_staker_info.latest_staked_value()
+    );
+}
+
+// Since rebond_amount is not accessible (private field), need to provide expected amout to be rebonded.
+fn rebond_and_stake_verify(staker: TestAccount, contract: H160, expected_rebond_amount: Balance) {
+    let smart_contract =
+        decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
+
+    let staker_acc_id = AccountId32::from(staker.clone());
+    let init_staker_info = DappsStaking::staker_info(&staker_acc_id, &smart_contract);
+
+    precompiles()
+        .prepare_test(
+            staker.clone(),
+            precompile_address(),
+            EvmDataWriter::new_with_selector(Action::RebondAndStake)
+                .write(Address(contract.clone()))
+                .build(),
+        )
+        .expect_no_logs()
+        .execute_returns(EvmDataWriter::new().write(true).build());
+
+    let final_staker_info = DappsStaking::staker_info(&staker_acc_id, &smart_contract);
+
+    assert_eq!(
+        final_staker_info.latest_staked_value(),
+        init_staker_info.latest_staked_value() + expected_rebond_amount
     );
 }
 

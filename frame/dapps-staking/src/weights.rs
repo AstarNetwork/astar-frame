@@ -14,6 +14,7 @@ pub trait WeightInfo {
 	fn developer_pre_approval() -> Weight;
 	fn bond_and_stake() -> Weight;
 	fn unbond_and_unstake() -> Weight;
+	fn rebond_and_stake() -> Weight;
 	fn withdraw_unbonded() -> Weight;
 	fn claim_staker_without_restake() -> Weight;
 	fn claim_staker_with_restake() -> Weight;
@@ -96,6 +97,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_ref_time(134_480_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(8 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
+	}
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
+	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
+	// Storage: DappsStaking Ledger (r:1 w:1)
+	// Storage: DappsStaking CurrentEra (r:1 w:0)
+	// Storage: DappsStaking ContractEraStake (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
+	// Storage: Balances Locks (r:1 w:1)
+	fn rebond_and_stake() -> Weight {
+		Weight::from_ref_time(133_638_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(8 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	// Storage: DappsStaking PalletDisabled (r:1 w:0)
 	// Storage: DappsStaking Ledger (r:1 w:1)
@@ -245,6 +259,19 @@ impl WeightInfo for () {
 	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
 	fn unbond_and_unstake() -> Weight {
 		Weight::from_ref_time(134_480_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(8 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
+	}
+	// Storage: DappsStaking PalletDisabled (r:1 w:0)
+	// Storage: DappsStaking RegisteredDapps (r:1 w:0)
+	// Storage: DappsStaking Ledger (r:1 w:1)
+	// Storage: DappsStaking CurrentEra (r:1 w:0)
+	// Storage: DappsStaking ContractEraStake (r:1 w:1)
+	// Storage: DappsStaking GeneralStakerInfo (r:1 w:1)
+	// Storage: DappsStaking GeneralEraInfo (r:1 w:1)
+	// Storage: Balances Locks (r:1 w:1)
+	fn rebond_and_stake() -> Weight {
+		Weight::from_ref_time(133_638_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(8 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}

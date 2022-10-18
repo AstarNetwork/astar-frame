@@ -357,6 +357,24 @@ where
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
+    fn rebond_and_stake(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+
+        // parse contract's address
+        let contract_h160 = input.read::<Address>()?.0;
+        let contract_id = Self::decode_smart_contract(contract_h160)?;
+        log::trace!(target: "ds-precompile", "rebond_and_stake {:?}", contract_id);
+
+        // Build call with origin.
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_dapps_staking::Call::<R>::rebond_and_stake { contract_id };
+
+        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
     /// Helper method to decode type SmartContract enum
     pub fn decode_smart_contract(
         contract_h160: H160,
@@ -422,6 +440,7 @@ pub enum Action {
     SetRewardDestination = "set_reward_destination(uint8)",
     WithdrawFromUnregistered = "withdraw_from_unregistered(address)",
     NominationTransfer = "nomination_transfer(address,uint128,address)",
+    RebondAndStake = "rebond_and_stake(address)",
 }
 
 impl<R> Precompile for DappsStakingWrapper<R>
@@ -469,6 +488,7 @@ where
             Action::SetRewardDestination => Self::set_reward_destination(handle),
             Action::WithdrawFromUnregistered => Self::withdraw_from_unregistered(handle),
             Action::NominationTransfer => Self::nomination_transfer(handle),
+            Action::RebondAndStake => Self::rebond_and_stake(handle),
         }
     }
 }

@@ -217,6 +217,27 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::NominationTransfer(staker, origin_contract_id, T::MinimumStakingAmount::get(), target_contract_id).into());
     }
 
+    rebond_and_stake {
+        initialize::<T>();
+
+        let (_, contract_id) = register_contract::<T>(1)?;
+        prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
+
+        let staker = whitelisted_caller();
+        let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
+        let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
+        let unstake_amount = stake_amount / 2u32.into();
+
+        // rebond_and_stake works only when user has unlocking_chunks.
+        // before executing it, need to prepare the valid state by bond and unbond.
+        // unbonded funds remain as unlocking_chunks unless it is withdrawn.
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
+        DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), unstake_amount)?;
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
+    verify {
+        assert_last_event::<T>(Event::<T>::RebondAndStake(staker, contract_id, unstake_amount).into());
+    }
+
     claim_staker_with_restake {
         initialize::<T>();
         let (_, contract_id) = register_contract::<T>(1)?;
