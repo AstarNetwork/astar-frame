@@ -284,12 +284,10 @@ where
 
         let value = handle.context().apparent_value;
         if value > U256::zero() {
-            assets.push(
-                MultiLocation {
-                    parents: 0,
-                    interior: Here,
-                }
-            );
+            assets.push(MultiLocation {
+                parents: 0,
+                interior: Here,
+            });
 
             amounts.push(value.low_u128());
         }
