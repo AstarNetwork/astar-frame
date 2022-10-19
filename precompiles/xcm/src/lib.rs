@@ -261,7 +261,7 @@ where
         input.expect_arguments(6)?;
 
         // Read arguments and check it
-        let assets: Vec<MultiLocation> = input
+        let mut assets: Vec<MultiLocation> = input
             .read::<Vec<Address>>()?
             .iter()
             .cloned()
@@ -273,13 +273,25 @@ where
         if amounts_raw.iter().any(|x| *x > u128::MAX.into()) {
             return Err(revert("Asset amount is too big"));
         }
-        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
+        let mut amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
         if assets.len() != amounts.len() || assets.is_empty() {
             return Err(revert("Assets resolution failure."));
+        }
+
+        let value = handle.context().apparent_value;
+        if value > U256::zero() {
+            assets.push(
+                MultiLocation {
+                    parents: 0,
+                    interior: Here,
+                }
+            );
+
+            amounts.push(value.low_u128());
         }
 
         let beneficiary: MultiLocation = match beneficiary_type {
