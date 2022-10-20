@@ -54,10 +54,21 @@ where
 
         let selector = handle.read_selector()?;
 
-        handle.check_function_modifier(FunctionModifier::NonPayable)?;
-
+        // Check function modifiers
         match selector {
-            // Dispatchables
+            Action::AssetsReserveTransferNative | Action::AssetsReserveTransferEvm => {
+                // assets reserve use EVM msg.value to deal with native assets,
+                // this require function to be defined as payable
+                handle.check_function_modifier(FunctionModifier::Payable)?;
+            }
+
+            _ => {
+                handle.check_function_modifier(FunctionModifier::NonPayable)?;
+            }
+        }
+
+        // Dispatch the call
+        match selector {
             Action::AssetsWithdrawNative => {
                 Self::assets_withdraw(handle, BeneficiaryType::Account32)
             }
@@ -284,11 +295,16 @@ where
 
         let value = handle.context().apparent_value;
         if value > U256::zero() {
+            handle.check_function_modifier(FunctionModifier::NonPayable)?;
+
             assets.push(MultiLocation {
                 parents: 0,
                 interior: Here,
             });
 
+            if value > u128::MAX.into() {
+                return Err(revert("value is too big"));
+            }
             amounts.push(value.low_u128());
         }
 
