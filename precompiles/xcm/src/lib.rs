@@ -57,7 +57,7 @@ where
         // Check function modifiers
         match selector {
             Action::AssetsReserveTransferNative | Action::AssetsReserveTransferEvm => {
-                // assets reserve use EVM msg.value to deal with native assets,
+                // these precompiles use EVM msg.value to deal with native assets,
                 // this require function to be defined as payable
                 handle.check_function_modifier(FunctionModifier::Payable)?;
             }
@@ -295,8 +295,6 @@ where
 
         let value = handle.context().apparent_value;
         if value > U256::zero() {
-            handle.check_function_modifier(FunctionModifier::NonPayable)?;
-
             assets.push(MultiLocation {
                 parents: 0,
                 interior: Here,
