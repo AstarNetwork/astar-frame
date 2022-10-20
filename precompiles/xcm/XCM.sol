@@ -90,7 +90,7 @@ interface XCM {
         bool      is_relay,
         uint256   parachain_id,
         uint256   fee_index
-    ) external returns (bool);
+    ) external payable returns (bool);
 
     /**
      * @dev Reserve transfer using PalletXCM call.
@@ -113,5 +113,5 @@ interface XCM {
         bool      is_relay,
         uint256   parachain_id,
         uint256   fee_index
-    ) external returns (bool);
+    ) external payable returns (bool);
 }
