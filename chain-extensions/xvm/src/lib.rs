@@ -29,7 +29,7 @@ impl TryFrom<u16> for XvmFuncId {
     }
 }
 
-pub struct XvmExtension<T>(PhantomType<T>);
+pub struct XvmExtension<T>(PhantomData<T>);
 
 impl<T> ChainExtension<T> for XvmExtension<T>
 where
@@ -37,7 +37,7 @@ where
 {
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
-        E: Ext<T = Runtime>,
+        E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let func_id = env.func_id().try_into()?;
