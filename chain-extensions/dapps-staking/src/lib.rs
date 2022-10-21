@@ -13,7 +13,7 @@ use dapps_staking_chain_extension_types::{
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
-    Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
+    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
 };
 use pallet_dapps_staking::{RewardDestination, WeightInfo};
 use sp_std::marker::PhantomData;
@@ -67,17 +67,13 @@ impl TryFrom<u32> for DappsStakingFunc {
 
 pub struct DappsStakingExtension<R>(PhantomData<R>);
 
-impl<T: pallet_dapps_staking::Config> ChainExtensionExec<T> for DappsStakingExtension<T> {
-    fn execute_func<E>(
-        func_id: u32,
-        env: Environment<E, InitState>,
-    ) -> Result<RetVal, DispatchError>
+impl ChainExtension<T> for DappsStakingExtension<T> {
+    fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
-        E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId:
-            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]> + From<[u8; 32]>,
+        E: Ext<T = Runtime>,
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        let func_id = DappsStakingFunc::try_from(func_id)?;
+        let func_id = env.func_id().into();
         let mut env = env.buf_in_buf_out();
 
         match func_id {

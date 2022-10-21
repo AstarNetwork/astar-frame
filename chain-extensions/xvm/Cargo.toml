@@ -23,7 +23,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29", default-features = false }
 
 # Astar
-chain-extension-trait = { path = "../trait", default-features = false }
 pallet-xvm = { path = "../../frame/pallet-xvm", default-features = false }
 xvm-chain-extension-types = { path = "../types/xvm", default-features = false }
 
