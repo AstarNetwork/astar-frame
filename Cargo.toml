@@ -3,7 +3,6 @@ members = [
 	"chain-extensions/dapps-staking",
 	"chain-extensions/rmrk",
 	"chain-extensions/xvm",
-	"chain-extensions/trait",
 	"chain-extensions/types/*",
 	"frame/block-reward",
 	"frame/collator-selection",
