@@ -29,6 +29,8 @@ impl TryFrom<u16> for XvmFuncId {
     }
 }
 
+#[derive(Default)]
+/// XVM chain extension.
 pub struct XvmExtension<T>(PhantomData<T>);
 
 impl<T> ChainExtension<T> for XvmExtension<T>
