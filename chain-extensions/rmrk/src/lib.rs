@@ -17,9 +17,14 @@ use rmrk_traits::{
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
-#[derive(Default)]
 /// RMRK chain extension.
 pub struct RmrkExtension<T>(PhantomData<T>);
+
+impl<T> Default for DappsStakingExtension<T> {
+    fn default() -> Self {
+        RmrkExtension(PhantomData)
+    }
+}
 
 impl<T> ChainExtension<T> for RmrkExtension<T>
 where

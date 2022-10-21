@@ -64,9 +64,14 @@ impl TryFrom<u16> for DappsStakingFunc {
     }
 }
 
-#[derive(Default)]
 /// Dapps Staking chain extension.
 pub struct DappsStakingExtension<T>(PhantomData<T>);
+
+impl<T> Default for DappsStakingExtension<T> {
+    fn default() -> Self {
+        DappsStakingExtension(PhantomData)
+    }
+}
 
 impl<T> ChainExtension<T> for DappsStakingExtension<T>
 where

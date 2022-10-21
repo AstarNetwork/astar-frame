@@ -29,9 +29,14 @@ impl TryFrom<u16> for XvmFuncId {
     }
 }
 
-#[derive(Default)]
 /// XVM chain extension.
 pub struct XvmExtension<T>(PhantomData<T>);
+
+impl<T> Default for DappsStakingExtension<T> {
+    fn default() -> Self {
+        RmrkExtension(PhantomData)
+    }
+}
 
 impl<T> ChainExtension<T> for XvmExtension<T>
 where
