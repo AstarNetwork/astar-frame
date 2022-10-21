@@ -3,12 +3,12 @@
 use frame_support::weights::Weight;
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
-    Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
+    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
 };
 use pallet_xvm::XvmContext;
 use sp_runtime::DispatchError;
+use sp_std::marker::PhantomData;
 
-use chain_extension_trait::ChainExtensionExec;
 use xvm_chain_extension_types::{XvmCallArgs, XvmExecutionResult};
 
 enum XvmFuncId {
@@ -16,10 +16,10 @@ enum XvmFuncId {
     // TODO: expand with other calls too
 }
 
-impl TryFrom<u32> for XvmFuncId {
+impl TryFrom<u16> for XvmFuncId {
     type Error = DispatchError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(XvmFuncId::XvmCall),
             _ => Err(DispatchError::Other(
@@ -29,21 +29,25 @@ impl TryFrom<u32> for XvmFuncId {
     }
 }
 
-pub struct XvmExtension;
+/// XVM chain extension.
+pub struct XvmExtension<T>(PhantomData<T>);
 
-impl<T> ChainExtensionExec<T> for XvmExtension
+impl<T> Default for XvmExtension<T> {
+    fn default() -> Self {
+        XvmExtension(PhantomData)
+    }
+}
+
+impl<T> ChainExtension<T> for XvmExtension<T>
 where
     T: pallet_contracts::Config + pallet_xvm::Config,
 {
-    fn execute_func<E>(
-        func_id: u32,
-        env: Environment<'_, '_, E, InitState>,
-    ) -> Result<RetVal, DispatchError>
+    fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        let func_id: XvmFuncId = func_id.try_into()?;
+        let func_id = env.func_id().try_into()?;
         let mut env = env.buf_in_buf_out();
 
         match func_id {
