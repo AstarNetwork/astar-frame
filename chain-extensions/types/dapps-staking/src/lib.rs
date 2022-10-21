@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use frame_support::pallet_prelude::MaxEncodedLen;
-use sp_core::H160;
 use sp_runtime::{DispatchError, ModuleError};
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
