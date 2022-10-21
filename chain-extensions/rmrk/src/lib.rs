@@ -20,7 +20,7 @@ use sp_std::{marker::PhantomData, vec::Vec};
 /// RMRK chain extension.
 pub struct RmrkExtension<T>(PhantomData<T>);
 
-impl<T> Default for DappsStakingExtension<T> {
+impl<T> Default for RmrkExtension<T> {
     fn default() -> Self {
         RmrkExtension(PhantomData)
     }
