@@ -113,12 +113,12 @@ impl<Runtime, Instance> PrecompileSet for Erc20AssetsPrecompileSet<Runtime, Inst
 where
     Instance: 'static,
     Runtime: pallet_assets::Config<Instance> + pallet_evm::Config + frame_system::Config,
-    Runtime::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
-    <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
+    Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    Runtime::RuntimeCall: From<pallet_assets::Call<Runtime, Instance>>,
+    <Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
     Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
-    <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: OriginTrait,
 {
     fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<EvmResult<PrecompileOutput>> {
         let address = handle.code_address();
@@ -187,12 +187,12 @@ impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance>
 where
     Instance: 'static,
     Runtime: pallet_assets::Config<Instance> + pallet_evm::Config + frame_system::Config,
-    Runtime::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
-    <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
+    Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    Runtime::RuntimeCall: From<pallet_assets::Call<Runtime, Instance>>,
+    <Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
     Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
-    <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: OriginTrait,
 {
     fn total_supply(
         asset_id: AssetIdOf<Runtime, Instance>,

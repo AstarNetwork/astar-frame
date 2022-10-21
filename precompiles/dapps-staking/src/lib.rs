@@ -46,9 +46,9 @@ impl<R> DappsStakingWrapper<R>
 where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
     BalanceOf<R>: EvmData,
-    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    R::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    R::Call: From<pallet_dapps_staking::Call<R>>,
+    <R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
+    R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    R::RuntimeCall: From<pallet_dapps_staking::Call<R>>,
     R::AccountId: From<[u8; 32]>,
 {
     /// Fetch current era from CurrentEra storage map
@@ -427,10 +427,10 @@ pub enum Action {
 impl<R> Precompile for DappsStakingWrapper<R>
 where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
-    R::Call: From<pallet_dapps_staking::Call<R>>
+    R::RuntimeCall: From<pallet_dapps_staking::Call<R>>
         + Dispatchable<PostInfo = PostDispatchInfo>
         + GetDispatchInfo,
-    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
+    <R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
     BalanceOf<R>: EvmData,
     R::AccountId: From<[u8; 32]>,
 {

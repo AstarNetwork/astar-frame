@@ -52,8 +52,8 @@ pub mod pallet_test_notifier {
     #[pallet::config]
     pub trait Config: frame_system::Config + crate::Config {
         type Event: IsType<<Self as frame_system::Config>::Event> + From<Event<Self>>;
-        type Origin: IsType<<Self as frame_system::Config>::Origin>
-            + Into<Result<crate::Origin, <Self as Config>::Origin>>;
+        type RuntimeOrigin: IsType<<Self as frame_system::Config>::RuntimeOrigin>
+            + Into<Result<crate::Origin, <Self as Config>::RuntimeOrigin>>;
         type Call: IsType<<Self as crate::Config>::Call> + From<Call<Self>>;
     }
 
@@ -173,8 +173,8 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -182,7 +182,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type BlockWeights = ();
     type BlockLength = ();
@@ -208,7 +208,7 @@ parameter_types! {
 impl pallet_balances::Config for Test {
     type MaxLocks = MaxLocks;
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -255,7 +255,7 @@ pub type Barrier = (
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type XcmSender = TestSendXcm;
     type AssetTransactor = LocalAssetTransactor;
     type OriginConverter = LocalOriginConverter;
@@ -278,7 +278,7 @@ parameter_types! {
 }
 
 impl pallet_xcm::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
     type XcmRouter = (TestSendXcmErrX8, TestSendXcm);
     type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
@@ -288,8 +288,8 @@ impl pallet_xcm::Config for Test {
     type XcmReserveTransferFilter = Everything;
     type Weigher = FixedWeightBounds<BaseXcmWeight, Call, MaxInstructions>;
     type LocationInverter = LocationInverter<Ancestry>;
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
     type AdvertisedXcmVersion = AdvertisedXcmVersion;
 }
@@ -297,9 +297,9 @@ impl pallet_xcm::Config for Test {
 impl origin::Config for Test {}
 
 impl pallet_test_notifier::Config for Test {
-    type Event = Event;
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
 }
 
 pub(crate) fn last_event() -> Event {

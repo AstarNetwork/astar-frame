@@ -11,12 +11,12 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::{
+        dispatch::GetDispatchInfo,
         pallet_prelude::*,
         traits::{
             Currency, ExistenceRequirement, Get, OnUnbalanced, UnfilteredDispatchable,
             WithdrawReasons,
         },
-        weights::GetDispatchInfo,
     };
     use frame_system::{ensure_none, pallet_prelude::*};
     use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -32,10 +32,12 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// A signable call.
-        type Call: Parameter + UnfilteredDispatchable<Origin = Self::Origin> + GetDispatchInfo;
+        type RuntimeCall: Parameter
+            + UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+            + GetDispatchInfo;
 
         /// User defined signature type.
         type Signature: Parameter + Verify<Signer = Self::Signer> + TryFrom<Vec<u8>>;
@@ -97,7 +99,7 @@ pub mod pallet {
         })]
         pub fn call(
             origin: OriginFor<T>,
-            call: Box<<T as Config>::Call>,
+            call: Box<<T as Config>::RuntimeCall>,
             signer: T::AccountId,
             signature: Vec<u8>,
             #[pallet::compact] nonce: T::Index,
@@ -144,7 +146,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Verify custom signature and returns `true` if correct.
         pub fn valid_signature(
-            call: &Box<<T as Config>::Call>,
+            call: &Box<<T as Config>::RuntimeCall>,
             signer: &T::AccountId,
             signature: &T::Signature,
             nonce: &T::Index,

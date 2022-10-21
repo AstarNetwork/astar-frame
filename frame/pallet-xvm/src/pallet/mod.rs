@@ -25,7 +25,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Unique VM identifier.
         type VmId: Member + Parameter + From<u8>;
         /// Supported synchronous VM list, for example (EVM, WASM)

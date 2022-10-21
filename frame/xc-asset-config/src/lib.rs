@@ -101,7 +101,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The Asset Id. This will be used to create the asset and to associate it with
         /// a AssetLocation
@@ -113,7 +113,7 @@ pub mod pallet {
         /// The required origin for managing cross-chain asset configuration
         ///
         /// Should most likely be root.
-        type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+        type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
         type WeightInfo: WeightInfo;
     }
