@@ -1,6 +1,6 @@
 [package]
-name = "dapps-staking-chain-extension"
-version = "1.0.4"
+name = "pallet-chain-extension-dapps-staking"
+version = "1.1.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -23,9 +23,8 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
 
 # Astar
-chain-extension-trait = { path = "../trait", default-features = false }
 dapps-staking-chain-extension-types = { path = "../types/dapps-staking", default-features = false }
-pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
+pallet-dapps-staking = { git = "https://github.com/AstarNetwork/astar-frame", branch = "polkadot-v0.9.30", default-features = false }
 
 [features]
 default = ["std"]

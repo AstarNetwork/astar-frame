@@ -24,7 +24,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
 
 # RMRK
-chain-extension-trait = { path = "../trait", default-features = false }
 pallet-rmrk-core = { git = "https://github.com/AstarNetwork/rmrk-substrate", branch = "polkadot-v0.9.30", default-features = false }
 rmrk-chain-extension-types = { path = "../types/rmrk", default-features = false }
 rmrk-traits = { git = "https://github.com/AstarNetwork/rmrk-substrate", branch = "polkadot-v0.9.30", default-features = false }
@@ -33,7 +32,6 @@ rmrk-traits = { git = "https://github.com/AstarNetwork/rmrk-substrate", branch =
 default = ["std"]
 std = [
 	"codec/std",
-	"chain-extension-trait/std",
 	"frame-support/std",
 	"frame-system/std",
 	"num-traits/std",
