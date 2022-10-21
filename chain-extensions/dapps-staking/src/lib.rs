@@ -4,10 +4,9 @@ use sp_runtime::{
     DispatchError,
 };
 
-use chain_extension_trait::ChainExtensionExec;
-use codec::{Decode, Encode};
+use codec::Encode;
 use dapps_staking_chain_extension_types::{
-    Contract, DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
+    DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
     DappsStakingValueInput,
 };
 use frame_support::traits::{Currency, Get};
@@ -39,10 +38,10 @@ enum DappsStakingFunc {
     NominationTransfer,
 }
 
-impl TryFrom<u32> for DappsStakingFunc {
+impl TryFrom<u16> for DappsStakingFunc {
     type Error = DispatchError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(DappsStakingFunc::CurrentEra),
             2 => Ok(DappsStakingFunc::UnbondingPeriod),
@@ -65,15 +64,20 @@ impl TryFrom<u32> for DappsStakingFunc {
     }
 }
 
-pub struct DappsStakingExtension<R>(PhantomData<R>);
+pub struct DappsStakingExtension<T>(PhantomData<T>);
 
-impl ChainExtension<T> for DappsStakingExtension<T> {
+impl<T> ChainExtension<T> for DappsStakingExtension<T>
+where
+    T: pallet_dapps_staking::Config + pallet_contracts::Config,
+    <T as pallet_dapps_staking::Config>::SmartContract: From<[u8; 32]>,
+    <T as SysConfig>::AccountId: From<[u8; 32]>,
+{
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
-        E: Ext<T = Runtime>,
+        E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        let func_id = env.func_id().into();
+        let func_id = env.func_id().try_into()?;
         let mut env = env.buf_in_buf_out();
 
         match func_id {
@@ -129,8 +133,9 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::StakedAmountOnContract => {
                 let args: DappsStakingAccountInput = env.read_as()?;
-                let staker = T::AccountId::decode(&mut args.staker.as_ref()).unwrap();
-                let contract = Self::decode_smart_contract(args.contract)?;
+                let staker: T::AccountId = args.staker.into();
+                let contract: <T as pallet_dapps_staking::Config>::SmartContract =
+                    args.contract.into();
 
                 let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
@@ -143,7 +148,8 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::ReadContractStake => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
-                let contract = Self::decode_smart_contract(contract_bytes)?;
+                let contract: <T as pallet_dapps_staking::Config>::SmartContract =
+                    contract_bytes.into();
 
                 let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight.saturating_add(base_weight))?;
@@ -158,7 +164,7 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::BondAndStake => {
                 let args: DappsStakingValueInput<BalanceOf<T>> = env.read_as()?;
-                let contract = Self::decode_smart_contract(args.contract)?;
+                let contract = args.contract.into();
                 let value: BalanceOf<T> = args.value;
 
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::bond_and_stake();
@@ -181,7 +187,7 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::UnbondAndUnstake => {
                 let args: DappsStakingValueInput<BalanceOf<T>> = env.read_as()?;
-                let contract = Self::decode_smart_contract(args.contract)?;
+                let contract = args.contract.into();
                 let value: BalanceOf<T> = args.value;
 
                 let base_weight =
@@ -224,10 +230,10 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::ClaimStaker => {
                 let contract_bytes: [u8; 32] = env.read_as()?;
-                let contract = Self::decode_smart_contract(contract_bytes)?;
+                let contract = contract_bytes.into();
 
-                let base_weight = T::WeightInfo::claim_staker_with_restake()
-                    .max(T::WeightInfo::claim_staker_without_restake());
+                let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::claim_staker_with_restake()
+                    .max(<T as pallet_dapps_staking::Config>::WeightInfo::claim_staker_without_restake());
                 let charged_weight = env.charge_weight(base_weight)?;
 
                 let caller = env.ext().address().clone();
@@ -255,7 +261,7 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::ClaimDapp => {
                 let args: DappsStakingEraInput = env.read_as()?;
-                let contract = Self::decode_smart_contract(args.contract)?;
+                let contract = args.contract.into();
                 let era: u32 = args.era;
 
                 let base_weight = <T as pallet_dapps_staking::Config>::WeightInfo::claim_dapp();
@@ -309,8 +315,8 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
 
             DappsStakingFunc::NominationTransfer => {
                 let args: DappsStakingNominationInput<BalanceOf<T>> = env.read_as()?;
-                let origin_smart_contract = Self::decode_smart_contract(args.origin_contract)?;
-                let target_smart_contract = Self::decode_smart_contract(args.target_contract)?;
+                let origin_smart_contract = args.origin_contract.into();
+                let target_smart_contract = args.target_contract.into();
                 let value: BalanceOf<T> = args.value;
 
                 let base_weight =
@@ -335,35 +341,5 @@ impl ChainExtension<T> for DappsStakingExtension<T> {
         }
 
         Ok(RetVal::Converging(DSError::Success as u32))
-    }
-}
-
-impl<R> DappsStakingExtension<R> {
-    /// Helper method to decode type SmartContract enum
-    pub fn decode_smart_contract(
-        contract_bytes: [u8; 32],
-    ) -> Result<<R as pallet_dapps_staking::Config>::SmartContract, DispatchError>
-    where
-        R: pallet_dapps_staking::Config,
-        R::AccountId: From<[u8; 32]>,
-    {
-        let account: R::AccountId = contract_bytes.into();
-        // Encode contract address to fit SmartContract enum.
-        // Since the SmartContract enum type can't be accessed from this chain extension,
-        // use locally defined enum clone (see Contract enum)
-        let contract_enum_encoded = Contract::<R::AccountId>::Wasm(account).encode();
-
-        // encoded enum will add one byte before the contract's address
-        // therefore we need to decode len(u32) + 1 byte = 33
-        let smart_contract = <R as pallet_dapps_staking::Config>::SmartContract::decode(
-            &mut &contract_enum_encoded[..33],
-        )
-        .map_err(|_| {
-            DispatchError::Other(
-                "[ChainExtension] Error while decoding SmartContract in ChainExtension",
-            )
-        })?;
-
-        Ok(smart_contract)
     }
 }

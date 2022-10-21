@@ -111,15 +111,6 @@ impl TryFrom<DispatchError> for DSError {
     }
 }
 
-/// This is only used to encode SmartContract enum
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
-pub enum Contract<Account> {
-    // EVM smart contract instance.
-    Evm(H160),
-    // Wasm smart contract instance. Not used in this precompile
-    Wasm(Account),
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
 pub struct DappsStakingValueInput<Balance> {
     pub contract: [u8; 32],

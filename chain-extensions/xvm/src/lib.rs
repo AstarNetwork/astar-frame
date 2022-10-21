@@ -16,10 +16,10 @@ enum XvmFuncId {
     // TODO: expand with other calls too
 }
 
-impl TryFrom<u32> for XvmFuncId {
+impl TryFrom<u16> for XvmFuncId {
     type Error = DispatchError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(XvmFuncId::XvmCall),
             _ => Err(DispatchError::Other(
@@ -40,7 +40,7 @@ where
         E: Ext<T = Runtime>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        let func_id = env.func_id().into();
+        let func_id = env.func_id().try_into()?;
         let mut env = env.buf_in_buf_out();
 
         match func_id {

@@ -38,10 +38,10 @@ pub enum RmrkFunc {
     SetPriority,
 }
 
-impl TryFrom<u32> for RmrkFunc {
+impl TryFrom<u16> for RmrkFunc {
     type Error = DispatchError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         return match value {
             // getters
             // 0x0001 => Ok(RmrkFunc::NextNftId),

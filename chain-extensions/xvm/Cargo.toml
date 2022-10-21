@@ -1,5 +1,5 @@
 [package]
-name = "xvm-chain-extension"
+name = "pallet-chain-extension-xvm"
 version = "0.1.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"

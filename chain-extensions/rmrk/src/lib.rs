@@ -6,7 +6,8 @@ use codec::Encode;
 use frame_support::{log, weights::Weight, BoundedVec};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
-    ChainExtension, Environment, Ext, InitState, RetVal, RetVal::Converging, SysConfig, UncheckedFrom,
+    ChainExtension, Environment, Ext, InitState, RetVal, RetVal::Converging, SysConfig,
+    UncheckedFrom,
 };
 use pallet_rmrk_core::{BoundedResourceInfoTypeOf, StringLimitOf};
 use rmrk_chain_extension_types::{RmrkError, RmrkFunc};
@@ -20,14 +21,16 @@ pub struct RmrkExtension<T>(PhantomData<T>);
 
 impl<T> ChainExtension<T> for RmrkExtension<T>
 where
-    T: pallet_rmrk_core::Config + pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
+    T: pallet_contracts::Config
+        + pallet_rmrk_core::Config
+        + pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 {
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
-        E: Ext<T = Runtime>,
+        E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        let func_id = env.func_id().into();
+        let func_id = env.func_id().try_into()?;
         match func_id {
             // READ functions
             RmrkFunc::CollectionIndex => {
