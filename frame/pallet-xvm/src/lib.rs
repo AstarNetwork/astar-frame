@@ -75,7 +75,7 @@ pub struct XvmCallError {
 /// Result for executing X-VM calls
 pub type XvmResult = Result<XvmCallOk, XvmCallError>;
 
-pub fn consumed_weight(result: &XvmResult) -> Weight {
+pub fn consumed_weight(result: &XvmResult) -> u64 {
     match result {
         Ok(res) => res.consumed_weight,
         Err(err) => err.consumed_weight,
