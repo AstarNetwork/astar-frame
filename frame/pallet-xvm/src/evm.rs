@@ -1,6 +1,7 @@
 //! EVM support for XVM pallet.
 
 use crate::*;
+use pallet_evm::GasWeightMapping;
 use sp_core::{H160, U256};
 use sp_runtime::traits::Get;
 
@@ -19,22 +20,22 @@ where
         I::get()
     }
 
-    fn xvm_call(
-        _context: XvmContext<VmId>,
-        from: T::AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
+    fn xvm_call(context: XvmContext, from: T::AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult {
         log::trace!(
             target: "xvm::EVM::xvm_call",
-            "Start EVM XVM: {:?}, {:?}, {:?}, {:?}",
-            from, to, input, metadata,
+            "Start EVM XVM: {:?}, {:?}, {:?}",
+            from, to, input,
         );
         let value = U256::from(0u64);
         let max_fee_per_gas = U256::from(3450898690u64);
-        let gas_limit = 4000000u64;
-        let evm_to: H160 = Decode::decode(&mut to.as_ref())
-            .map_err(|_| b"`to` argument decode failure".to_vec())?;
+        let gas_limit = T::GasWeightMapping::weight_to_gas(context.max_weight);
+        log::trace!(
+            target: "xvm::EVM::xvm_call",
+            "EVM xvm call gas limit: {:?} or as weight: {:?}", gas_limit, context.max_weight);
+        let evm_to = Decode::decode(&mut to.as_ref()).map_err(|_| XvmCallError {
+            error: XvmError::EncodingFailure,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
 
         let res = pallet_evm::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Root.into(),
@@ -47,14 +48,20 @@ where
             None,
             None,
             Vec::new(),
-        );
+        )
+        .map_err(|e| XvmCallError {
+            error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+            consumed_weight: e.post_info.actual_weight.unwrap_or(context.max_weight),
+        })?;
 
         log::trace!(
             target: "xvm::EVM::xvm_call",
             "EVM XVM call result: {:?}", res
         );
 
-        // TODO: return result or error if call failure
-        Ok(Default::default())
+        Ok(XvmCallOk {
+            output: Default::default(), // TODO: Fill output vec with response from the call
+            consumed_weight: res.actual_weight.unwrap_or(context.max_weight),
+        })
     }
 }

@@ -9,20 +9,24 @@ repository = "https://github.com/AstarNetwork/astar-frame"
 description = "Chain extension for X-VM calls"
 
 [dependencies]
-ink_env = { version = "3", default-features = false }
-ink_lang = { version = "3", default-features = false }
-ink_metadata = { version = "3", default-features = false, features = ["derive"], optional = true }
-ink_prelude = { version = "3", default-features = false }
-ink_primitives = { version = "3", default-features = false }
-ink_storage = { version = "3", default-features = false }
+ink_env = { version = "3.3", default-features = false }
+ink_lang = { version = "3.3", default-features = false }
+ink_metadata = { version = "3.3", default-features = false, features = [
+	"derive",
+], optional = true }
+ink_prelude = { version = "3.3", default-features = false }
+ink_primitives = { version = "3.3", default-features = false }
+ink_storage = { version = "3.3", default-features = false }
 
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
-
-xvm-chain-extension-types = { path = "../../chain-extensions/types/xvm", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+	"derive",
+] }
+scale-info = { version = "2", default-features = false, features = [
+	"derive",
+], optional = true }
 
 [lib]
-name = "xvm_chain_extension_contract"
+name = "xvm_example"
 path = "src/lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
@@ -36,6 +40,7 @@ std = [
 	"ink_env/std",
 	"ink_storage/std",
 	"ink_primitives/std",
+	"ink_prelude/std",
 	"scale/std",
 	"scale-info/std",
 ]

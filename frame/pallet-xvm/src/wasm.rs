@@ -14,7 +14,7 @@ type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 
-impl<I, T> SyncVM<VmId, T::AccountId> for WASM<I, T>
+impl<I, T> SyncVM<T::AccountId> for WASM<I, T>
 where
     I: Get<VmId>,
     T: pallet_contracts::Config + frame_system::Config,
@@ -25,18 +25,16 @@ where
         I::get()
     }
 
-    fn xvm_call(
-        _context: XvmContext<VmId>,
-        from: T::AccountId,
-        to: Vec<u8>,
-        input: Vec<u8>,
-    ) -> Result<Vec<u8>, Vec<u8>> {
+    fn xvm_call(context: XvmContext, from: T::AccountId, to: Vec<u8>, input: Vec<u8>) -> XvmResult {
         log::trace!(
             target: "xvm::WASM::xvm_call",
-            "Start WASM XVM: {:?}, {:?}, {:?}, {:?}",
+            "Start WASM XVM: {:?}, {:?}, {:?}",
             from, to, input,
         );
-        let gas_limit = 500000000000;
+        let gas_limit = context.max_weight;
+        log::trace!(
+            target: "xvm::WASM::xvm_call",
+            "WASM xvm call gas (weight) limit: {:?}", gas_limit);
         let dest = Decode::decode(&mut to.as_ref()).unwrap();
         let res = pallet_contracts::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Signed(from).into(),
@@ -45,15 +43,20 @@ where
             Weight::from_ref_time(gas_limit),
             None,
             input,
-        );
+        )
+        .map_err(|e| XvmCallError {
+            error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+            consumed_weight: e.post_info.actual_weight.unwrap_or(gas_limit),
+        })?;
 
         log::trace!(
             target: "xvm::WASM::xvm_call",
             "WASM XVM call result: {:?}", res
         );
 
-        // TODO: return error if call failure
-        // TODO: return value in case of constant / view call
-        Ok(Default::default())
+        Ok(XvmCallOk {
+            output: Default::default(), // TODO: Fill in with output from the call
+            consumed_weight: res.actual_weight.unwrap_or(gas_limit),
+        })
     }
 }

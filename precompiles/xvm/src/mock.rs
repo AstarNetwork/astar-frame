@@ -198,7 +198,6 @@ impl pallet_evm::Config for Runtime {
 
 impl pallet_xvm::Config for Runtime {
     type Event = Event;
-    type VmId = u8;
     type SyncVM = ();
     type AsyncVM = ();
 }
