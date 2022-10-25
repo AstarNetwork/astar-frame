@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use ink_prelude::vec::Vec;
 use sp_runtime::{DispatchError, ModuleError};
+use sp_std::vec::Vec;
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
