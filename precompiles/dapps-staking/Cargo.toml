@@ -25,7 +25,7 @@ pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = 
 
 # Frontier
 fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.30", default-features = false }
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.30", default-features = false }
+pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.30", default-features = false, features = [ "forbid-evm-reentrancy" ] }
 
 [dev-dependencies]
 derive_more = "0.99"

@@ -1379,7 +1379,7 @@ pub mod pallet {
         ///   is known. It may be a dispatchable in any pallet of the local chain, but other than
         ///   the usual origin, it must accept exactly two arguments: `query_id: QueryId` and
         ///   `outcome: Response`, and in that order. It should expect that the origin is
-        ///   `Origin::Response` and will contain the responder's location.
+        ///   `RuntimeOrigin::Response` and will contain the responder's location.
         /// - `timeout`: The block number after which it is permissible for `notify` not to be
         ///   called even if a response is received.
         ///
@@ -1774,7 +1774,7 @@ impl<Prefix: Get<MultiLocation>, Body: Get<BodyId>> Contains<MultiLocation>
 }
 
 /// `EnsureOrigin` implementation succeeding with a `MultiLocation` value to recognize and filter the
-/// `Origin::Xcm` item.
+/// `RuntimeOrigin::Xcm` item.
 pub struct EnsureXcm<F>(PhantomData<F>);
 impl<O: OriginTrait + From<Origin>, F: Contains<MultiLocation>> EnsureOrigin<O> for EnsureXcm<F>
 where

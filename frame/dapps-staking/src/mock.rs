@@ -250,7 +250,7 @@ pub fn dapps_staking_events() -> Vec<crate::Event<TestRuntime>> {
         .into_iter()
         .map(|r| r.event)
         .filter_map(|e| {
-            if let Event::DappsStaking(inner) = e {
+            if let RuntimeEvent::DappsStaking(inner) = e {
                 Some(inner)
             } else {
                 None

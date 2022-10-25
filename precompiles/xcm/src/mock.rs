@@ -258,11 +258,13 @@ where
 parameter_types! {
     pub const PrecompilesValue: TestPrecompileSet<Runtime> =
         TestPrecompileSet(PhantomData);
+    pub WeightPerGas: u64 = 1;
 }
 
 impl pallet_evm::Config for Runtime {
     type FeeCalculator = ();
-    type GasWeightMapping = ();
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+    type WeightPerGas = WeightPerGas;
     type CallOrigin = EnsureAddressRoot<AccountId>;
     type WithdrawOrigin = EnsureAddressNever<AccountId>;
     type AddressMapping = AccountId;
@@ -312,7 +314,7 @@ parameter_types! {
     pub static AdvertisedXcmVersion: XcmVersion = 2;
 }
 
-pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, AnyNetwork>;
+pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
 
 pub struct DoNothingRouter;
 impl SendXcm for DoNothingRouter {
@@ -323,14 +325,14 @@ impl SendXcm for DoNothingRouter {
 
 impl pallet_xcm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+    type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmRouter = DoNothingRouter;
-    type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+    type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmExecuteFilter = Everything;
     type XcmExecutor = XcmExecutor<XcmConfig>;
     type XcmTeleportFilter = Everything;
     type XcmReserveTransferFilter = Everything;
-    type Weigher = FixedWeightBounds<BaseXcmWeight, Call, MaxInstructions>;
+    type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type LocationInverter = LocationInverter<Ancestry>;
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;

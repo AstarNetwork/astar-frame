@@ -2,7 +2,7 @@ extern crate alloc;
 use crate::{
     mock::{
         advance_to_era, initialize_first_block, precompile_address, DappsStaking, EraIndex,
-        ExternalityBuilder, Origin, TestAccount, AST, UNBONDING_PERIOD, *,
+        ExternalityBuilder, RuntimeOrigin, TestAccount, AST, UNBONDING_PERIOD, *,
     },
     *,
 };
@@ -337,7 +337,7 @@ fn withdraw_from_unregistered() {
 
             let contract_id =
                 decode_smart_contract_from_array(TEST_CONTRACT.clone().to_fixed_bytes()).unwrap();
-            assert_ok!(DappsStaking::unregister(Origin::root(), contract_id));
+            assert_ok!(DappsStaking::unregister(RuntimeOrigin::root(), contract_id));
 
             withdraw_from_unregistered_verify(TestAccount::Bobo.into(), TEST_CONTRACT);
         });
@@ -383,7 +383,7 @@ fn nomination_transfer() {
 fn register_and_verify(developer: TestAccount, contract: H160) {
     let smart_contract =
         decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
-    DappsStaking::register(Origin::root(), developer.clone().into(), smart_contract).unwrap();
+    DappsStaking::register(RuntimeOrigin::root(), developer.clone().into(), smart_contract).unwrap();
 
     // check the storage after the register
     let dev_account_id: AccountId32 = developer.into();

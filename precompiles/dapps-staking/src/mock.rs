@@ -204,11 +204,13 @@ where
 
 parameter_types! {
     pub PrecompilesValue: DappPrecompile<TestRuntime> = DappPrecompile(Default::default());
+    pub WeightPerGas: u64 = 1;
 }
 
 impl pallet_evm::Config for TestRuntime {
     type FeeCalculator = ();
-    type GasWeightMapping = ();
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+    type WeightPerGas = WeightPerGas;
     type CallOrigin = EnsureAddressRoot<AccountId32>;
     type WithdrawOrigin = EnsureAddressNever<AccountId32>;
     type AddressMapping = TestAccount;
