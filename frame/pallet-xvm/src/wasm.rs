@@ -35,18 +35,21 @@ where
         log::trace!(
             target: "xvm::WASM::xvm_call",
             "WASM xvm call gas (weight) limit: {:?}", gas_limit);
-        let dest = Decode::decode(&mut to.as_ref()).unwrap();
+        let dest = Decode::decode(&mut to.as_ref()).map_err(|_| XvmCallError {
+            error: XvmError::EncodingFailure,
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
         let res = pallet_contracts::Pallet::<T>::call(
             frame_support::dispatch::RawOrigin::Signed(from).into(),
             dest,
             Default::default(),
-            Weight::from_ref_time(gas_limit),
+            gas_limit.into(),
             None,
             input,
         )
         .map_err(|e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: e.post_info.actual_weight.unwrap_or(gas_limit),
+            consumed_weight: 42u64, //TODO: e.post_info.actual_weight.ref_time().unwrap_or(gas_limit),
         })?;
 
         log::trace!(
@@ -56,7 +59,7 @@ where
 
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill in with output from the call
-            consumed_weight: res.actual_weight.unwrap_or(gas_limit),
+            consumed_weight: 42u64, //TODO: e.post_info.actual_weight.ref_time().unwrap_or(gas_limit),
         })
     }
 }

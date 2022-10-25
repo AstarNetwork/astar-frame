@@ -51,7 +51,7 @@ where
         )
         .map_err(|e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: e.post_info.actual_weight.unwrap_or(context.max_weight),
+            consumed_weight: 42u64, // TODO: res.actual_weight.map(|x| x.ref_time()).unwrap_or(context.max_weight),
         })?;
 
         log::trace!(
@@ -61,7 +61,7 @@ where
 
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill output vec with response from the call
-            consumed_weight: res.actual_weight.unwrap_or(context.max_weight),
+            consumed_weight: 42u64, // TODO: res.actual_weight.map(|x| x.ref_time()).unwrap_or(context.max_weight),
         })
     }
 }
