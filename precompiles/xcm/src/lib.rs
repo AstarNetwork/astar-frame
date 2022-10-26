@@ -286,12 +286,6 @@ where
         }
         let mut amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
-        // Check that assets list is valid:
-        // * all assets resolved to multi-location
-        // * all assets has corresponded amount
-        if assets.len() != amounts.len() || assets.is_empty() {
-            return Err(revert("Assets resolution failure."));
-        }
 
         let value = handle.context().apparent_value;
         if value > U256::zero() {
@@ -304,6 +298,13 @@ where
                 return Err(revert("value is too big"));
             }
             amounts.push(value.low_u128());
+        }
+
+        // Check that assets list is valid:
+        // * all assets resolved to multi-location
+        // * all assets has corresponded amount
+        if assets.len() != amounts.len() || assets.is_empty() {
+            return Err(revert("Assets resolution failure."));
         }
 
         let beneficiary: MultiLocation = match beneficiary_type {
