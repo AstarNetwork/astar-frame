@@ -1774,7 +1774,7 @@ impl<Prefix: Get<MultiLocation>, Body: Get<BodyId>> Contains<MultiLocation>
 }
 
 /// `EnsureOrigin` implementation succeeding with a `MultiLocation` value to recognize and filter the
-/// `RuntimeOrigin::Xcm` item.
+/// `Origin::Xcm` item.
 pub struct EnsureXcm<F>(PhantomData<F>);
 impl<O: OriginTrait + From<Origin>, F: Contains<MultiLocation>> EnsureOrigin<O> for EnsureXcm<F>
 where
