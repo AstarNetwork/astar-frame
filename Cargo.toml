@@ -5,6 +5,7 @@ members = [
 	"chain-extensions/xvm",
 	"chain-extensions/trait",
 	"chain-extensions/types/*",
+	"chain-extensions/uniques",
 	"frame/block-reward",
 	"frame/collator-selection",
 	"frame/custom-signatures",
