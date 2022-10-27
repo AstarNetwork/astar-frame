@@ -300,6 +300,8 @@ where
             amounts.push(value.low_u128());
         }
 
+        log::trace!(target: "xcm-precompile:assets_reserve_transfer", "Processed arguments: assets {:?}, amounts: {:?}, value: {:?}", assets, amounts, value);
+
         // Check that assets list is valid:
         // * all assets resolved to multi-location
         // * all assets has corresponded amount
