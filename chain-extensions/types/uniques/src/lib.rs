@@ -9,10 +9,10 @@ pub enum UniquesFunc {
     // extrinsics
     Create,
     Mint,
-    SetCollectionMetadata,
-    SetItemMetadata,
-    SetCollectionMaxSupply
-    Transfer,
+    // SetCollectionMetadata,
+    // SetItemMetadata,
+    // SetCollectionMaxSupply,
+    // Transfer,
 }
 
 impl TryFrom<u32> for UniquesFunc {
