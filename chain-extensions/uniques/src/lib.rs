@@ -55,12 +55,12 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
                 env.charge_weight(weight_to_charge)?;
 
                 log::trace!(target: "runtime",
-                    "[UniquesExtension] create() call admin {:?}, weight {:?}",
-                    contract, weight_to_charge
+                    "[UniquesExtension] create() call owner {:?}, weight {:?}, admin {:?}",
+                    contract, weight_to_charge, caller
                 );
                 let result = pallet_uniques::Pallet::<T>::create(
                     RawOrigin::Signed(contract.clone()).into(),
-                    <T::Lookup as StaticLookup>::unlookup(caller), // admin
+                    <T::Lookup as StaticLookup>::unlookup(contract), // this contract will be admin/issuer
                 );
                 // let result = pallet_uniques::Pallet::<T>::do_create_collection(
                 //     // collection_id,
@@ -92,22 +92,23 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
             UniquesFunc::Mint => {
                 log::trace!(target: "runtime", "[UniquesExtension] mint() initiating");
                 let mut env = env.buf_in_buf_out();
-                let (collection_id, item_id): (T::CollectionId, T::ItemId) = env.read_as()?;
+                let (collection_id, item_id, mint_to): (T::CollectionId, T::ItemId, T::AccountId) = env.read_as()?;
                 let contract = env.ext().address().clone();
-                let caller = env.ext().caller().clone();
+                // let caller = env.ext().caller().clone();
 
                 let weight_to_charge = <T as pallet_uniques::Config>::WeightInfo::mint();
                 env.charge_weight(weight_to_charge)?;
 
                 log::trace!(target: "runtime",
-                    "[UniquesExtension] mint() call collection_id {:?}, item_id {:?} weight {:?}",
+                    "[UniquesExtension] mint() col_owner {:?} \nmint_to {:?} \ncollection_id {:?}, item_id {:?} weight {:?}",
+                    contract, mint_to,
                     collection_id, item_id, weight_to_charge
                 );
                 let result = pallet_uniques::Pallet::<T>::mint(
                     RawOrigin::Signed(contract.clone()).into(),     // collection owner is this contract
                     collection_id,                                  // collection_id for this contrat
                     item_id,                                        // item_id to be minted
-                    <T::Lookup as StaticLookup>::unlookup(caller),  // new owner of the item will be caller
+                    <T::Lookup as StaticLookup>::unlookup(mint_to), // new owner of the item
                 );
 
                 log::trace!(target: "runtime",
