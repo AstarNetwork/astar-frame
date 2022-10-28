@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::pallet_prelude::MaxEncodedLen;
 use sp_runtime::{DispatchError, ModuleError};
 
 pub enum UniquesFunc {
@@ -9,9 +8,11 @@ pub enum UniquesFunc {
 
     // extrinsics
     Create,
-    // Mint,
-    // Burn,
-    // DestroyCollection,
+    Mint,
+    SetCollectionMetadata,
+    SetItemMetadata,
+    SetCollectionMaxSupply
+    Transfer,
 }
 
 impl TryFrom<u32> for UniquesFunc {
@@ -33,10 +34,10 @@ impl TryFrom<u32> for UniquesFunc {
 
             // extrinsics
             0x00A0 => Ok(UniquesFunc::Create),
-            // 0x00A0 => Ok(UniquesFunc::MintNft),
-            // 0x000E => Ok(UniquesFunc::MintNftDirectlyToNft),
-            // 0x0010 => Ok(UniquesFunc::BurnNft),
-            // 0x0011 => Ok(UniquesFunc::DestroyCollection),
+            0x00A1 => Ok(UniquesFunc::Mint),
+            // 0x00A2 => Ok(UniquesFunc::SetCollectionMetadata),
+            // 0x00A3 => Ok(UniquesFunc::SetItemMetadata),
+            // 0x00A4 => Ok(UniquesFunc::SetCollectionMaxSupply),
             // 0x0012 => Ok(UniquesFunc::Send),
             // 0x0013 => Ok(UniquesFunc::AcceptNft),
             // 0x0014 => Ok(UniquesFunc::RejectNft),

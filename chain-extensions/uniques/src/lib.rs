@@ -88,6 +88,41 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
                     }
                 };
             }
+
+            UniquesFunc::Mint => {
+                log::trace!(target: "runtime", "[UniquesExtension] mint() initiating");
+                let mut env = env.buf_in_buf_out();
+                let (collection_id, item_id): (T::CollectionId, T::ItemId) = env.read_as()?;
+                let contract = env.ext().address().clone();
+                let caller = env.ext().caller().clone();
+
+                let weight_to_charge = <T as pallet_uniques::Config>::WeightInfo::mint();
+                env.charge_weight(weight_to_charge)?;
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] mint() call collection_id {:?}, item_id {:?} weight {:?}",
+                    collection_id, item_id, weight_to_charge
+                );
+                let result = pallet_uniques::Pallet::<T>::mint(
+                    RawOrigin::Signed(contract.clone()).into(),     // collection owner is this contract
+                    collection_id,                                  // collection_id for this contrat
+                    item_id,                                        // item_id to be minted
+                    <T::Lookup as StaticLookup>::unlookup(caller),  // new owner of the item will be caller
+                );
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] mint() result {:?}",
+                    result
+                );
+
+                return match result {
+                    Ok(_) => Ok(Converging(UniquesError::Success as u32)),
+                    Err(e) => {
+                        let mapped_error = UniquesError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                };
+            }
         }
 
         // Ok(Converging(UniquesError::Success as u32))
