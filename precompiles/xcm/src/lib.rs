@@ -43,8 +43,9 @@ where
         + pallet_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
-    <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call:
+    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<R::AccountId>>,
+    <R as frame_system::Config>::RuntimeCall:
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
@@ -86,8 +87,9 @@ where
         + pallet_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
-    <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call:
+    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<R::AccountId>>,
+    <R as frame_system::Config>::RuntimeCall:
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {

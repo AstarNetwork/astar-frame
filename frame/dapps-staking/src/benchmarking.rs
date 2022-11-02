@@ -53,7 +53,7 @@ fn payout_block_rewards<T: Config>() {
 }
 
 /// Assert that the last event equals the provided one.
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 

@@ -71,7 +71,7 @@ pub(crate) fn assert_register(developer: AccountId, contract_id: &MockSmartContr
 
     // Verify op is successful
     assert_ok!(DappsStaking::register(
-        Origin::root(),
+        RuntimeOrigin::root(),
         developer,
         contract_id.clone()
     ));
@@ -102,10 +102,10 @@ pub(crate) fn assert_unregister(developer: AccountId, contract_id: &MockSmartCon
 
     // Ensure that contract can be unregistered
     assert_ok!(DappsStaking::unregister(
-        Origin::root(),
+        RuntimeOrigin::root(),
         contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::ContractRemoved(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::ContractRemoved(
         developer,
         contract_id.clone(),
     )));
@@ -155,10 +155,10 @@ pub(crate) fn assert_withdraw_from_unregistered(
 
     // Op with verification
     assert_ok!(DappsStaking::withdraw_from_unregistered(
-        Origin::signed(staker.clone()),
+        RuntimeOrigin::signed(staker.clone()),
         contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::WithdrawFromUnregistered(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::WithdrawFromUnregistered(
         staker,
         contract_id.clone(),
         staked_value,
@@ -209,11 +209,11 @@ pub(crate) fn assert_bond_and_stake(
 
     // Perform op and verify everything is as expected
     assert_ok!(DappsStaking::bond_and_stake(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         contract_id.clone(),
         value,
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::BondAndStake(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::BondAndStake(
         staker,
         contract_id.clone(),
         staking_value,
@@ -280,11 +280,11 @@ pub(crate) fn assert_unbond_and_unstake(
 
     // Ensure op is successful and event is emitted
     assert_ok!(DappsStaking::unbond_and_unstake(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         contract_id.clone(),
         value
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::UnbondAndUnstake(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::UnbondAndUnstake(
         staker,
         contract_id.clone(),
         expected_unbond_amount,
@@ -365,8 +365,8 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let expected_unbond_amount = valid_info.sum();
 
     // Ensure op is successful and event is emitted
-    assert_ok!(DappsStaking::withdraw_unbonded(Origin::signed(staker),));
-    System::assert_last_event(mock::Event::DappsStaking(Event::Withdrawn(
+    assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker),));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Withdrawn(
         staker,
         expected_unbond_amount,
     )));
@@ -413,12 +413,12 @@ pub(crate) fn assert_nomination_transfer(
 
     // Ensure op is successful and event is emitted
     assert_ok!(DappsStaking::nomination_transfer(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         origin_contract_id.clone(),
         value,
         target_contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::NominationTransfer(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NominationTransfer(
         staker,
         origin_contract_id.clone(),
         expected_transfer_amount,
@@ -511,7 +511,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     let issuance_before_claim = <TestRuntime as Config>::Currency::total_issuance();
 
     assert_ok!(DappsStaking::claim_staker(
-        Origin::signed(claimer),
+        RuntimeOrigin::signed(claimer),
         contract_id.clone(),
     ));
 
@@ -541,7 +541,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     }
 
     // last event should be Reward, regardless of restaking
-    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Reward(
         claimer,
         contract_id.clone(),
         claim_era,
@@ -638,11 +638,11 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
         DappsStaking::dev_stakers_split(&init_state.contract_info, &init_state.era_info);
 
     assert_ok!(DappsStaking::claim_dapp(
-        Origin::signed(developer),
+        RuntimeOrigin::signed(developer),
         contract_id.clone(),
         claim_era,
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Reward(
         developer,
         contract_id.clone(),
         claim_era,
@@ -668,11 +668,11 @@ pub(crate) fn assert_set_reward_destination(
     reward_destination: RewardDestination,
 ) {
     assert_ok!(DappsStaking::set_reward_destination(
-        Origin::signed(account_id),
+        RuntimeOrigin::signed(account_id),
         reward_destination
     ));
 
-    System::assert_last_event(mock::Event::DappsStaking(Event::RewardDestination(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::RewardDestination(
         account_id,
         reward_destination,
     )));

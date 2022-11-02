@@ -14,7 +14,7 @@ fn only_root_as_origin() {
 
         assert_noop!(
             XcAssetConfig::register_asset_location(
-                Origin::signed(1),
+                RuntimeOrigin::signed(1),
                 Box::new(asset_location.clone()),
                 asset_id
             ),
@@ -23,7 +23,7 @@ fn only_root_as_origin() {
 
         assert_noop!(
             XcAssetConfig::set_asset_units_per_second(
-                Origin::signed(1),
+                RuntimeOrigin::signed(1),
                 Box::new(asset_location.clone()),
                 9
             ),
@@ -32,7 +32,7 @@ fn only_root_as_origin() {
 
         assert_noop!(
             XcAssetConfig::change_existing_asset_location(
-                Origin::signed(1),
+                RuntimeOrigin::signed(1),
                 Box::new(asset_location.clone()),
                 asset_id
             ),
@@ -41,14 +41,14 @@ fn only_root_as_origin() {
 
         assert_noop!(
             XcAssetConfig::remove_payment_asset(
-                Origin::signed(1),
+                RuntimeOrigin::signed(1),
                 Box::new(asset_location.clone()),
             ),
             BadOrigin
         );
 
         assert_noop!(
-            XcAssetConfig::remove_asset(Origin::signed(1), asset_id,),
+            XcAssetConfig::remove_asset(RuntimeOrigin::signed(1), asset_id,),
             BadOrigin
         );
     })
@@ -66,11 +66,11 @@ fn register_asset_location_and_units_per_sec_is_ok() {
 
         // Register asset and ensure it's ok
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
-        System::assert_last_event(mock::Event::XcAssetConfig(Event::AssetRegistered {
+        System::assert_last_event(mock::RuntimeEvent::XcAssetConfig(Event::AssetRegistered {
             asset_location: asset_location.clone().versioned(),
             asset_id: asset_id,
         }));
@@ -91,11 +91,11 @@ fn register_asset_location_and_units_per_sec_is_ok() {
         // Register unit per second rate and verify storage
         let units: u128 = 7 * 11 * 13 * 17 * 29;
         assert_ok!(XcAssetConfig::set_asset_units_per_second(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             units
         ));
-        System::assert_last_event(mock::Event::XcAssetConfig(Event::UnitsPerSecondChanged {
+        System::assert_last_event(mock::RuntimeEvent::XcAssetConfig(Event::UnitsPerSecondChanged {
             asset_location: asset_location.clone().versioned(),
             units_per_second: units,
         }));
@@ -118,7 +118,7 @@ fn asset_is_already_registered() {
 
         // Register asset and ensure it's ok
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
@@ -126,7 +126,7 @@ fn asset_is_already_registered() {
         // Now repeat the process and expect an error
         assert_noop!(
             XcAssetConfig::register_asset_location(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 Box::new(asset_location.clone().versioned()),
                 asset_id
             ),
@@ -145,12 +145,12 @@ fn change_asset_location_is_ok() {
 
         // Register asset and ups
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
         assert_ok!(XcAssetConfig::set_asset_units_per_second(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             units
         ));
@@ -160,11 +160,11 @@ fn change_asset_location_is_ok() {
         assert_ne!(new_asset_location, asset_location); // sanity check
 
         assert_ok!(XcAssetConfig::change_existing_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(new_asset_location.clone().versioned()),
             asset_id
         ));
-        System::assert_last_event(mock::Event::XcAssetConfig(Event::AssetLocationChanged {
+        System::assert_last_event(mock::RuntimeEvent::XcAssetConfig(Event::AssetLocationChanged {
             previous_asset_location: asset_location.clone().versioned(),
             asset_id: asset_id,
             new_asset_location: new_asset_location.clone().versioned(),
@@ -202,22 +202,22 @@ fn remove_payment_asset_is_ok() {
 
         // Register asset and ups
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
         assert_ok!(XcAssetConfig::set_asset_units_per_second(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             units
         ));
 
         // Now we remove supported asset
         assert_ok!(XcAssetConfig::remove_payment_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
         ));
-        System::assert_last_event(mock::Event::XcAssetConfig(Event::SupportedAssetRemoved {
+        System::assert_last_event(mock::RuntimeEvent::XcAssetConfig(Event::SupportedAssetRemoved {
             asset_location: asset_location.clone().versioned(),
         }));
         assert!(!AssetLocationUnitsPerSecond::<Test>::contains_key(
@@ -226,7 +226,7 @@ fn remove_payment_asset_is_ok() {
 
         // Repeated calls don't do anything
         assert_ok!(XcAssetConfig::remove_payment_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
         ));
     })
@@ -242,19 +242,19 @@ fn remove_asset_is_ok() {
 
         // Register asset and ups
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
         assert_ok!(XcAssetConfig::set_asset_units_per_second(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             units
         ));
 
         // Remove asset entirely and assert op is ok
-        assert_ok!(XcAssetConfig::remove_asset(Origin::root(), asset_id,));
-        System::assert_last_event(mock::Event::XcAssetConfig(Event::AssetRemoved {
+        assert_ok!(XcAssetConfig::remove_asset(RuntimeOrigin::root(), asset_id,));
+        System::assert_last_event(mock::RuntimeEvent::XcAssetConfig(Event::AssetRemoved {
             asset_location: asset_location.clone().versioned(),
             asset_id: asset_id,
         }));
@@ -280,7 +280,7 @@ fn not_registered_asset_is_not_ok() {
 
         assert_noop!(
             XcAssetConfig::set_asset_units_per_second(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 Box::new(asset_location.clone().versioned()),
                 units
             ),
@@ -289,7 +289,7 @@ fn not_registered_asset_is_not_ok() {
 
         assert_noop!(
             XcAssetConfig::change_existing_asset_location(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 Box::new(asset_location.clone().versioned()),
                 asset_id
             ),
@@ -297,7 +297,7 @@ fn not_registered_asset_is_not_ok() {
         );
 
         assert_noop!(
-            XcAssetConfig::remove_asset(Origin::root(), asset_id,),
+            XcAssetConfig::remove_asset(RuntimeOrigin::root(), asset_id,),
             Error::<Test>::AssetDoesNotExist
         );
     })
@@ -318,7 +318,7 @@ fn public_interfaces_are_ok() {
 
         // Register asset and expect values to be returned but UPS should still be `None`
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             asset_id
         ));
@@ -334,7 +334,7 @@ fn public_interfaces_are_ok() {
 
         // Register ups and expect value value to be returned
         assert_ok!(XcAssetConfig::set_asset_units_per_second(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(asset_location.clone().versioned()),
             units
         ));
@@ -355,7 +355,7 @@ fn different_xcm_versions_are_ok() {
 
         // Register asset using legacy multilocation
         assert_ok!(XcAssetConfig::register_asset_location(
-            Origin::root(),
+            RuntimeOrigin::root(),
             Box::new(VersionedMultiLocation::V0(legacy_asset_location.clone())),
             asset_id
         ));

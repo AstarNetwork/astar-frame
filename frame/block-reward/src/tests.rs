@@ -106,7 +106,7 @@ pub fn set_configuration_fails() {
     ExternalityBuilder::build().execute_with(|| {
         // 1
         assert_noop!(
-            BlockReward::set_configuration(Origin::signed(1), Default::default()),
+            BlockReward::set_configuration(RuntimeOrigin::signed(1), Default::default()),
             BadOrigin
         );
 
@@ -117,7 +117,7 @@ pub fn set_configuration_fails() {
         };
         assert!(!reward_config.is_consistent());
         assert_noop!(
-            BlockReward::set_configuration(Origin::root(), reward_config),
+            BlockReward::set_configuration(RuntimeOrigin::root(), reward_config),
             Error::<TestRuntime>::InvalidDistributionConfiguration,
         );
     })
@@ -138,10 +138,10 @@ pub fn set_configuration_is_ok() {
         assert!(reward_config.is_consistent());
 
         assert_ok!(BlockReward::set_configuration(
-            Origin::root(),
+            RuntimeOrigin::root(),
             reward_config.clone()
         ));
-        System::assert_last_event(mock::Event::BlockReward(
+        System::assert_last_event(mock::RuntimeEvent::BlockReward(
             Event::DistributionConfigurationChanged(reward_config.clone()),
         ));
 
@@ -189,7 +189,7 @@ pub fn reward_distribution_as_expected() {
         };
         assert!(reward_config.is_consistent());
         assert_ok!(BlockReward::set_configuration(
-            Origin::root(),
+            RuntimeOrigin::root(),
             reward_config.clone()
         ));
 
@@ -222,7 +222,7 @@ pub fn reward_distribution_no_adjustable_part() {
         };
         assert!(reward_config.is_consistent());
         assert_ok!(BlockReward::set_configuration(
-            Origin::root(),
+            RuntimeOrigin::root(),
             reward_config.clone()
         ));
 
@@ -256,7 +256,7 @@ pub fn reward_distribution_all_zero_except_one() {
         };
         assert!(reward_config.is_consistent());
         assert_ok!(BlockReward::set_configuration(
-            Origin::root(),
+            RuntimeOrigin::root(),
             reward_config.clone()
         ));
 

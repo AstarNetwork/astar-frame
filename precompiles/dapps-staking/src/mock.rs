@@ -140,16 +140,16 @@ impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type Index = u64;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId32;
     type Lookup = IdentityLookup<AccountId32>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = TestWeights;
     type Version = ();
@@ -171,7 +171,7 @@ impl pallet_balances::Config for TestRuntime {
     type ReserveIdentifier = [u8; 4];
     type MaxLocks = ();
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -204,16 +204,18 @@ where
 
 parameter_types! {
     pub PrecompilesValue: DappPrecompile<TestRuntime> = DappPrecompile(Default::default());
+    pub WeightPerGas: u64 = 1;
 }
 
 impl pallet_evm::Config for TestRuntime {
     type FeeCalculator = ();
-    type GasWeightMapping = ();
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+    type WeightPerGas = WeightPerGas;
     type CallOrigin = EnsureAddressRoot<AccountId32>;
     type WithdrawOrigin = EnsureAddressNever<AccountId32>;
     type AddressMapping = TestAccount;
     type Currency = Balances;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Runner = pallet_evm::runner::stack::Runner<Self>;
     type PrecompilesType = DappPrecompile<TestRuntime>;
     type PrecompilesValue = PrecompilesValue;
@@ -261,7 +263,7 @@ parameter_types! {
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type BlockPerEra = BlockPerEra;
     type RegisterDeposit = RegisterDeposit;

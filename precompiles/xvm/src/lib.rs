@@ -31,8 +31,9 @@ pub struct XvmPrecompile<T>(PhantomData<T>);
 impl<R> Precompile for XvmPrecompile<R>
 where
     R: pallet_evm::Config + pallet_xvm::Config,
-    <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call:
+    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<R::AccountId>>,
+    <R as frame_system::Config>::RuntimeCall:
         From<pallet_xvm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 {
     fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
@@ -52,8 +53,9 @@ where
 impl<R> XvmPrecompile<R>
 where
     R: pallet_evm::Config + pallet_xvm::Config,
-    <<R as frame_system::Config>::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    <R as frame_system::Config>::Call:
+    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<R::AccountId>>,
+    <R as frame_system::Config>::RuntimeCall:
         From<pallet_xvm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 {
     fn xvm_call(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {

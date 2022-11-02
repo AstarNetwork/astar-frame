@@ -30,7 +30,7 @@ pub mod pallet {
         /// Supported asynchronous VM list.
         type AsyncVM: AsyncVM<Self::AccountId>;
         /// General event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
 
     #[pallet::error]

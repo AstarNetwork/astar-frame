@@ -118,9 +118,9 @@ fn new_era_is_handled_with_maintenance_mode() {
         initialize_first_block();
 
         // enable maintenance mode
-        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert_ok!(DappsStaking::maintenance_mode(RuntimeOrigin::root(), true));
         assert!(PalletDisabled::<TestRuntime>::exists());
-        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(true)));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::MaintenanceMode(true)));
 
         // advance 9 blocks or 3 era lengths (advance_to_era() doesn't work in maintenance mode)
         run_for_blocks(mock::BLOCKS_PER_ERA * 3);
@@ -130,8 +130,8 @@ fn new_era_is_handled_with_maintenance_mode() {
         assert_eq!(DappsStaking::current_era(), 1);
 
         // disable maintenance mode
-        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), false));
-        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(false)));
+        assert_ok!(DappsStaking::maintenance_mode(RuntimeOrigin::root(), false));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::MaintenanceMode(false)));
 
         // advance one era
         run_for_blocks(mock::BLOCKS_PER_ERA);
@@ -212,7 +212,7 @@ fn new_era_is_ok() {
 
         let current_era = DappsStaking::current_era();
         assert_eq!(starting_era + 1, current_era);
-        System::assert_last_event(mock::Event::DappsStaking(Event::NewDappStakingEra(
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NewDappStakingEra(
             starting_era + 1,
         )));
 
@@ -255,7 +255,7 @@ fn new_era_forcing() {
         assert_eq!(mock::DappsStaking::force_era(), Forcing::NotForcing);
 
         // check the event for the new era
-        System::assert_last_event(mock::Event::DappsStaking(Event::NewDappStakingEra(
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NewDappStakingEra(
             starting_era + 1,
         )));
     })
@@ -346,7 +346,7 @@ fn register_is_ok() {
 
         assert!(<TestRuntime as Config>::Currency::reserved_balance(&developer).is_zero());
         assert_register(developer, &ok_contract);
-        System::assert_last_event(mock::Event::DappsStaking(Event::NewContract(
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NewContract(
             developer,
             ok_contract,
         )));
@@ -367,7 +367,7 @@ fn register_with_non_root_fails() {
         let ok_contract = MockSmartContract::Evm(H160::repeat_byte(0x01));
 
         assert_noop!(
-            DappsStaking::register(Origin::signed(developer), developer, ok_contract),
+            DappsStaking::register(RuntimeOrigin::signed(developer), developer, ok_contract),
             BadOrigin
         );
     })
@@ -384,13 +384,13 @@ fn register_twice_with_same_account_fails() {
 
         assert_register(developer, &contract1);
 
-        System::assert_last_event(mock::Event::DappsStaking(Event::NewContract(
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NewContract(
             developer, contract1,
         )));
 
         // now register different contract with same account
         assert_noop!(
-            DappsStaking::register(Origin::root(), developer, contract2),
+            DappsStaking::register(RuntimeOrigin::root(), developer, contract2),
             Error::<TestRuntime>::AlreadyUsedDeveloperAccount
         );
     })
@@ -407,13 +407,13 @@ fn register_same_contract_twice_fails() {
 
         assert_register(developer1, &contract);
 
-        System::assert_last_event(mock::Event::DappsStaking(Event::NewContract(
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NewContract(
             developer1, contract,
         )));
 
         // now register same contract by different developer
         assert_noop!(
-            DappsStaking::register(Origin::root(), developer2, contract),
+            DappsStaking::register(RuntimeOrigin::root(), developer2, contract),
             Error::<TestRuntime>::AlreadyRegisteredContract
         );
     })
@@ -433,7 +433,7 @@ fn unregister_after_register_is_ok() {
 
         // Not possible to unregister a contract twice
         assert_noop!(
-            DappsStaking::unregister(Origin::root(), contract_id.clone()),
+            DappsStaking::unregister(RuntimeOrigin::root(), contract_id.clone()),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -451,7 +451,7 @@ fn unregister_with_non_root() {
 
         // Not possible to unregister if caller isn't root
         assert_noop!(
-            DappsStaking::unregister(Origin::signed(developer), contract_id.clone()),
+            DappsStaking::unregister(RuntimeOrigin::signed(developer), contract_id.clone()),
             BadOrigin
         );
     })
@@ -475,11 +475,11 @@ fn unregister_stake_and_unstake_is_not_ok() {
         assert_unregister(developer, &contract_id);
 
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(staker), contract_id.clone(), 100),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(staker), contract_id.clone(), 100),
             Error::<TestRuntime>::NotOperatedContract
         );
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(staker), contract_id.clone(), 100),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(staker), contract_id.clone(), 100),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -526,16 +526,16 @@ fn withdraw_from_unregistered_is_ok() {
 
         // No additional claim ops should be possible
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker_1), contract_id.clone()),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker_1), contract_id.clone()),
             Error::<TestRuntime>::NotStakedContract
         );
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker_2), contract_id.clone()),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker_2), contract_id.clone()),
             Error::<TestRuntime>::NotStakedContract
         );
         assert_noop!(
             DappsStaking::claim_dapp(
-                Origin::signed(developer),
+                RuntimeOrigin::signed(developer),
                 contract_id.clone(),
                 DappsStaking::current_era()
             ),
@@ -551,7 +551,7 @@ fn withdraw_from_unregistered_when_contract_doesnt_exist() {
 
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
         assert_noop!(
-            DappsStaking::withdraw_from_unregistered(Origin::signed(1), contract_id),
+            DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(1), contract_id),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -567,7 +567,7 @@ fn withdraw_from_unregistered_when_contract_is_still_registered() {
         assert_register(developer, &contract_id);
 
         assert_noop!(
-            DappsStaking::withdraw_from_unregistered(Origin::signed(1), contract_id),
+            DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(1), contract_id),
             Error::<TestRuntime>::NotUnregisteredContract
         );
     })
@@ -590,14 +590,14 @@ fn withdraw_from_unregistered_when_nothing_is_staked() {
 
         // No staked amount so call should fail.
         assert_noop!(
-            DappsStaking::withdraw_from_unregistered(Origin::signed(no_staker), contract_id),
+            DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(no_staker), contract_id),
             Error::<TestRuntime>::NotStakedContract
         );
 
         // Call should fail if called twice since no staked funds remain.
         assert_withdraw_from_unregistered(staker, &contract_id);
         assert_noop!(
-            DappsStaking::withdraw_from_unregistered(Origin::signed(staker), contract_id),
+            DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(staker), contract_id),
             Error::<TestRuntime>::NotStakedContract
         );
     })
@@ -622,7 +622,7 @@ fn withdraw_from_unregistered_when_unclaimed_rewards_remaining() {
 
         for _ in 1..DappsStaking::current_era() {
             assert_noop!(
-                DappsStaking::withdraw_from_unregistered(Origin::signed(staker), contract_id),
+                DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(staker), contract_id),
                 Error::<TestRuntime>::UnclaimedRewardsRemaining
             );
             assert_claim_staker(staker, &contract_id);
@@ -746,7 +746,7 @@ fn bond_and_stake_on_unregistered_contract_fails() {
         // Check not registered contract. Expect an error.
         let evm_contract = MockSmartContract::Evm(H160::repeat_byte(0x01));
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(staker_id), evm_contract, stake_value),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(staker_id), evm_contract, stake_value),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -765,7 +765,7 @@ fn bond_and_stake_insufficient_value() {
         // If user tries to make an initial bond&stake with less than minimum amount, raise an error.
         assert_noop!(
             DappsStaking::bond_and_stake(
-                Origin::signed(staker_id),
+                RuntimeOrigin::signed(staker_id),
                 contract_id.clone(),
                 MINIMUM_STAKING_AMOUNT - 1
             ),
@@ -778,7 +778,7 @@ fn bond_and_stake_insufficient_value() {
 
         // Now try to bond&stake some additional funds and expect an error since we cannot bond&stake 0.
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(staker_id), contract_id.clone(), 1),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(staker_id), contract_id.clone(), 1),
             Error::<TestRuntime>::StakingWithNoValue
         );
     })
@@ -801,7 +801,7 @@ fn bond_and_stake_too_many_stakers_per_contract() {
         // Now try to stake with an additional staker and expect an error.
         assert_noop!(
             DappsStaking::bond_and_stake(
-                Origin::signed((1 + MAX_NUMBER_OF_STAKERS).into()),
+                RuntimeOrigin::signed((1 + MAX_NUMBER_OF_STAKERS).into()),
                 contract_id.clone(),
                 100
             ),
@@ -829,7 +829,7 @@ fn bond_and_stake_too_many_era_stakes() {
 
         // Now try to stake with an additional staker and expect an error.
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(staker_id), contract_id, 100),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(staker_id), contract_id, 100),
             Error::<TestRuntime>::TooManyEraStakeValues
         );
     })
@@ -936,7 +936,7 @@ fn unbond_and_unstake_with_zero_value_is_not_ok() {
         assert_register(10, &contract_id);
 
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(1), contract_id, 0),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(1), contract_id, 0),
             Error::<TestRuntime>::UnstakingWithNoValue
         );
     })
@@ -949,7 +949,7 @@ fn unbond_and_unstake_on_not_operated_contract_is_not_ok() {
 
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(1), contract_id, 100),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(1), contract_id, 100),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -987,7 +987,7 @@ fn unbond_and_unstake_too_many_unlocking_chunks_is_not_ok() {
         advance_to_era(DappsStaking::current_era() + 1);
         assert_noop!(
             DappsStaking::unbond_and_unstake(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 contract_id.clone(),
                 unstake_amount
             ),
@@ -1005,7 +1005,7 @@ fn unbond_and_unstake_on_not_staked_contract_is_not_ok() {
         assert_register(10, &contract_id);
 
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(1), contract_id, 10),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(1), contract_id, 10),
             Error::<TestRuntime>::NotStakedContract,
         );
     })
@@ -1030,7 +1030,7 @@ fn unbond_and_unstake_too_many_era_stakes() {
         // At this point, we have max allowed amount of `EraStake` values so we cannot create
         // an additional one.
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(staker_id), contract_id, 10),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(staker_id), contract_id, 10),
             Error::<TestRuntime>::TooManyEraStakeValues
         );
     })
@@ -1053,7 +1053,7 @@ fn unbond_and_unstake_with_no_chunks_allowed() {
         assert_bond_and_stake(staker_id, &contract_id, 100);
 
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(staker_id), contract_id.clone(), 20),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(staker_id), contract_id.clone(), 20),
             Error::<TestRuntime>::TooManyUnlockingChunks,
         );
     })
@@ -1084,22 +1084,22 @@ fn withdraw_unbonded_is_ok() {
         // Now advance one era before first chunks finishes the unbonding process
         advance_to_era(initial_era + UNBONDING_PERIOD - 1);
         assert_noop!(
-            DappsStaking::withdraw_unbonded(Origin::signed(staker_id)),
+            DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker_id)),
             Error::<TestRuntime>::NothingToWithdraw
         );
 
         // Advance one additional era and expect that the first chunk can be withdrawn
         advance_to_era(DappsStaking::current_era() + 1);
-        assert_ok!(DappsStaking::withdraw_unbonded(Origin::signed(staker_id),));
-        System::assert_last_event(mock::Event::DappsStaking(Event::Withdrawn(
+        assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker_id),));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Withdrawn(
             staker_id,
             first_unbond_value,
         )));
 
         // Advance one additional era and expect that the first chunk can be withdrawn
         advance_to_era(DappsStaking::current_era() + 1);
-        assert_ok!(DappsStaking::withdraw_unbonded(Origin::signed(staker_id),));
-        System::assert_last_event(mock::Event::DappsStaking(Event::Withdrawn(
+        assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker_id),));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Withdrawn(
             staker_id,
             second_unbond_value,
         )));
@@ -1107,7 +1107,7 @@ fn withdraw_unbonded_is_ok() {
         // Advance one additional era but since we have nothing else to withdraw, expect an error
         advance_to_era(initial_era + UNBONDING_PERIOD - 1);
         assert_noop!(
-            DappsStaking::withdraw_unbonded(Origin::signed(staker_id)),
+            DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker_id)),
             Error::<TestRuntime>::NothingToWithdraw
         );
     })
@@ -1155,7 +1155,7 @@ fn withdraw_unbonded_no_value_is_not_ok() {
         initialize_first_block();
 
         assert_noop!(
-            DappsStaking::withdraw_unbonded(Origin::signed(1)),
+            DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(1)),
             Error::<TestRuntime>::NothingToWithdraw,
         );
     })
@@ -1180,7 +1180,7 @@ fn withdraw_unbonded_no_unbonding_period() {
 
         // Try to withdraw but expect an error since current era hasn't passed yet
         assert_noop!(
-            DappsStaking::withdraw_unbonded(Origin::signed(staker_id)),
+            DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker_id)),
             Error::<TestRuntime>::NothingToWithdraw,
         );
 
@@ -1245,7 +1245,7 @@ fn nomination_transfer_to_same_contract_is_not_ok() {
 
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 contract_id,
                 100,
                 contract_id,
@@ -1269,7 +1269,7 @@ fn nomination_transfer_to_inactive_contracts_is_not_ok() {
         // 1. Neither contract is registered
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id,
                 100,
                 target_contract_id,
@@ -1281,7 +1281,7 @@ fn nomination_transfer_to_inactive_contracts_is_not_ok() {
         assert_register(origin_developer, &origin_contract_id);
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id,
                 100,
                 target_contract_id,
@@ -1297,7 +1297,7 @@ fn nomination_transfer_to_inactive_contracts_is_not_ok() {
         assert_unregister(target_developer, &target_contract_id);
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id,
                 100,
                 target_contract_id,
@@ -1309,7 +1309,7 @@ fn nomination_transfer_to_inactive_contracts_is_not_ok() {
         assert_unregister(origin_developer, &origin_contract_id);
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id,
                 100,
                 target_contract_id,
@@ -1335,7 +1335,7 @@ fn nomination_transfer_from_not_staked_contract() {
 
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id.clone(),
                 20,
                 target_contract_id.clone()
@@ -1362,7 +1362,7 @@ fn nomination_transfer_with_no_value() {
 
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id.clone(),
                 Zero::zero(),
                 target_contract_id.clone()
@@ -1389,7 +1389,7 @@ fn nomination_transfer_with_insufficient_value() {
 
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id.clone(),
                 MINIMUM_STAKING_AMOUNT - 1,
                 target_contract_id.clone()
@@ -1420,14 +1420,14 @@ fn nomination_transfer_contracts_have_too_many_era_stake_values() {
             advance_to_era(DappsStaking::current_era() + 1);
         }
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(staker), origin_contract_id.clone(), 15),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(staker), origin_contract_id.clone(), 15),
             Error::<TestRuntime>::TooManyEraStakeValues
         );
 
         // Ensure it's not possible to transfer from origin contract since it's era stake values are maxed
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id.clone(),
                 15,
                 target_contract_id.clone()
@@ -1440,7 +1440,7 @@ fn nomination_transfer_contracts_have_too_many_era_stake_values() {
         assert_bond_and_stake(staker, &origin_contract_id, 15);
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 origin_contract_id.clone(),
                 15,
                 target_contract_id.clone()
@@ -1480,7 +1480,7 @@ fn nomination_transfer_max_number_of_stakers_exceeded() {
         // Sanity check + assurance that first_staker isn't staking on target contract
         assert_noop!(
             DappsStaking::bond_and_stake(
-                Origin::signed(first_staker),
+                RuntimeOrigin::signed(first_staker),
                 target_contract_id.clone(),
                 19
             ),
@@ -1490,7 +1490,7 @@ fn nomination_transfer_max_number_of_stakers_exceeded() {
         // Now attempt transfer nomination and expect an error
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(first_staker),
+                RuntimeOrigin::signed(first_staker),
                 origin_contract_id.clone(),
                 19,
                 target_contract_id.clone(),
@@ -1512,13 +1512,13 @@ fn claim_not_staked_contract() {
         assert_register(developer, &contract_id);
 
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker), contract_id),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker), contract_id),
             Error::<TestRuntime>::NotStakedContract
         );
 
         advance_to_era(DappsStaking::current_era() + 1);
         assert_noop!(
-            DappsStaking::claim_dapp(Origin::signed(developer), contract_id, 1),
+            DappsStaking::claim_dapp(RuntimeOrigin::signed(developer), contract_id, 1),
             Error::<TestRuntime>::NotStakedContract
         );
     })
@@ -1543,13 +1543,13 @@ fn claim_not_operated_contract() {
         // First claim should pass but second should fail because contract was unregistered
         assert_claim_staker(staker, &contract_id);
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker), contract_id),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker), contract_id),
             Error::<TestRuntime>::NotOperatedContract
         );
 
         assert_claim_dapp(&contract_id, 1);
         assert_noop!(
-            DappsStaking::claim_dapp(Origin::signed(developer), contract_id, 2),
+            DappsStaking::claim_dapp(RuntimeOrigin::signed(developer), contract_id, 2),
             Error::<TestRuntime>::NotOperatedContract
         );
     })
@@ -1575,12 +1575,12 @@ fn claim_invalid_era() {
         }
 
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker), contract_id),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker), contract_id),
             Error::<TestRuntime>::EraOutOfBounds
         );
         assert_noop!(
             DappsStaking::claim_dapp(
-                Origin::signed(developer),
+                RuntimeOrigin::signed(developer),
                 contract_id,
                 DappsStaking::current_era()
             ),
@@ -1605,7 +1605,7 @@ fn claim_dapp_same_era_twice() {
 
         assert_claim_dapp(&contract_id, start_era);
         assert_noop!(
-            DappsStaking::claim_dapp(Origin::signed(developer), contract_id, start_era),
+            DappsStaking::claim_dapp(RuntimeOrigin::signed(developer), contract_id, start_era),
             Error::<TestRuntime>::AlreadyClaimedInThisEra
         );
     })
@@ -1656,12 +1656,12 @@ fn claim_is_ok() {
         // Shouldn't be possible to claim current era.
         // Also, previous claim calls should have claimed everything prior to current era.
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(first_staker), first_contract_id.clone()),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(first_staker), first_contract_id.clone()),
             Error::<TestRuntime>::EraOutOfBounds
         );
         assert_noop!(
             DappsStaking::claim_dapp(
-                Origin::signed(first_developer),
+                RuntimeOrigin::signed(first_developer),
                 first_contract_id,
                 current_era
             ),
@@ -1708,7 +1708,7 @@ fn claim_after_unregister_is_ok() {
             assert_claim_staker(staker, &contract_id);
         }
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker), contract_id.clone()),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker), contract_id.clone()),
             Error::<TestRuntime>::NotOperatedContract
         );
 
@@ -1716,7 +1716,7 @@ fn claim_after_unregister_is_ok() {
         for era in start_era..unregister_era {
             if era >= full_unstake_era && era < restake_era {
                 assert_noop!(
-                    DappsStaking::claim_dapp(Origin::signed(developer), contract_id.clone(), era),
+                    DappsStaking::claim_dapp(RuntimeOrigin::signed(developer), contract_id.clone(), era),
                     Error::<TestRuntime>::NotStakedContract
                 );
             } else {
@@ -1832,7 +1832,7 @@ fn claiming_when_stakes_full_without_compounding_is_ok() {
         // making another gap in eras and trying to claim and restake would exceed MAX_ERA_STAKE_VALUES
         advance_to_era(DappsStaking::current_era() + 1);
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(staker_id), contract_id),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(staker_id), contract_id),
             Error::<TestRuntime>::TooManyEraStakeValues
         );
 
@@ -1851,7 +1851,7 @@ fn changing_reward_destination_for_empty_ledger_is_not_ok() {
         let staker = 1;
         assert_noop!(
             DappsStaking::set_reward_destination(
-                Origin::signed(staker),
+                RuntimeOrigin::signed(staker),
                 RewardDestination::FreeBalance
             ),
             Error::<TestRuntime>::NotActiveStaker
@@ -1896,7 +1896,7 @@ fn claim_dapp_with_zero_stake_periods_is_ok() {
         // Ensure that the empty interval cannot be claimed
         for era in first_full_unstake_era..restake_era {
             assert_noop!(
-                DappsStaking::claim_dapp(Origin::signed(developer), contract_id.clone(), era),
+                DappsStaking::claim_dapp(RuntimeOrigin::signed(developer), contract_id.clone(), era),
                 Error::<TestRuntime>::NotStakedContract
             );
         }
@@ -1909,7 +1909,7 @@ fn claim_dapp_with_zero_stake_periods_is_ok() {
         // Ensure no more claims are possible since contract was fully unstaked
         assert_noop!(
             DappsStaking::claim_dapp(
-                Origin::signed(developer),
+                RuntimeOrigin::signed(developer),
                 contract_id.clone(),
                 second_full_unstake_era
             ),
@@ -1932,9 +1932,9 @@ fn maintenance_mode_is_ok() {
         assert_ok!(DappsStaking::ensure_pallet_enabled());
         assert!(!PalletDisabled::<TestRuntime>::exists());
 
-        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert_ok!(DappsStaking::maintenance_mode(RuntimeOrigin::root(), true));
         assert!(PalletDisabled::<TestRuntime>::exists());
-        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(true)));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::MaintenanceMode(true)));
 
         let account = 1;
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
@@ -1942,43 +1942,43 @@ fn maintenance_mode_is_ok() {
         //
         // 1
         assert_noop!(
-            DappsStaking::register(Origin::root(), account, contract_id),
+            DappsStaking::register(RuntimeOrigin::root(), account, contract_id),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::unregister(Origin::root(), contract_id),
+            DappsStaking::unregister(RuntimeOrigin::root(), contract_id),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::withdraw_from_unregistered(Origin::signed(account), contract_id),
+            DappsStaking::withdraw_from_unregistered(RuntimeOrigin::signed(account), contract_id),
             Error::<TestRuntime>::Disabled
         );
 
         //
         // 2
         assert_noop!(
-            DappsStaking::bond_and_stake(Origin::signed(account), contract_id, 100),
+            DappsStaking::bond_and_stake(RuntimeOrigin::signed(account), contract_id, 100),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::unbond_and_unstake(Origin::signed(account), contract_id, 100),
+            DappsStaking::unbond_and_unstake(RuntimeOrigin::signed(account), contract_id, 100),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::claim_dapp(Origin::signed(account), contract_id, 5),
+            DappsStaking::claim_dapp(RuntimeOrigin::signed(account), contract_id, 5),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::claim_staker(Origin::signed(account), contract_id),
+            DappsStaking::claim_staker(RuntimeOrigin::signed(account), contract_id),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
-            DappsStaking::withdraw_unbonded(Origin::signed(account)),
+            DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(account)),
             Error::<TestRuntime>::Disabled
         );
         assert_noop!(
             DappsStaking::nomination_transfer(
-                Origin::signed(account),
+                RuntimeOrigin::signed(account),
                 contract_id,
                 100,
                 contract_id,
@@ -1989,7 +1989,7 @@ fn maintenance_mode_is_ok() {
         //
         // 3
         assert_noop!(
-            DappsStaking::force_new_era(Origin::root()),
+            DappsStaking::force_new_era(RuntimeOrigin::root()),
             Error::<TestRuntime>::Disabled
         );
         // shouldn't do anything since we're in maintenance mode
@@ -1997,8 +1997,8 @@ fn maintenance_mode_is_ok() {
 
         //
         // 4
-        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), false));
-        System::assert_last_event(mock::Event::DappsStaking(Event::MaintenanceMode(false)));
+        assert_ok!(DappsStaking::maintenance_mode(RuntimeOrigin::root(), false));
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::MaintenanceMode(false)));
         assert_register(account, &contract_id);
     })
 }
@@ -2011,14 +2011,14 @@ fn maintenance_mode_no_change() {
         // Expect an error since maintenance mode is already disabled
         assert_ok!(DappsStaking::ensure_pallet_enabled());
         assert_noop!(
-            DappsStaking::maintenance_mode(Origin::root(), false),
+            DappsStaking::maintenance_mode(RuntimeOrigin::root(), false),
             Error::<TestRuntime>::NoMaintenanceModeChange
         );
 
         // Same for the case when maintenance mode is already enabled
-        assert_ok!(DappsStaking::maintenance_mode(Origin::root(), true));
+        assert_ok!(DappsStaking::maintenance_mode(RuntimeOrigin::root(), true));
         assert_noop!(
-            DappsStaking::maintenance_mode(Origin::root(), true),
+            DappsStaking::maintenance_mode(RuntimeOrigin::root(), true),
             Error::<TestRuntime>::NoMaintenanceModeChange
         );
     })
@@ -2107,7 +2107,7 @@ pub fn set_contract_stake_info() {
         // Ensure only root can call it
         assert_noop!(
             DappsStaking::set_contract_stake_info(
-                Origin::signed(1),
+                RuntimeOrigin::signed(1),
                 contract_id.clone(),
                 1,
                 original_contract_stake_info.clone()
@@ -2121,7 +2121,7 @@ pub fn set_contract_stake_info() {
             original_contract_stake_info
         );
         assert_ok!(DappsStaking::set_contract_stake_info(
-            Origin::root(),
+            RuntimeOrigin::root(),
             contract_id.clone(),
             1,
             original_contract_stake_info.clone()
