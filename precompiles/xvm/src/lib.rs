@@ -69,9 +69,10 @@ where
             .map_err(|_| revert("can not decode XVM context"))?;
 
         // Fetch the remaining gas (weight) available for execution
-        let remaining_gas = handle.remaining_gas();
-        let remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
-        context.max_weight = remaining_weight;
+        // TODO: rework
+        //let remaining_gas = handle.remaining_gas();
+        //let remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
+        //context.max_weight = remaining_weight;
 
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
