@@ -383,7 +383,12 @@ fn nomination_transfer() {
 fn register_and_verify(developer: TestAccount, contract: H160) {
     let smart_contract =
         decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
-    DappsStaking::register(RuntimeOrigin::root(), developer.clone().into(), smart_contract).unwrap();
+    DappsStaking::register(
+        RuntimeOrigin::root(),
+        developer.clone().into(),
+        smart_contract,
+    )
+    .unwrap();
 
     // check the storage after the register
     let dev_account_id: AccountId32 = developer.into();
