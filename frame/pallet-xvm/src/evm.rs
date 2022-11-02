@@ -49,7 +49,7 @@ where
             None,
             Vec::new(),
         )
-        .map_err(|e| XvmCallError {
+        .map_err(|_e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
             consumed_weight: 42u64, // TODO: res.actual_weight.map(|x| x.ref_time()).unwrap_or(context.max_weight),
         })?;

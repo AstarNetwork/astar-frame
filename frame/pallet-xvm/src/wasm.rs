@@ -2,7 +2,7 @@
 
 use crate::*;
 use codec::HasCompact;
-use frame_support::{traits::Currency, weights::Weight};
+use frame_support::traits::Currency;
 use pallet_contracts::chain_extension::UncheckedFrom;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
@@ -47,7 +47,7 @@ where
             None,
             input,
         )
-        .map_err(|e| XvmCallError {
+        .map_err(|_e| XvmCallError {
             error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
             consumed_weight: 42u64, //TODO: e.post_info.actual_weight.ref_time().unwrap_or(gas_limit),
         })?;
