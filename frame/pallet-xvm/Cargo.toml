@@ -22,7 +22,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", optional = true, default-features = false }
 
 # EVM support 
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.30", default-features = false, optional = true, features = [ "forbid-evm-reentrancy" ] }
+pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.30", default-features = false, optional = true, features = ["forbid-evm-reentrancy"] }
 
 # Substrate WASM VM support
 pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false, optional = true }
