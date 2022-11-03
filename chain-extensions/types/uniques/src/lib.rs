@@ -4,15 +4,15 @@ use sp_runtime::{DispatchError, ModuleError};
 
 pub enum UniquesFunc {
     // getters
+    // NextCollectionId,
     CollectionDetails,
 
     // extrinsics
     Create,
     Mint,
-    // SetCollectionMetadata,
-    // SetItemMetadata,
-    // SetCollectionMaxSupply,
-    // Transfer,
+    Transfer,
+    ApproveTransfer,
+    CancelApproval,
 }
 
 impl TryFrom<u32> for UniquesFunc {
@@ -21,36 +21,16 @@ impl TryFrom<u32> for UniquesFunc {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         return match value {
             // getters
+            // 0x0001 => Ok(UniquesFunc::NextCollectionId),
             0x0002 => Ok(UniquesFunc::CollectionDetails),
-            // 0x0003 => Ok(UniquesFunc::NextResourceId),
-            // 0x0004 => Ok(UniquesFunc::Collections),
-            // 0x0005 => Ok(UniquesFunc::Nfts),
-            // 0x0006 => Ok(UniquesFunc::Priorities),
-            // 0x0007 => Ok(UniquesFunc::Children),
-            // 0x0008 => Ok(UniquesFunc::Resources),
-            // 0x0009 => Ok(UniquesFunc::EquippableBases),
-            // 0x000A => Ok(UniquesFunc::EquippableSlots),
-            // 0x000B => Ok(UniquesFunc::Properties),
 
             // extrinsics
             0x00A0 => Ok(UniquesFunc::Create),
             0x00A1 => Ok(UniquesFunc::Mint),
-            // 0x00A2 => Ok(UniquesFunc::SetCollectionMetadata),
-            // 0x00A3 => Ok(UniquesFunc::SetItemMetadata),
-            // 0x00A4 => Ok(UniquesFunc::SetCollectionMaxSupply),
-            // 0x0012 => Ok(UniquesFunc::Send),
-            // 0x0013 => Ok(UniquesFunc::AcceptNft),
-            // 0x0014 => Ok(UniquesFunc::RejectNft),
-            // 0x0015 => Ok(UniquesFunc::ChangeCollectionIssuer),
-            // 0x0016 => Ok(UniquesFunc::SetProperty),
-            // 0x0017 => Ok(UniquesFunc::LockCollection),
-            // 0x0018 => Ok(UniquesFunc::AddBasicResource),
-            // 0x0019 => Ok(UniquesFunc::AddComposableResource),
-            // 0x001A => Ok(UniquesFunc::AddSlotResource),
-            // 0x001B => Ok(UniquesFunc::AcceptResource),
-            // 0x001C => Ok(UniquesFunc::RemoveResource),
-            // 0x001D => Ok(UniquesFunc::AcceptResourceRemoval),
-            // 0x001E => Ok(UniquesFunc::SetPriority),
+            0x00A2 => Ok(UniquesFunc::Transfer),
+            0x00A3 => Ok(UniquesFunc::ApproveTransfer),
+            0x00A4 => Ok(UniquesFunc::CancelApproval),
+
             _ => Err(DispatchError::Other(
                 "UniquesExtension: Unimplemented func_id",
             )),
@@ -119,6 +99,23 @@ impl TryFrom<DispatchError> for UniquesError {
         return match error_text {
             Some("NoPermission") => Ok(UniquesError::NoPermission),
             Some("UnknownCollection") => Ok(UniquesError::UnknownCollection),
+            Some("AlreadyExists") => Ok(UniquesError::AlreadyExists),
+            Some("WrongOwner") => Ok(UniquesError::WrongOwner),
+            Some("BadWitness") => Ok(UniquesError::UnknownCollection),
+            Some("InUse") => Ok(UniquesError::InUse),
+            Some("Frozen") => Ok(UniquesError::Frozen),
+            Some("WrongDelegate") => Ok(UniquesError::WrongDelegate),
+            Some("NoDelegate") => Ok(UniquesError::NoDelegate),
+            Some("Unapproved") => Ok(UniquesError::Unapproved),
+            Some("Unaccepted") => Ok(UniquesError::Unaccepted),
+            Some("Locked") => Ok(UniquesError::Locked),
+            Some("MaxSupplyReached") => Ok(UniquesError::MaxSupplyReached),
+            Some("MaxSupplyAlreadySet") => Ok(UniquesError::MaxSupplyAlreadySet),
+            Some("MaxSupplyTooSmall") => Ok(UniquesError::MaxSupplyTooSmall),
+            Some("NextIdNotUsed") => Ok(UniquesError::NextIdNotUsed),
+            Some("NotForSale") => Ok(UniquesError::NotForSale),
+            Some("BidTooLow") => Ok(UniquesError::BidTooLow),
+            Some("UnImplemented") => Ok(UniquesError::UnImplemented),
             _ => Ok(UniquesError::UnknownError),
         };
     }

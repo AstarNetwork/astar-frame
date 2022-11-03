@@ -6,6 +6,7 @@ use sp_runtime::DispatchError;
 use chain_extension_trait::ChainExtensionExec;
 
 use frame_support::log;
+// use frame_support::{traits::Get, pallet_prelude::{Weight}};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState, RetVal, RetVal::Converging, SysConfig, UncheckedFrom,
@@ -29,6 +30,18 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
 
         match func_id {
             // READ functions
+            // UniquesFunc::NextCollectionId => {
+
+            //     let weight_to_charge = T::DbWeight::get().reads(1 as Weight);
+            //     env.charge_weight(weight_to_charge)?;
+
+            //     let next_collection_id = pallet_uniques::NextCollectionId::<T, _>::get();
+            //     log::trace!(target: "runtime",
+            //         "[UniquesExtension] NextCollectionId() {:?}",
+            //         next_collection_id
+            //     );
+            //     env.write(&next_collection_id.encode(), false, None)?;
+            // }
             UniquesFunc::CollectionDetails => {
                 // let mut env = env.buf_in_buf_out();
                 // let index = pallet_uniques::Pallet::<T>::collection_index();
@@ -92,9 +105,9 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
             UniquesFunc::Mint => {
                 log::trace!(target: "runtime", "[UniquesExtension] mint() initiating");
                 let mut env = env.buf_in_buf_out();
-                let (collection_id, item_id, mint_to): (T::CollectionId, T::ItemId, T::AccountId) = env.read_as()?;
+                let (collection_id, item_id, mint_to): (T::CollectionId, T::ItemId, T::AccountId) =
+                    env.read_as()?;
                 let contract = env.ext().address().clone();
-                // let caller = env.ext().caller().clone();
 
                 let weight_to_charge = <T as pallet_uniques::Config>::WeightInfo::mint();
                 env.charge_weight(weight_to_charge)?;
@@ -105,14 +118,124 @@ impl<T: pallet_uniques::Config> ChainExtensionExec<T> for UniquesExtension<T> {
                     collection_id, item_id, weight_to_charge
                 );
                 let result = pallet_uniques::Pallet::<T>::mint(
-                    RawOrigin::Signed(contract.clone()).into(),     // collection owner is this contract
-                    collection_id,                                  // collection_id for this contrat
-                    item_id,                                        // item_id to be minted
+                    RawOrigin::Signed(contract.clone()).into(), // collection owner is this contract
+                    collection_id,                              // collection_id for this contrat
+                    item_id,                                    // item_id to be minted
                     <T::Lookup as StaticLookup>::unlookup(mint_to), // new owner of the item
                 );
 
                 log::trace!(target: "runtime",
                     "[UniquesExtension] mint() result {:?}",
+                    result
+                );
+
+                return match result {
+                    Ok(_) => Ok(Converging(UniquesError::Success as u32)),
+                    Err(e) => {
+                        let mapped_error = UniquesError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                };
+            }
+
+            UniquesFunc::Transfer => {
+                log::trace!(target: "runtime", "[UniquesExtension] transfer() initiating");
+                let mut env = env.buf_in_buf_out();
+                let (collection_id, item_id, to): (T::CollectionId, T::ItemId, T::AccountId) =
+                    env.read_as()?;
+                // in case of transfer we need caller's address as origin
+                let caller = env.ext().caller().clone();
+                let weight_to_charge = <T as pallet_uniques::Config>::WeightInfo::transfer();
+                env.charge_weight(weight_to_charge)?;
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] transfer() caller {:?} \to {:?} \ncollection_id {:?}, item_id {:?} weight {:?}",
+                    caller, to,
+                    collection_id, item_id, weight_to_charge
+                );
+                let result = pallet_uniques::Pallet::<T>::transfer(
+                    RawOrigin::Signed(caller.clone()).into(), // current item owner
+                    collection_id,                            // collection_id
+                    item_id,                                  // item_id to be transfered
+                    <T::Lookup as StaticLookup>::unlookup(to), // new owner of the item
+                );
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] transfer() result {:?}",
+                    result
+                );
+
+                return match result {
+                    Ok(_) => Ok(Converging(UniquesError::Success as u32)),
+                    Err(e) => {
+                        let mapped_error = UniquesError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                };
+            }
+
+            UniquesFunc::ApproveTransfer => {
+                log::trace!(target: "runtime", "[UniquesExtension] approve() initiating");
+                let mut env = env.buf_in_buf_out();
+                let (collection_id, item_id, operator): (T::CollectionId, T::ItemId, T::AccountId) =
+                    env.read_as()?;
+                // in case of approve we need caller's address as origin
+                let caller = env.ext().caller().clone();
+                let weight_to_charge =
+                    <T as pallet_uniques::Config>::WeightInfo::approve_transfer();
+                env.charge_weight(weight_to_charge)?;
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] approve() caller {:?} \noperator {:?} \ncollection_id {:?}, item_id {:?} weight {:?}",
+                    caller, operator,
+                    collection_id, item_id, weight_to_charge
+                );
+                let result = pallet_uniques::Pallet::<T>::approve_transfer(
+                    RawOrigin::Signed(caller.clone()).into(), // current item owner
+                    collection_id,                            // collection_id
+                    item_id,                                  // item_id to be approved
+                    <T::Lookup as StaticLookup>::unlookup(operator), // new operator of the item
+                );
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] approve() result {:?}",
+                    result
+                );
+
+                return match result {
+                    Ok(_) => Ok(Converging(UniquesError::Success as u32)),
+                    Err(e) => {
+                        let mapped_error = UniquesError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                };
+            }
+
+            UniquesFunc::CancelApproval => {
+                log::trace!(target: "runtime", "[UniquesExtension] approve() initiating");
+                let mut env = env.buf_in_buf_out();
+                let (collection_id, item_id, operator): (T::CollectionId, T::ItemId, T::AccountId) =
+                    env.read_as()?;
+                // in case of approve we need caller's address as origin
+                // let contract = env.ext().address().clone();
+                let caller = env.ext().caller().clone();
+                let weight_to_charge = <T as pallet_uniques::Config>::WeightInfo::cancel_approval();
+                env.charge_weight(weight_to_charge)?;
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] cancel approval() caller {:?} \noperator {:?} \ncollection_id {:?}, item_id {:?} weight {:?}",
+                    caller, operator,
+                    collection_id, item_id, weight_to_charge
+                );
+                let result = pallet_uniques::Pallet::<T>::cancel_approval(
+                    RawOrigin::Signed(caller.clone()).into(), // current item owner
+                    collection_id,                            // collection_id
+                    item_id,                                  // item_id to be approved
+                    Some(<T::Lookup as StaticLookup>::unlookup(operator)), // remove approval for this operator
+                );
+
+                log::trace!(target: "runtime",
+                    "[UniquesExtension] cancel approval() result {:?}",
                     result
                 );
 
