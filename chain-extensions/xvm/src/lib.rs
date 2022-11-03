@@ -85,10 +85,13 @@ where
 
                 return match call_result {
                     Err(e) => {
+                        log::debug!(target: "runtime", "Error CE {:?}", e.error);
                         let mapped_error = XvmExecutionResult::try_from(e.error)?;
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(XvmExecutionResult::Success as u32)),
+                    Ok(_) => {
+                        log::debug!(target: "runtime", "CE Ok(())");
+                        Ok(RetVal::Converging(XvmExecutionResult::Success as u32))},
                 };
             }
         }
