@@ -114,6 +114,7 @@ pub mod pallet {
 
     /// The current era index.
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn current_era)]
     pub type CurrentEra<T> = StorageValue<_, EraIndex, ValueQuery>;
 
