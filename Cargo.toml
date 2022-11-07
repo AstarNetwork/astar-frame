@@ -19,7 +19,4 @@ members = [
 	"precompiles/utils",
 	"precompiles/xcm",
 	"precompiles/xvm",
-
-	# Disabled due to incorrect nightly channel usage
-	# "contracts/*",
 ]

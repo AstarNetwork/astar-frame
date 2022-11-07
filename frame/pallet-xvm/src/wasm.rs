@@ -47,9 +47,16 @@ where
             None,
             input,
         )
-        .map_err(|_e| XvmCallError {
-            error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
-            consumed_weight: 42u64, //TODO: e.post_info.actual_weight.ref_time().unwrap_or(gas_limit),
+        .map_err(|e| {
+            let consumed_weight = if let Some(weight) = e.post_info.actual_weight {
+                weight.ref_time()
+            } else {
+                gas_limit.ref_time()
+            };
+            XvmCallError {
+                error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+                consumed_weight,
+            }
         })?;
 
         log::trace!(
@@ -57,9 +64,14 @@ where
             "WASM XVM call result: {:?}", res
         );
 
+        let consumed_weight = if let Some(weight) = res.actual_weight {
+            weight.ref_time()
+        } else {
+            gas_limit.ref_time()
+        };
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill in with output from the call
-            consumed_weight: 42u64, //TODO: e.post_info.actual_weight.ref_time().unwrap_or(gas_limit),
+            consumed_weight,
         })
     }
 }
