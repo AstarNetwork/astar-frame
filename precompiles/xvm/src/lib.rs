@@ -22,7 +22,7 @@ mod tests;
 #[precompile_utils::generate_function_selector]
 #[derive(Debug, PartialEq)]
 pub enum Action {
-    XvmCall = "xvm_call(bytes,bytes,bytes,bytes)",
+    XvmCall = "xvm_call(bytes,bytes,bytes)",
 }
 
 /// A precompile that expose XVM related functions.
@@ -63,13 +63,19 @@ where
         input.expect_arguments(4)?;
 
         // Read arguments and check it
+        // TODO: This approach probably needs to be revised - does contract call need to specify gas/weight? Usually it is implicit.
         let context_raw = input.read::<Bytes>()?;
-        let context: XvmContext<<R as pallet_xvm::Config>::VmId> =
-            Decode::decode(&mut context_raw.0.as_ref())
-                .map_err(|_| revert("can not decode XVM context"))?;
+        let context: XvmContext = Decode::decode(&mut context_raw.0.as_ref())
+            .map_err(|_| revert("can not decode XVM context"))?;
+
+        // Fetch the remaining gas (weight) available for execution
+        // TODO: rework
+        //let remaining_gas = handle.remaining_gas();
+        //let remaining_weight = R::GasWeightMapping::gas_to_weight(remaining_gas);
+        //context.max_weight = remaining_weight;
+
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
-        let call_metadata = input.read::<Bytes>()?.0;
 
         // Build call with origin.
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
@@ -77,10 +83,10 @@ where
             context,
             to: call_to,
             input: call_input,
-            metadata: call_metadata,
         };
 
         // Dispatch a call.
+        // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
         RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))

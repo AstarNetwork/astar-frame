@@ -117,7 +117,9 @@ fn cannot_register_candidate_if_too_many() {
 
         // reset desired candidates:
         <crate::DesiredCandidates<Test>>::put(1);
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
 
         // but no more
         assert_noop!(
@@ -132,7 +134,9 @@ fn cannot_unregister_candidate_if_too_few() {
     new_test_ext().execute_with(|| {
         // reset desired candidates:
         <crate::DesiredCandidates<Test>>::put(1);
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
 
         // can not remove too few
         assert_noop!(
@@ -170,7 +174,9 @@ fn cannot_register_as_candidate_if_keys_not_registered() {
 fn cannot_register_dupe_candidate() {
     new_test_ext().execute_with(|| {
         // can add 3 as candidate
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
         let addition = CandidateInfo {
             who: 3,
             deposit: 10,
@@ -194,7 +200,9 @@ fn cannot_register_as_candidate_if_poor() {
         assert_eq!(Balances::free_balance(&33), 0);
 
         // works
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
 
         // poor
         assert_noop!(
@@ -217,8 +225,12 @@ fn register_as_candidate_works() {
         assert_eq!(Balances::free_balance(&3), 100);
         assert_eq!(Balances::free_balance(&4), 100);
 
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
 
         assert_eq!(Balances::free_balance(&3), 90);
         assert_eq!(Balances::free_balance(&4), 90);
@@ -231,11 +243,15 @@ fn register_as_candidate_works() {
 fn leave_intent() {
     new_test_ext().execute_with(|| {
         // register a candidate.
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
         assert_eq!(Balances::free_balance(3), 90);
 
         // register too so can leave above min candidates
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(5)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(5)
+        ));
         assert_eq!(Balances::free_balance(5), 90);
 
         // cannot leave if not candidate.
@@ -259,7 +275,9 @@ fn authorship_event_handler() {
 
         // 4 is the default author.
         assert_eq!(Balances::free_balance(4), 100);
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
         // triggers `note_author`
         Authorship::on_initialize(1);
 
@@ -287,7 +305,9 @@ fn fees_edgecases() {
         Balances::make_free_balance_be(&CollatorSelection::account_id(), 5);
         // 4 is the default author.
         assert_eq!(Balances::free_balance(4), 100);
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
         // triggers `note_author`
         Authorship::on_initialize(1);
 
@@ -319,7 +339,9 @@ fn session_management_works() {
         assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
 
         // add a new collator
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
 
         // session won't see this.
         assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
@@ -348,8 +370,12 @@ fn kick_and_slash_mechanism() {
         // Define slash destination account
         <crate::SlashDestination<Test>>::put(5);
         // add a new collator
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(4)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(4)
+        ));
         initialize_to_block(10);
         assert_eq!(CollatorSelection::candidates().len(), 2);
         initialize_to_block(20);
@@ -377,8 +403,12 @@ fn kick_and_slash_mechanism() {
 fn should_not_kick_mechanism_too_few() {
     new_test_ext().execute_with(|| {
         // add a new collator
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(3)));
-        assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(5)));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(3)
+        ));
+        assert_ok!(CollatorSelection::register_as_candidate(
+            RuntimeOrigin::signed(5)
+        ));
         initialize_to_block(10);
         assert_eq!(CollatorSelection::candidates().len(), 2);
         initialize_to_block(20);
