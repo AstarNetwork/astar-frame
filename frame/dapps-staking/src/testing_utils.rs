@@ -158,11 +158,9 @@ pub(crate) fn assert_withdraw_from_unregistered(
         RuntimeOrigin::signed(staker.clone()),
         contract_id.clone()
     ));
-    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::WithdrawFromUnregistered(
-        staker,
-        contract_id.clone(),
-        staked_value,
-    )));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(
+        Event::WithdrawFromUnregistered(staker, contract_id.clone(), staked_value),
+    ));
 
     let final_state = MemorySnapshot::all(current_era, contract_id, staker);
 
@@ -365,7 +363,9 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let expected_unbond_amount = valid_info.sum();
 
     // Ensure op is successful and event is emitted
-    assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(staker),));
+    assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(
+        staker
+    ),));
     System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Withdrawn(
         staker,
         expected_unbond_amount,
