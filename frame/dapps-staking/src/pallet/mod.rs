@@ -103,6 +103,7 @@ pub mod pallet {
 
     /// Denotes whether pallet is disabled (in maintenance mode) or not
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -130,11 +131,13 @@ pub mod pallet {
 
     /// Mode of era forcing.
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
     /// Stores the block number of when the next era starts
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn next_era_starting_block)]
     pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
