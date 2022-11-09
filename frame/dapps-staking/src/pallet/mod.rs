@@ -180,6 +180,19 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Beneficiary of staking rewards on perticular contract.
+    /// `(staker, contract_id) -> beneficiary_account_id`
+    #[pallet::storage]
+    #[pallet::getter(fn staking_beneficiary)]
+    pub type RewardsBeneficiary<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        T::SmartContract,
+        T::AccountId,
+    >;
+
     /// Stores the current pallet storage version.
     #[pallet::storage]
     #[pallet::getter(fn storage_version)]
@@ -233,6 +246,12 @@ pub mod pallet {
             BalanceOf<T>,
             T::SmartContract,
         ),
+        /// Staking rewards beneficiary is set
+        BeneficiarySet(T::AccountId, T::SmartContract, T::AccountId),
+        /// Staking rewards beneficiary is removed
+        BeneficiaryRemoved(T::AccountId, T::SmartContract),
+        /// Staking rewards beneficiary is updated
+        BeneficiaryUpdated(T::AccountId, T::SmartContract, T::AccountId),
     }
 
     #[pallet::error]
@@ -291,6 +310,10 @@ pub mod pallet {
         NotActiveStaker,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
+        /// There is no beneficiary set for the staker per contract
+        BeneficiaryNotSet,
+        /// Beneficiary used is not valid
+        InvalidBeneficiary,
     }
 
     #[pallet::hooks]
@@ -751,7 +774,9 @@ pub mod pallet {
                 staker_info.latest_staked_value(),
             );
 
-            if should_restake_reward {
+            let beneficiary = RewardsBeneficiary::<T>::get(&staker, &contract_id).unwrap_or(staker.clone());
+
+            if staker == beneficiary && should_restake_reward {
                 staker_info
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
@@ -797,9 +822,9 @@ pub mod pallet {
                 ));
             }
 
-            T::Currency::resolve_creating(&staker, reward_imbalance);
+            T::Currency::resolve_creating(&beneficiary, reward_imbalance);
             Self::update_staker_info(&staker, &contract_id, staker_info);
-            Self::deposit_event(Event::<T>::Reward(staker, contract_id, era, staker_reward));
+            Self::deposit_event(Event::<T>::Reward(beneficiary, contract_id, era, staker_reward));
 
             Ok(Some(if should_restake_reward {
                 T::WeightInfo::claim_staker_with_restake()
@@ -958,6 +983,71 @@ pub mod pallet {
             Ledger::<T>::insert(&staker, ledger);
 
             Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
+            Ok(().into())
+        }
+
+        /// Staker sets the beneficiary of staking rewards.
+        #[pallet::weight(10_000)]
+        pub fn set_rewards_beneficiary(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+            beneficiary: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let staker = ensure_signed(origin)?;
+
+            ensure!(
+                Self::is_active(&contract_id),
+                Error::<T>::NotOperatedContract
+            );
+
+            RewardsBeneficiary::<T>::insert(&staker, &contract_id, &beneficiary);
+
+            Self::deposit_event(Event::<T>::BeneficiarySet(staker, contract_id, beneficiary));
+            Ok(().into())
+        }
+
+        /// Staker removes the beneficiary of staking rewards.
+        #[pallet::weight(10_000)]
+        pub fn remove_rewards_beneficiary(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let staker = ensure_signed(origin)?;
+
+            RewardsBeneficiary::<T>::remove(&staker, &contract_id);
+
+            Self::deposit_event(Event::<T>::BeneficiaryRemoved(staker, contract_id));
+            Ok(().into())
+        }
+
+        /// Used by the beneficiary and updates the beneficiary to a new account.
+        #[pallet::weight(10_000)]
+        pub fn update_rewards_beneficiary(
+            origin: OriginFor<T>,
+            staker: T::AccountId,
+            contract_id: T::SmartContract,
+            new_beneficiary: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let sender = ensure_signed(origin)?;
+
+            ensure!(
+                Self::is_active(&contract_id),
+                Error::<T>::NotOperatedContract
+            );
+
+            RewardsBeneficiary::<T>::try_mutate(&staker, &contract_id, |maybe_beneficiary| -> DispatchResultWithPostInfo {
+                let beneficiary = maybe_beneficiary.as_mut().ok_or(Error::<T>::BeneficiaryNotSet)?;
+                ensure!(sender == *beneficiary, Error::<T>::InvalidBeneficiary);
+
+                *beneficiary = new_beneficiary.clone();
+
+                Ok(().into())
+            })?;
+
+            Self::deposit_event(Event::<T>::BeneficiaryUpdated(staker, contract_id, new_beneficiary));
             Ok(().into())
         }
 
