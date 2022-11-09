@@ -10,6 +10,8 @@ pub(crate) struct MemorySnapshot {
     staker_info: StakerInfo<Balance>,
     contract_info: ContractStakeInfo<Balance>,
     free_balance: Balance,
+    beneficiary: Option<AccountId>,
+    beneficiary_free_balance: Balance,
     ledger: AccountLedger<Balance>,
 }
 
@@ -27,6 +29,8 @@ impl MemorySnapshot {
             contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: DappsStaking::ledger(&account),
             free_balance: <TestRuntime as Config>::Currency::free_balance(&account),
+            beneficiary: None,
+            beneficiary_free_balance: Default::default(),
         }
     }
 
@@ -40,7 +44,15 @@ impl MemorySnapshot {
             contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: Default::default(),
             free_balance: Default::default(),
+            beneficiary: None,
+            beneficiary_free_balance: Default::default(),
         }
+    }
+
+    /// Set beneficiary account
+    pub(crate) fn set_beneficiary(&mut self, account: AccountId) {
+        self.beneficiary = Some(account);
+        self.beneficiary_free_balance = <TestRuntime as Config>::Currency::free_balance(&account);
     }
 }
 
@@ -492,7 +504,9 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     System::reset_events();
 
     let init_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
-    let init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
+    let mut init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
+    let beneficiary = RewardsBeneficiary::<TestRuntime>::get(claimer, contract_id).unwrap_or(claimer);
+    init_state_current_era.set_beneficiary(beneficiary);
 
     // Calculate contract portion of the reward
     let (_, stakers_joint_reward) = DappsStaking::dev_stakers_split(
@@ -518,7 +532,8 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
-    let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
+    let mut final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
+    final_state_current_era.set_beneficiary(beneficiary);
 
     // assert staked and free balances depending on restake check,
     assert_restake_reward(
@@ -545,7 +560,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
 
     // last event should be Reward, regardless of restaking
     System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-        claimer,
+        beneficiary,
         contract_id.clone(),
         claim_era,
         calculated_reward,
@@ -607,8 +622,8 @@ fn assert_restake_reward(
     } else {
         // staked values should remain the same, and free balance increase
         assert_eq!(
-            init_state_current_era.free_balance + reward,
-            final_state_current_era.free_balance
+            init_state_current_era.beneficiary_free_balance + reward,
+            final_state_current_era.beneficiary_free_balance
         );
         assert_eq!(
             init_state_current_era.era_info.staked,

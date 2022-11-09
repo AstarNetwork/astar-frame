@@ -1783,6 +1783,32 @@ fn claim_only_payout_is_ok() {
 }
 
 #[test]
+fn claim_staker_works_when_beneficiary_set() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let beneficiary = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        // stake some tokens
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+        let _ = DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary);
+
+        // disable reward restaking
+        advance_to_era(start_era + 1);
+        assert_set_reward_destination(staker, RewardDestination::FreeBalance);
+
+        // ensure it's claimed correctly
+        assert_claim_staker(staker, &contract_id);
+    })
+}
+
+#[test]
 fn claim_with_zero_staked_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
@@ -2172,3 +2198,92 @@ pub fn set_contract_stake_info() {
         );
     })
 }
+
+#[test]
+pub fn set_rewards_beneficiary_works() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker = 1;
+        let beneficiary = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_register(10, &contract_id);
+
+        assert_ok!(DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary));
+        assert_eq!(RewardsBeneficiary::<TestRuntime>::get(staker, contract_id), Some(beneficiary));
+    })
+}
+
+#[test]
+pub fn set_rewards_beneficiary_failed_when_contract_is_not_registered() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker = 1;
+        let beneficiary = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_noop!(
+            DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+    })
+}
+
+#[test]
+pub fn remove_rewards_beneficiary_works() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker = 1;
+        let beneficiary = 2;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_register(10, &contract_id);
+        let _ = DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary);
+
+        assert_ok!(DappsStaking::remove_rewards_beneficiary(Origin::signed(staker), contract_id));
+        assert_eq!(RewardsBeneficiary::<TestRuntime>::get(staker, contract_id), None);
+    })
+}
+
+#[test]
+pub fn update_rewards_beneficiary_works() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker = 1;
+        let beneficiary = 2;
+        let new_beneficiary = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_register(10, &contract_id);
+        let _ = DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary);
+
+        assert_ok!(DappsStaking::update_rewards_beneficiary(Origin::signed(beneficiary), staker, contract_id, new_beneficiary));
+        assert_eq!(RewardsBeneficiary::<TestRuntime>::get(staker, contract_id), Some(3));
+    })
+}
+
+#[test]
+pub fn update_rewards_beneficiary_failed_when_beneficiary_is_invalid() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let staker = 1;
+        let beneficiary = 2;
+        let new_beneficiary = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        assert_register(10, &contract_id);
+        let _ = DappsStaking::set_rewards_beneficiary(Origin::signed(staker), contract_id, beneficiary);
+
+        assert_noop!(
+            DappsStaking::update_rewards_beneficiary(Origin::signed(new_beneficiary), staker, contract_id, new_beneficiary),
+            Error::<TestRuntime>::InvalidBeneficiary
+        );
+        assert_eq!(RewardsBeneficiary::<TestRuntime>::get(staker, contract_id), Some(2));
+    })
+}
+
