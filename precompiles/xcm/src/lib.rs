@@ -54,18 +54,7 @@ where
 
         let selector = handle.read_selector()?;
 
-        // Check function modifiers
-        match selector {
-            Action::AssetsReserveTransferNative | Action::AssetsReserveTransferEvm => {
-                // these precompiles use EVM msg.value to deal with native assets,
-                // this require function to be defined as payable
-                handle.check_function_modifier(FunctionModifier::Payable)?;
-            }
-
-            _ => {
-                handle.check_function_modifier(FunctionModifier::NonPayable)?;
-            }
-        }
+        handle.check_function_modifier(FunctionModifier::NonPayable)?;
 
         // Dispatch the call
         match selector {
