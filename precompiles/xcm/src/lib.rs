@@ -272,35 +272,31 @@ where
         input.expect_arguments(6)?;
 
         // Read arguments and check it
-        let mut assets: Vec<MultiLocation> = input
+        let assets: Vec<MultiLocation> = input
             .read::<Vec<Address>>()?
             .iter()
             .cloned()
             .filter_map(|address| {
-                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
+                let address: H160 = address.into();
+
+                // Special case for native asset
+                if address == H160::from([0xff; 20]) {
+                     Some(MultiLocation {
+                        parents: 0,
+                        interior: Here,
+                    })
+                } else {
+                    R::address_to_asset_id(address).and_then(|x| C::reverse_ref(x).ok())
+                }
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
         if amounts_raw.iter().any(|x| *x > u128::MAX.into()) {
             return Err(revert("Asset amount is too big"));
         }
-        let mut amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
+        let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
 
-
-        let value = handle.context().apparent_value;
-        if value > U256::zero() {
-            assets.push(MultiLocation {
-                parents: 0,
-                interior: Here,
-            });
-
-            if value > u128::MAX.into() {
-                return Err(revert("value is too big"));
-            }
-            amounts.push(value.low_u128());
-        }
-
-        log::trace!(target: "xcm-precompile:assets_reserve_transfer", "Processed arguments: assets {:?}, amounts: {:?}, value: {:?}", assets, amounts, value);
+        log::trace!(target: "xcm-precompile:assets_reserve_transfer", "Processed arguments: assets {:?}, amounts: {:?}", assets, amounts);
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location
