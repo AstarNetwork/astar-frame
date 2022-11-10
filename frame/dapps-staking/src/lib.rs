@@ -36,6 +36,9 @@
 //! - `maintenance_mode` - enables or disables pallet maintenance mode
 //! - `set_reward_destination` - sets reward destination for the staker rewards
 //! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)
+//! - `set_rewards_beneficiary` - set the beneficary of a staker's rewards
+//! - `remove_rewards_beneficiary` - remove the beneficary of a staker's rewards
+//! - `update_rewards_beneficiary` - called by the beneficary and update the beneficary of a staker's rewards to a new account
 //!
 //! User is encouraged to refer to specific function implementations for more comprehensive documentation.
 //!
@@ -484,7 +487,7 @@ where
     }
 }
 
-/// Instruction on how to handle reward payout for stakers.
+/// Instruction on how to handle reward payout for stakers when beneficiary is not set.
 /// In order to make staking more competitive, majority of stakers will want to
 /// automatically restake anything they earn.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]

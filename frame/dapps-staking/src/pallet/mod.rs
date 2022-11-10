@@ -312,6 +312,8 @@ pub mod pallet {
         NominationTransferToSameContract,
         /// There is no beneficiary set for the staker per contract
         BeneficiaryNotSet,
+        /// Not allow non-beneficiary to update
+        UpdateBeneficiaryNotAllowed,
         /// Beneficiary used is not valid
         InvalidBeneficiary,
     }
@@ -732,8 +734,10 @@ pub mod pallet {
         /// Claim earned staker rewards for the oldest unclaimed era.
         /// In order to claim multiple eras, this call has to be called multiple times.
         ///
-        /// The rewards are always added to the staker's free balance (account) but depending on the reward destination configuration,
-        /// they might be immediately re-staked.
+        /// When [`RewardsBeneficiary`] is set, the rewards are added to the beneficiary's free balance and unlocked.
+        /// When RewardsBeneficiary is not set, the rewards are added to,
+        /// - staker's free balance but locked with [`RewardDestination`] is StakeBalance
+        /// - staker's free balance and unlocked with [`RewardDestination`] is FreeBalance
         #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
@@ -774,9 +778,10 @@ pub mod pallet {
                 staker_info.latest_staked_value(),
             );
 
-            let beneficiary = RewardsBeneficiary::<T>::get(&staker, &contract_id).unwrap_or(staker.clone());
+            let beneficiary = RewardsBeneficiary::<T>::get(&staker, &contract_id);
+            let mut weight_info = T::WeightInfo::claim_staker_without_restake();
 
-            if staker == beneficiary && should_restake_reward {
+            if beneficiary.is_none() && should_restake_reward {
                 staker_info
                     .stake(current_era, staker_reward)
                     .map_err(|_| Error::<T>::UnexpectedStakeInfoEra)?;
@@ -787,17 +792,7 @@ pub mod pallet {
                     staker_info.len() <= T::MaxEraStakeValues::get(),
                     Error::<T>::TooManyEraStakeValues
                 );
-            }
 
-            // Withdraw reward funds from the dapps staking pot
-            let reward_imbalance = T::Currency::withdraw(
-                &Self::account_id(),
-                staker_reward,
-                WithdrawReasons::TRANSFER,
-                ExistenceRequirement::AllowDeath,
-            )?;
-
-            if should_restake_reward {
                 ledger.locked = ledger.locked.saturating_add(staker_reward);
                 Self::update_ledger(&staker, ledger);
 
@@ -820,18 +815,24 @@ pub mod pallet {
                     contract_id.clone(),
                     staker_reward,
                 ));
+
+                weight_info = T::WeightInfo::claim_staker_with_restake();
             }
 
-            T::Currency::resolve_creating(&beneficiary, reward_imbalance);
-            Self::update_staker_info(&staker, &contract_id, staker_info);
-            Self::deposit_event(Event::<T>::Reward(beneficiary, contract_id, era, staker_reward));
+            // Withdraw reward funds from the dapps staking pot
+            let reward_imbalance = T::Currency::withdraw(
+                &Self::account_id(),
+                staker_reward,
+                WithdrawReasons::TRANSFER,
+                ExistenceRequirement::AllowDeath,
+            )?;
 
-            Ok(Some(if should_restake_reward {
-                T::WeightInfo::claim_staker_with_restake()
-            } else {
-                T::WeightInfo::claim_staker_without_restake()
-            })
-            .into())
+            let reward_account = beneficiary.clone().unwrap_or(staker.clone());
+            T::Currency::resolve_creating(&reward_account, reward_imbalance);
+            Self::update_staker_info(&staker, &contract_id, staker_info);
+            Self::deposit_event(Event::<T>::Reward(reward_account, contract_id, era, staker_reward));
+
+            Ok(Some(weight_info).into())
         }
 
         /// Claim earned dapp rewards for the specified era.
@@ -986,7 +987,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Staker sets the beneficiary of staking rewards.
+        /// Sets the beneficiary of staking rewards.
+        ///
+        /// The dispatch origin is staker.
         #[pallet::weight(10_000)]
         pub fn set_rewards_beneficiary(
             origin: OriginFor<T>,
@@ -1000,6 +1003,7 @@ pub mod pallet {
                 Self::is_active(&contract_id),
                 Error::<T>::NotOperatedContract
             );
+            ensure!(beneficiary != staker, Error::<T>::InvalidBeneficiary);
 
             RewardsBeneficiary::<T>::insert(&staker, &contract_id, &beneficiary);
 
@@ -1007,7 +1011,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Staker removes the beneficiary of staking rewards.
+        /// Removes the beneficiary of staking rewards.
+        ///
+        /// The dispatch origin is staker.
         #[pallet::weight(10_000)]
         pub fn remove_rewards_beneficiary(
             origin: OriginFor<T>,
@@ -1022,7 +1028,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Used by the beneficiary and updates the beneficiary to a new account.
+        /// Updates the beneficiary to a new account.
+        ///
+        /// The dispatch origin is the current beneficiary.
         #[pallet::weight(10_000)]
         pub fn update_rewards_beneficiary(
             origin: OriginFor<T>,
@@ -1040,7 +1048,8 @@ pub mod pallet {
 
             RewardsBeneficiary::<T>::try_mutate(&staker, &contract_id, |maybe_beneficiary| -> DispatchResultWithPostInfo {
                 let beneficiary = maybe_beneficiary.as_mut().ok_or(Error::<T>::BeneficiaryNotSet)?;
-                ensure!(sender == *beneficiary, Error::<T>::InvalidBeneficiary);
+                ensure!(sender == *beneficiary, Error::<T>::UpdateBeneficiaryNotAllowed);
+                ensure!(new_beneficiary != staker, Error::<T>::InvalidBeneficiary);
 
                 *beneficiary = new_beneficiary.clone();
 

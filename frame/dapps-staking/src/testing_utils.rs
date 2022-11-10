@@ -29,8 +29,10 @@ impl MemorySnapshot {
             contract_info: DappsStaking::contract_stake_info(contract_id, era).unwrap_or_default(),
             ledger: DappsStaking::ledger(&account),
             free_balance: <TestRuntime as Config>::Currency::free_balance(&account),
-            beneficiary: None,
-            beneficiary_free_balance: Default::default(),
+            beneficiary: RewardsBeneficiary::<TestRuntime>::get(&account, &contract_id),
+            beneficiary_free_balance: RewardsBeneficiary::<TestRuntime>::get(&account, &contract_id)
+                .map(|acc| <TestRuntime as Config>::Currency::free_balance(&acc))
+                .unwrap_or_default(),
         }
     }
 
@@ -47,12 +49,6 @@ impl MemorySnapshot {
             beneficiary: None,
             beneficiary_free_balance: Default::default(),
         }
-    }
-
-    /// Set beneficiary account
-    pub(crate) fn set_beneficiary(&mut self, account: AccountId) {
-        self.beneficiary = Some(account);
-        self.beneficiary_free_balance = <TestRuntime as Config>::Currency::free_balance(&account);
     }
 }
 
@@ -504,9 +500,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     System::reset_events();
 
     let init_state_claim_era = MemorySnapshot::all(claim_era, contract_id, claimer);
-    let mut init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
-    let beneficiary = RewardsBeneficiary::<TestRuntime>::get(claimer, contract_id).unwrap_or(claimer);
-    init_state_current_era.set_beneficiary(beneficiary);
+    let init_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // Calculate contract portion of the reward
     let (_, stakers_joint_reward) = DappsStaking::dev_stakers_split(
@@ -532,8 +526,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         contract_id.clone(),
     ));
 
-    let mut final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
-    final_state_current_era.set_beneficiary(beneficiary);
+    let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
     // assert staked and free balances depending on restake check,
     assert_restake_reward(
@@ -543,7 +536,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     );
 
     // check for stake event if restaking is performed
-    if DappsStaking::should_restake_reward(
+    if init_state_current_era.beneficiary.is_none() && DappsStaking::should_restake_reward(
         init_state_current_era.ledger.reward_destination,
         init_state_current_era.dapp_info.state,
         init_state_current_era.staker_info.latest_staked_value(),
@@ -559,8 +552,9 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     }
 
     // last event should be Reward, regardless of restaking
+    let reward_account = init_state_current_era.beneficiary.unwrap_or(claimer);
     System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
-        beneficiary,
+        reward_account,
         contract_id.clone(),
         claim_era,
         calculated_reward,
@@ -597,46 +591,71 @@ fn assert_restake_reward(
     final_state_current_era: &MemorySnapshot,
     reward: Balance,
 ) {
-    if DappsStaking::should_restake_reward(
+    let beneficiary = final_state_current_era.beneficiary;
+    let restake = DappsStaking::should_restake_reward(
         init_state_current_era.ledger.reward_destination,
         init_state_current_era.dapp_info.state,
         init_state_current_era.staker_info.latest_staked_value(),
-    ) {
-        // staked values should increase
-        assert_eq!(
-            init_state_current_era.staker_info.latest_staked_value() + reward,
-            final_state_current_era.staker_info.latest_staked_value()
-        );
-        assert_eq!(
-            init_state_current_era.era_info.staked + reward,
-            final_state_current_era.era_info.staked
-        );
-        assert_eq!(
-            init_state_current_era.era_info.locked + reward,
-            final_state_current_era.era_info.locked
-        );
-        assert_eq!(
-            init_state_current_era.contract_info.total + reward,
-            final_state_current_era.contract_info.total
-        );
-    } else {
-        // staked values should remain the same, and free balance increase
-        assert_eq!(
-            init_state_current_era.beneficiary_free_balance + reward,
-            final_state_current_era.beneficiary_free_balance
-        );
-        assert_eq!(
-            init_state_current_era.era_info.staked,
-            final_state_current_era.era_info.staked
-        );
-        assert_eq!(
-            init_state_current_era.era_info.locked,
-            final_state_current_era.era_info.locked
-        );
-        assert_eq!(
-            init_state_current_era.contract_info,
-            final_state_current_era.contract_info
-        );
+    );
+
+    match (beneficiary, restake) {
+        (Some(_), _) => {
+            // staked values should remain the same, and free balance increase
+            assert_eq!(
+                init_state_current_era.beneficiary_free_balance + reward,
+                final_state_current_era.beneficiary_free_balance
+            );
+            assert_eq!(
+                init_state_current_era.era_info.staked,
+                final_state_current_era.era_info.staked
+            );
+            assert_eq!(
+                init_state_current_era.era_info.locked,
+                final_state_current_era.era_info.locked
+            );
+            assert_eq!(
+                init_state_current_era.contract_info,
+                final_state_current_era.contract_info
+            );
+        },
+        (None, true) => {
+            // staked values should increase
+            assert_eq!(
+                init_state_current_era.staker_info.latest_staked_value() + reward,
+                final_state_current_era.staker_info.latest_staked_value()
+            );
+            assert_eq!(
+                init_state_current_era.era_info.staked + reward,
+                final_state_current_era.era_info.staked
+            );
+            assert_eq!(
+                init_state_current_era.era_info.locked + reward,
+                final_state_current_era.era_info.locked
+            );
+            assert_eq!(
+                init_state_current_era.contract_info.total + reward,
+                final_state_current_era.contract_info.total
+            );
+        },
+        (None, false) => {
+            // staked values should remain the same, and the staker's free balance increase
+            assert_eq!(
+                init_state_current_era.free_balance + reward,
+                final_state_current_era.free_balance
+            );
+            assert_eq!(
+                init_state_current_era.era_info.staked,
+                final_state_current_era.era_info.staked
+            );
+            assert_eq!(
+                init_state_current_era.era_info.locked,
+                final_state_current_era.era_info.locked
+            );
+            assert_eq!(
+                init_state_current_era.contract_info,
+                final_state_current_era.contract_info
+            );
+        }
     }
 }
 
