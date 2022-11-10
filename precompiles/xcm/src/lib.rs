@@ -268,8 +268,15 @@ where
             .filter_map(|address| {
                 let address: H160 = address.into();
 
+                // Special marker address that maps to native token by convention.
+                // Effective value is H160::MAX - 1 (note the last byte is FE, not FF).
+                let marker_address = H160::from([
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE
+                ]);
+
                 // Special case for native asset
-                if address == H160::from([0xff; 20]) {
+                if address == marker_address {
                      Some(MultiLocation {
                         parents: 0,
                         interior: Here,
