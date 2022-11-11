@@ -19,7 +19,11 @@ use sp_runtime::{
 use sp_std::{borrow::Borrow, cell::RefCell};
 
 use xcm::prelude::XcmVersion;
-use xcm_builder::{FixedWeightBounds, LocationInverter, SignedToAccountId32};
+use xcm_builder::{
+    test_utils::TransactAsset, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, LocationInverter, SignedToAccountId32,
+    TakeWeightCredit,
+};
 use xcm_executor::XcmExecutor;
 
 pub type AccountId = TestAccount;
@@ -292,16 +296,35 @@ parameter_types! {
     pub const MaxInstructions: u32 = 100;
 }
 
+pub type Barrier = (
+    TakeWeightCredit,
+    AllowTopLevelPaidExecutionFrom<Everything>,
+    AllowKnownQueryResponses<XcmPallet>,
+    AllowSubscriptionsFrom<Everything>,
+);
+
+pub struct LocalAssetTransactor;
+
+impl TransactAsset for LocalAssetTransactor {
+    fn transfer_asset(
+        _asset: &MultiAsset,
+        _from: &MultiLocation,
+        _to: &MultiLocation,
+    ) -> Result<xcm_executor::Assets, XcmError> {
+        Ok(xcm_executor::Assets::new())
+    }
+}
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
     type RuntimeCall = RuntimeCall;
     type XcmSender = StoringRouter;
-    type AssetTransactor = ();
+    type AssetTransactor = LocalAssetTransactor;
     type OriginConverter = ();
     type IsReserve = ();
     type IsTeleporter = ();
     type LocationInverter = LocationInverter<Ancestry>;
-    type Barrier = ();
+    type Barrier = Barrier;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type Trader = ();
     type ResponseHandler = XcmPallet;
@@ -319,9 +342,11 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, A
 thread_local! {
     pub static SENT_XCM: RefCell<Vec<(MultiLocation, Xcm<()>)>> = RefCell::new(Vec::new());
 }
+
 pub(crate) fn sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
     SENT_XCM.with(|q| (*q.borrow()).clone())
 }
+
 pub(crate) fn take_sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
     SENT_XCM.with(|q| {
         let mut r = Vec::new();
