@@ -1,3 +1,5 @@
+use core::assert_matches::assert_matches;
+
 use crate::mock::*;
 use crate::*;
 
@@ -148,25 +150,9 @@ fn reserve_transfer_works() {
 
 #[test]
 fn reserve_transfer_native_works() {
-    ExtBuilder::default().build().execute_with(|| {
-        // SS58
-        precompiles()
-            .prepare_test(
-                TestAccount::Alice,
-                PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferNative)
-                    .write(vec![Address::from(H160::zero())])
-                    .write(vec![U256::from(42000u64)])
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
-                    .write(U256::from(0_u64))
-                    .build(),
-            )
-            .expect_no_logs()
-            .execute_returns(EvmDataWriter::new().write(true).build());
+    let benificiary = Address::from(H160::repeat_byte(0xDE));
 
-        // H160
+    ExtBuilder::default().build().execute_with(|| {
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
@@ -174,7 +160,7 @@ fn reserve_transfer_native_works() {
                 EvmDataWriter::new_with_selector(Action::AssetsReserveTransferEvm)
                     .write(vec![Address::from(H160::zero())])
                     .write(vec![U256::from(42000u64)])
-                    .write(Address::from(H160::repeat_byte(0xDE)))
+                    .write(benificiary.clone())
                     .write(true)
                     .write(U256::from(0_u64))
                     .write(U256::from(0_u64))
@@ -183,4 +169,23 @@ fn reserve_transfer_native_works() {
             .expect_no_logs()
             .execute_returns(EvmDataWriter::new().write(true).build());
     });
+
+    let (location, xcm) = take_sent_xcm().pop().unwrap();
+    assert_eq!(location, MultiLocation { parents: 1, interior: Here });
+
+    println!("XCM: {:#?}", xcm);
+
+    assert_matches!(xcm.0.as_slice(), [
+        ReserveAssetDeposited(_),
+        ClearOrigin,
+        BuyExecution { .. },
+        DepositAsset {
+            beneficiary: MultiLocation {
+                parents: 0,
+                interior: Junctions::X1(AccountKey20 { .. })
+            },
+            ..
+        }
+    ]);
+
 }
