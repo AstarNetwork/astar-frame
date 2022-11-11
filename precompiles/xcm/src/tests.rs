@@ -171,21 +171,29 @@ fn reserve_transfer_native_works() {
     });
 
     let (location, xcm) = take_sent_xcm().pop().unwrap();
-    assert_eq!(location, MultiLocation { parents: 1, interior: Here });
+    assert_eq!(
+        location,
+        MultiLocation {
+            parents: 1,
+            interior: Here
+        }
+    );
 
     println!("XCM: {:#?}", xcm);
 
-    assert_matches!(xcm.0.as_slice(), [
-        ReserveAssetDeposited(_),
-        ClearOrigin,
-        BuyExecution { .. },
-        DepositAsset {
-            beneficiary: MultiLocation {
-                parents: 0,
-                interior: Junctions::X1(AccountKey20 { .. })
-            },
-            ..
-        }
-    ]);
-
+    assert_matches!(
+        xcm.0.as_slice(),
+        [
+            ReserveAssetDeposited(_),
+            ClearOrigin,
+            BuyExecution { .. },
+            DepositAsset {
+                beneficiary: MultiLocation {
+                    parents: 0,
+                    interior: Junctions::X1(AccountKey20 { .. })
+                },
+                ..
+            }
+        ]
+    );
 }
