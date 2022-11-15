@@ -74,8 +74,8 @@ interface XCM {
      * @param asset_id - list of XC20 asset addresses
      * @param asset_amount - list of transfer amounts (must match with asset addresses above)
      * @param recipient_account_id - SS58 public key of the destination account
-     * @param is_relay - set `true` for using relay chain as reserve
-     * @param parachain_id - set parachain id of reserve parachain (when is_relay set to false)
+     * @param is_relay - set `true` for using relay chain as destination
+     * @param parachain_id - set parachain id of destination parachain (when is_relay set to false)
      * @param fee_index - index of asset_id item that should be used as a XCM fee
      * @return A boolean confirming whether the XCM message sent.
      *
@@ -97,8 +97,8 @@ interface XCM {
      * @param asset_id - list of XC20 asset addresses
      * @param asset_amount - list of transfer amounts (must match with asset addresses above)
      * @param recipient_account_id - ETH address of the destination account
-     * @param is_relay - set `true` for using relay chain as reserve
-     * @param parachain_id - set parachain id of reserve parachain (when is_relay set to false)
+     * @param is_relay - set `true` for using relay chain as destination
+     * @param parachain_id - set parachain id of destination parachain (when is_relay set to false)
      * @param fee_index - index of asset_id item that should be used as a XCM fee
      * @return A boolean confirming whether the XCM message sent.
      *

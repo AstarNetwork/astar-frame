@@ -16,10 +16,14 @@ use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
-use sp_std::borrow::Borrow;
+use sp_std::{borrow::Borrow, cell::RefCell};
 
 use xcm::prelude::XcmVersion;
-use xcm_builder::{FixedWeightBounds, LocationInverter, SignedToAccountId32};
+use xcm_builder::{
+    test_utils::TransactAsset, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, LocationInverter, SignedToAccountId32,
+    TakeWeightCredit,
+};
 use xcm_executor::XcmExecutor;
 
 pub type AccountId = TestAccount;
@@ -292,16 +296,35 @@ parameter_types! {
     pub const MaxInstructions: u32 = 100;
 }
 
+pub type Barrier = (
+    TakeWeightCredit,
+    AllowTopLevelPaidExecutionFrom<Everything>,
+    AllowKnownQueryResponses<XcmPallet>,
+    AllowSubscriptionsFrom<Everything>,
+);
+
+pub struct LocalAssetTransactor;
+
+impl TransactAsset for LocalAssetTransactor {
+    fn transfer_asset(
+        _asset: &MultiAsset,
+        _from: &MultiLocation,
+        _to: &MultiLocation,
+    ) -> Result<xcm_executor::Assets, XcmError> {
+        Ok(xcm_executor::Assets::new())
+    }
+}
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
     type RuntimeCall = RuntimeCall;
-    type XcmSender = DoNothingRouter;
-    type AssetTransactor = ();
+    type XcmSender = StoringRouter;
+    type AssetTransactor = LocalAssetTransactor;
     type OriginConverter = ();
     type IsReserve = ();
     type IsTeleporter = ();
     type LocationInverter = LocationInverter<Ancestry>;
-    type Barrier = ();
+    type Barrier = Barrier;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type Trader = ();
     type ResponseHandler = XcmPallet;
@@ -316,9 +339,26 @@ parameter_types! {
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
 
-pub struct DoNothingRouter;
-impl SendXcm for DoNothingRouter {
-    fn send_xcm(_dest: impl Into<MultiLocation>, _msg: Xcm<()>) -> SendResult {
+thread_local! {
+    pub static SENT_XCM: RefCell<Vec<(MultiLocation, Xcm<()>)>> = RefCell::new(Vec::new());
+}
+
+pub(crate) fn sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
+    SENT_XCM.with(|q| (*q.borrow()).clone())
+}
+
+pub(crate) fn take_sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
+    SENT_XCM.with(|q| {
+        let mut r = Vec::new();
+        std::mem::swap(&mut r, &mut *q.borrow_mut());
+        r
+    })
+}
+
+pub struct StoringRouter;
+impl SendXcm for StoringRouter {
+    fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+        SENT_XCM.with(|q| q.borrow_mut().push((dest.into(), msg)));
         Ok(())
     }
 }
@@ -326,7 +366,7 @@ impl SendXcm for DoNothingRouter {
 impl pallet_xcm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-    type XcmRouter = DoNothingRouter;
+    type XcmRouter = StoringRouter;
     type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmExecuteFilter = Everything;
     type XcmExecutor = XcmExecutor<XcmConfig>;

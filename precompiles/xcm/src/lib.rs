@@ -56,8 +56,8 @@ where
 
         handle.check_function_modifier(FunctionModifier::NonPayable)?;
 
+        // Dispatch the call
         match selector {
-            // Dispatchables
             Action::AssetsWithdrawNative => {
                 Self::assets_withdraw(handle, BeneficiaryType::Account32)
             }
@@ -266,7 +266,14 @@ where
             .iter()
             .cloned()
             .filter_map(|address| {
-                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
+                let address: H160 = address.into();
+
+                // Special case where zero address maps to native token by convention.
+                if address == H160::zero() {
+                    Some(Here.into())
+                } else {
+                    R::address_to_asset_id(address).and_then(|x| C::reverse_ref(x).ok())
+                }
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
@@ -274,6 +281,8 @@ where
             return Err(revert("Asset amount is too big"));
         }
         let amounts: Vec<u128> = amounts_raw.iter().map(|x| x.low_u128()).collect();
+
+        log::trace!(target: "xcm-precompile:assets_reserve_transfer", "Processed arguments: assets {:?}, amounts: {:?}", assets, amounts);
 
         // Check that assets list is valid:
         // * all assets resolved to multi-location

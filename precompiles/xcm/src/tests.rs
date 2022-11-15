@@ -1,3 +1,5 @@
+use core::assert_matches::assert_matches;
+
 use crate::mock::*;
 use crate::*;
 
@@ -108,7 +110,7 @@ fn remote_transact_works() {
 }
 
 #[test]
-fn reserve_transfer_works() {
+fn reserve_transfer_assets_works() {
     ExtBuilder::default().build().execute_with(|| {
         // SS58
         precompiles()
@@ -144,4 +146,119 @@ fn reserve_transfer_works() {
             .expect_no_logs()
             .execute_returns(EvmDataWriter::new().write(true).build());
     });
+
+    for (location, Xcm(instructions)) in take_sent_xcm() {
+        assert_eq!(
+            location,
+            MultiLocation {
+                parents: 1,
+                interior: Here
+            }
+        );
+
+        let non_native_asset = MultiAsset {
+            fun: Fungible(42000),
+            id: xcm::v1::AssetId::from(MultiLocation {
+                parents: 0,
+                interior: Here,
+            }),
+        };
+
+        assert_matches!(
+            instructions.as_slice(),
+            [
+                ReserveAssetDeposited(assets),
+                ClearOrigin,
+                BuyExecution {
+                    fees,
+                    ..
+                },
+                DepositAsset {
+                    beneficiary: MultiLocation {
+                        parents: 0,
+                        interior: X1(_),
+                    },
+                    ..
+                }
+            ]
+
+            if fees.contains(&non_native_asset) && assets.contains(&non_native_asset)
+        );
+    }
+}
+
+#[test]
+fn reserve_transfer_currency_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        precompiles()
+            .prepare_test(
+                TestAccount::Alice,
+                PRECOMPILE_ADDRESS,
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferNative)
+                    .write(vec![Address::from(H160::zero())]) // zero address by convention
+                    .write(vec![U256::from(42000u64)])
+                    .write(H256::repeat_byte(0xF1))
+                    .write(true)
+                    .write(U256::from(0_u64))
+                    .write(U256::from(0_u64))
+                    .build(),
+            )
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(true).build());
+
+        precompiles()
+            .prepare_test(
+                TestAccount::Alice,
+                PRECOMPILE_ADDRESS,
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferEvm)
+                    .write(vec![Address::from(H160::zero())]) // zero address by convention
+                    .write(vec![U256::from(42000u64)])
+                    .write(Address::from(H160::repeat_byte(0xDE)))
+                    .write(true)
+                    .write(U256::from(0_u64))
+                    .write(U256::from(0_u64))
+                    .build(),
+            )
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(true).build());
+    });
+
+    for (location, Xcm(instructions)) in take_sent_xcm() {
+        assert_eq!(
+            location,
+            MultiLocation {
+                parents: 1,
+                interior: Here
+            }
+        );
+
+        let native_asset = MultiAsset {
+            fun: Fungible(42000),
+            id: xcm::v1::AssetId::from(MultiLocation {
+                parents: 0,
+                interior: X1(OnlyChild),
+            }),
+        };
+
+        assert_matches!(
+            instructions.as_slice(),
+            [
+                ReserveAssetDeposited(assets),
+                ClearOrigin,
+                BuyExecution {
+                    fees,
+                    ..
+                },
+                DepositAsset {
+                    beneficiary: MultiLocation {
+                        parents: 0,
+                        interior: X1(_),
+                    },
+                    ..
+                }
+            ]
+
+            if fees.contains(&native_asset) && assets.contains(&native_asset)
+        );
+    }
 }
