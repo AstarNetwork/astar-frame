@@ -15,7 +15,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    traits::{tokens::fungibles, Get},
+    ensure,
+    traits::{tokens::fungibles, Contains, Get},
     weights::constants::WEIGHT_PER_SECOND,
 };
 use sp_runtime::traits::{Bounded, Zero};
@@ -24,7 +25,7 @@ use sp_std::{borrow::Borrow, marker::PhantomData};
 // Polkadot imports
 use xcm::latest::{prelude::*, Weight};
 use xcm_builder::TakeRevenue;
-use xcm_executor::traits::{FilterAssetLocation, MatchesFungibles, WeightTrader};
+use xcm_executor::traits::{FilterAssetLocation, MatchesFungibles, ShouldExecute, WeightTrader};
 
 use pallet_xc_asset_config::{ExecutionPaymentRate, XcAssetLocation};
 
@@ -247,6 +248,64 @@ impl<
                     "XcmFeeHandler:take_revenue failed to match fungible asset, it has been burned."
                 );
             }
+        }
+    }
+}
+
+/// Allows execution from `origin` if it is contained in `T` (i.e. `T::Contains(origin)`) taking
+/// payments into account.
+///
+/// Only allows for sequence `DescendOrigin` -> `WithdrawAsset` -> `BuyExecution`
+pub struct AllowTopLevelPaidExecutionWithDescendOriginFrom<T>(PhantomData<T>);
+impl<T: Contains<MultiLocation>> ShouldExecute
+    for AllowTopLevelPaidExecutionWithDescendOriginFrom<T>
+{
+    fn should_execute<RuntimeCall>(
+        origin: &MultiLocation,
+        message: &mut Xcm<RuntimeCall>,
+        max_weight: Weight,
+        _weight_credit: &mut Weight,
+    ) -> Result<(), ()> {
+        log::trace!(
+            target: "xcm::barriers",
+            "AllowTopLevelPaidExecutionWithDescendOriginFrom origin: {:?}, message: {:?}, max_weight: {:?}, weight_credit: {:?}",
+            origin, message, max_weight, _weight_credit,
+        );
+        ensure!(T::contains(origin), ());
+        let mut iter = message.0.iter_mut();
+        let mut i = iter.next().ok_or(())?;
+
+        match i {
+            DescendOrigin(..) => (),
+            _ => return Err(()),
+        }
+
+        i = iter.next().ok_or(())?;
+        match i {
+            ReceiveTeleportedAsset(..)
+            | WithdrawAsset(..)
+            | ReserveAssetDeposited(..)
+            | ClaimAsset { .. } => (),
+            _ => return Err(()),
+        }
+
+        i = iter.next().ok_or(())?;
+        match i {
+            BuyExecution {
+                weight_limit: Limited(ref mut weight),
+                ..
+            } if *weight >= max_weight => {
+                *weight = max_weight;
+                Ok(())
+            }
+            BuyExecution {
+                ref mut weight_limit,
+                ..
+            } if weight_limit == &Unlimited => {
+                *weight_limit = Limited(max_weight);
+                Ok(())
+            }
+            _ => Err(()),
         }
     }
 }
