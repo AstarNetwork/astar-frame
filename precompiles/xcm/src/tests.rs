@@ -110,7 +110,7 @@ fn remote_transact_works() {
 }
 
 #[test]
-fn reserve_transfer_non_native_works() {
+fn reserve_transfer_assets_works() {
     ExtBuilder::default().build().execute_with(|| {
         // SS58
         precompiles()
@@ -188,14 +188,14 @@ fn reserve_transfer_non_native_works() {
 }
 
 #[test]
-fn reserve_transfer_native_works() {
+fn reserve_transfer_currency_works() {
     ExtBuilder::default().build().execute_with(|| {
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
                 EvmDataWriter::new_with_selector(Action::AssetsReserveTransferNative)
-                    .write(vec![Address::from(H160::zero())])
+                    .write(vec![Address::from(H160::zero())]) // zero address by convention
                     .write(vec![U256::from(42000u64)])
                     .write(H256::repeat_byte(0xF1))
                     .write(true)
@@ -211,7 +211,7 @@ fn reserve_transfer_native_works() {
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
                 EvmDataWriter::new_with_selector(Action::AssetsReserveTransferEvm)
-                    .write(vec![Address::from(H160::zero())])
+                    .write(vec![Address::from(H160::zero())]) // zero address by convention
                     .write(vec![U256::from(42000u64)])
                     .write(Address::from(H160::repeat_byte(0xDE)))
                     .write(true)
