@@ -27,6 +27,8 @@ where
             from, to, input,
         );
         let value = U256::zero();
+
+        // Tells the EVM executor that no fees should be charged for this execution.
         let max_fee_per_gas = U256::zero();
         let gas_limit = T::GasWeightMapping::weight_to_gas(context.max_weight);
         log::trace!(
