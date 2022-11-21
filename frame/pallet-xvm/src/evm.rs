@@ -26,8 +26,8 @@ where
             "Start EVM XVM: {:?}, {:?}, {:?}",
             from, to, input,
         );
-        let value = U256::from(0u64);
-        let max_fee_per_gas = U256::from(3450898690u64);
+        let value = U256::zero();
+        let max_fee_per_gas = U256::zero();
         let gas_limit = T::GasWeightMapping::weight_to_gas(context.max_weight);
         log::trace!(
             target: "xvm::EVM::xvm_call",
