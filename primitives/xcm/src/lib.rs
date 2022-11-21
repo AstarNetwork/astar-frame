@@ -256,10 +256,8 @@ impl<
 /// payments into account.
 ///
 /// Only allows for sequence `DescendOrigin` -> `WithdrawAsset` -> `BuyExecution`
-pub struct AllowTopLevelPaidExecutionWithDescendOriginFrom<T>(PhantomData<T>);
-impl<T: Contains<MultiLocation>> ShouldExecute
-    for AllowTopLevelPaidExecutionWithDescendOriginFrom<T>
-{
+pub struct AllowPaidExecWithDescendOriginFrom<T>(PhantomData<T>);
+impl<T: Contains<MultiLocation>> ShouldExecute for AllowPaidExecWithDescendOriginFrom<T> {
     fn should_execute<RuntimeCall>(
         origin: &MultiLocation,
         message: &mut Xcm<RuntimeCall>,
@@ -268,7 +266,7 @@ impl<T: Contains<MultiLocation>> ShouldExecute
     ) -> Result<(), ()> {
         log::trace!(
             target: "xcm::barriers",
-            "AllowTopLevelPaidExecutionWithDescendOriginFrom origin: {:?}, message: {:?}, max_weight: {:?}, weight_credit: {:?}",
+            "AllowPaidExecWithDescendOriginFrom origin: {:?}, message: {:?}, max_weight: {:?}, weight_credit: {:?}",
             origin, message, max_weight, _weight_credit,
         );
         ensure!(T::contains(origin), ());
@@ -282,10 +280,7 @@ impl<T: Contains<MultiLocation>> ShouldExecute
 
         i = iter.next().ok_or(())?;
         match i {
-            ReceiveTeleportedAsset(..)
-            | WithdrawAsset(..)
-            | ReserveAssetDeposited(..)
-            | ClaimAsset { .. } => (),
+            WithdrawAsset(..) => (),
             _ => return Err(()),
         }
 

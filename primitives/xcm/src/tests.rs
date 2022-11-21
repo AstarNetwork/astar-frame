@@ -1,5 +1,8 @@
 use super::*;
-use frame_support::assert_ok;
+use frame_support::{
+    assert_ok,
+    traits::{Everything, Nothing},
+};
 use sp_runtime::traits::Zero;
 use xcm_executor::traits::Convert;
 
@@ -403,4 +406,77 @@ fn reserve_asset_filter_for_unsupported_asset_multi_location() {
         &multi_asset,
         &origin
     ));
+}
+
+/// Returns valid XCM sequence for bypassing `AllowPaidExecWithDescendOriginFrom`
+fn desc_origin_barrier_valid_sequence() -> Xcm<()> {
+    Xcm::<()>(vec![
+        DescendOrigin(X1(Junction::Parachain(1234))),
+        WithdrawAsset((Here, 100).into()),
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Unlimited,
+        },
+    ])
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_works() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    // Still works even if there are follow-up instructions
+    valid_message.0.push(SetErrorHandler(Default::default()));
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_unsupported_origin() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Nothing>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_invalid_message() {
+    let mut invalid_message = Xcm::<()>(vec![WithdrawAsset((Here, 100).into())]);
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut invalid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+
+    // Should still fail, even if correct sequence follows next
+    invalid_message
+        .0
+        .append(&mut desc_origin_barrier_valid_sequence().0);
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut invalid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
 }
