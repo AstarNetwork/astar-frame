@@ -24,7 +24,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 
 # Astar
 dapps-staking-chain-extension-types = { path = "../types/dapps-staking", default-features = false }
-pallet-dapps-staking = { git = "https://github.com/AstarNetwork/astar-frame", branch = "polkadot-v0.9.30", default-features = false }
+pallet-dapps-staking = { git = "https://github.com/AstarNetwork/astar-frame", branch = "shunsuke-debug", default-features = false }
 
 [features]
 default = ["std"]
