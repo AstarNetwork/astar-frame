@@ -58,7 +58,7 @@ where
                 context.max_weight.ref_time()
             };
             XvmCallError {
-                error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+                error: XvmError::ExecutionError(Into::<&str>::into(e.error).into()),
                 consumed_weight,
             }
         })?;
