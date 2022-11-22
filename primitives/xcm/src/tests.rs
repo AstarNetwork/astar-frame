@@ -427,12 +427,13 @@ fn allow_paid_exec_with_descend_origin_works() {
     let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
         &Here.into(),
         &mut valid_message,
-        100_u64,
+        150_u64,
         &mut 0_u64,
     );
     assert_eq!(res, Ok(()));
 
     // Still works even if there are follow-up instructions
+    valid_message = desc_origin_barrier_valid_sequence();
     valid_message.0.push(SetErrorHandler(Default::default()));
     let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
         &Here.into(),
@@ -444,7 +445,60 @@ fn allow_paid_exec_with_descend_origin_works() {
 }
 
 #[test]
-fn allow_paid_exec_with_descend_origin_with_unsupported_origin() {
+fn allow_paid_exec_with_descend_origin_with_weight_correction_works() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    // Ensure that `Limited` gets adjusted to the provided enforced_weight_limit
+    let enforced_weight_limit = 3_u64;
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    if let BuyExecution {
+        weight_limit,
+        fees: _,
+    } = valid_message.0[2].clone()
+    {
+        assert_eq!(weight_limit, WeightLimit::Limited(enforced_weight_limit))
+    } else {
+        panic!("3rd instruction should be BuyExecution!");
+    }
+
+    // Ensure that we use `BuyExecution` with `Unlimited` weight limit
+    let _ = std::mem::replace(
+        &mut valid_message.0[2],
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Limited(enforced_weight_limit + 7),
+        },
+    );
+
+    // Ensure that `Unlimited` gets adjusted to the provided max weight limit
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    if let BuyExecution {
+        weight_limit,
+        fees: _,
+    } = valid_message.0[2].clone()
+    {
+        assert_eq!(weight_limit, WeightLimit::Limited(enforced_weight_limit))
+    } else {
+        panic!("3rd instruction should be BuyExecution!");
+    }
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_unsupported_origin_fails() {
     let mut valid_message = desc_origin_barrier_valid_sequence();
 
     let res = AllowPaidExecWithDescendOriginFrom::<Nothing>::should_execute(
@@ -457,7 +511,7 @@ fn allow_paid_exec_with_descend_origin_with_unsupported_origin() {
 }
 
 #[test]
-fn allow_paid_exec_with_descend_origin_with_invalid_message() {
+fn allow_paid_exec_with_descend_origin_with_invalid_message_fails() {
     let mut invalid_message = Xcm::<()>(vec![WithdrawAsset((Here, 100).into())]);
 
     let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
@@ -476,6 +530,31 @@ fn allow_paid_exec_with_descend_origin_with_invalid_message() {
         &Here.into(),
         &mut invalid_message,
         100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_too_small_weight_fails() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+    let enforced_weight_limit = 29_u64;
+
+    // Ensure that we use `BuyExecution` with `Limited` weight but with insufficient weight.
+    // This means that not enough execution time (weight) is being bought compared to the
+    // weight of whole sequence.
+    let _ = std::mem::replace(
+        &mut valid_message.0[2],
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Limited(enforced_weight_limit - 7),
+        },
+    );
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
         &mut 0_u64,
     );
     assert_eq!(res, Err(()));

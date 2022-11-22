@@ -270,37 +270,26 @@ impl<T: Contains<MultiLocation>> ShouldExecute for AllowPaidExecWithDescendOrigi
             origin, message, max_weight, _weight_credit,
         );
         ensure!(T::contains(origin), ());
-        let mut iter = message.0.iter_mut();
-        let mut i = iter.next().ok_or(())?;
+        let iter = message.0.iter_mut();
 
-        match i {
-            DescendOrigin(..) => (),
-            _ => return Err(()),
-        }
-
-        i = iter.next().ok_or(())?;
-        match i {
-            WithdrawAsset(..) => (),
-            _ => return Err(()),
-        }
-
-        i = iter.next().ok_or(())?;
-        match i {
-            BuyExecution {
-                weight_limit: Limited(ref mut weight),
+        match iter.take(3).collect::<Vec<_>>().as_mut_slice() {
+            [DescendOrigin(..), WithdrawAsset(..), BuyExecution {
+                weight_limit: Limited(ref mut limit),
                 ..
-            } if *weight >= max_weight => {
-                *weight = max_weight;
+            }] if *limit >= max_weight => {
+                *limit = max_weight;
                 Ok(())
             }
-            BuyExecution {
-                ref mut weight_limit,
+
+            [DescendOrigin(..), WithdrawAsset(..), BuyExecution {
+                weight_limit: ref mut limit @ Unlimited,
                 ..
-            } if weight_limit == &Unlimited => {
-                *weight_limit = Limited(max_weight);
+            }] => {
+                *limit = Limited(max_weight);
                 Ok(())
             }
-            _ => Err(()),
+
+            _ => return Err(()),
         }
     }
 }
