@@ -72,7 +72,7 @@ where
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill output vec with response from the call
             consumed_weight: T::GasWeightMapping::gas_to_weight(
-                info.unique_saturated_into(),
+                info.used_gas.unique_saturated_into(),
                 false,
             )
             .ref_time(),
