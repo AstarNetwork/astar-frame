@@ -62,6 +62,11 @@ pub mod pallet {
             let result = T::SyncVM::xvm_call(context, from, to, input);
             let consumed_weight = consumed_weight(&result);
 
+            log::trace!(
+                target: "xvm::pallet::xvm_call",
+                "Execution result: {:?}, consumed_weight: {:?}", result, consumed_weight,
+            );
+
             Self::deposit_event(Event::<T>::XvmCall {
                 result: match result {
                     Ok(result) => Ok(result.output),
