@@ -20,7 +20,7 @@ use frame_support::{
     weights::constants::WEIGHT_PER_SECOND,
 };
 use sp_runtime::traits::{Bounded, Zero};
-use sp_std::{borrow::Borrow, marker::PhantomData};
+use sp_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
 
 // Polkadot imports
 use xcm::latest::{prelude::*, Weight};
