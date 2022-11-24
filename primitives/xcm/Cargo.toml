@@ -1,6 +1,6 @@
 [package]
 name = "xcm-primitives"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 description = "Common XCM primitives used by runtimes"
 edition = "2021"
@@ -26,6 +26,7 @@ pallet-xc-asset-config = { path = "../../frame/xc-asset-config", default-feature
 [features]
 default = ["std"]
 std = [
+	"log/std",
 	"frame-support/std",
 	"sp-std/std",
 	"sp-runtime/std",
