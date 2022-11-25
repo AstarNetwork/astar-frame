@@ -1,9 +1,9 @@
 //! EVM support for XVM pallet.
 
 use crate::*;
-use pallet_evm::GasWeightMapping;
+use pallet_evm::{GasWeightMapping, Runner};
 use sp_core::{H160, U256};
-use sp_runtime::traits::Get;
+use sp_runtime::traits::{Get, UniqueSaturatedInto};
 
 /// EVM adapter for XVM calls.
 ///
@@ -26,8 +26,10 @@ where
             "Start EVM XVM: {:?}, {:?}, {:?}",
             from, to, input,
         );
-        let value = U256::from(0u64);
-        let max_fee_per_gas = U256::from(3450898690u64);
+        let value = U256::zero();
+
+        // Tells the EVM executor that no fees should be charged for this execution.
+        let max_fee_per_gas = U256::zero();
         let gas_limit = T::GasWeightMapping::weight_to_gas(context.max_weight);
         log::trace!(
             target: "xvm::EVM::xvm_call",
@@ -37,38 +39,43 @@ where
             consumed_weight: PLACEHOLDER_WEIGHT,
         })?;
 
-        let res = pallet_evm::Pallet::<T>::call(
-            frame_support::dispatch::RawOrigin::Root.into(),
+        let is_transactional = true;
+        // Since this is in the context of XVM, no standard validation is required.
+        let validate = false;
+        let info = T::Runner::call(
             H160::from_slice(&from.encode()[0..20]),
             evm_to,
             input,
             value,
             gas_limit,
-            max_fee_per_gas,
+            Some(max_fee_per_gas),
             None,
             None,
             Vec::new(),
+            is_transactional,
+            validate,
+            T::config(),
         )
         .map_err(|e| {
-            let consumed_weight = if let Some(weight) = e.post_info.actual_weight {
-                weight.ref_time()
-            } else {
-                context.max_weight.ref_time()
-            };
+            let consumed_weight = e.weight.ref_time();
             XvmCallError {
-                error: XvmError::ExecutionError(Vec::default()), // TODO: make error mapping make more sense
+                error: XvmError::ExecutionError(Into::<&str>::into(e.error.into()).into()),
                 consumed_weight,
             }
         })?;
 
         log::trace!(
             target: "xvm::EVM::xvm_call",
-            "EVM XVM call result: {:?}", res
+            "EVM XVM call result: exit_reason: {:?}, used_gas: {:?}", info.exit_reason, info.used_gas,
         );
 
         Ok(XvmCallOk {
             output: Default::default(), // TODO: Fill output vec with response from the call
-            consumed_weight: 42u64, // TODO: res.actual_weight.map(|x| x.ref_time()).unwrap_or(context.max_weight),
+            consumed_weight: T::GasWeightMapping::gas_to_weight(
+                info.used_gas.unique_saturated_into(),
+                false,
+            )
+            .ref_time(),
         })
     }
 }
