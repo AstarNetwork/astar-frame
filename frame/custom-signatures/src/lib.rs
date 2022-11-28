@@ -73,8 +73,6 @@ pub mod pallet {
         InvalidSignature,
         /// Bad nonce parameter.
         BadNonce,
-        /// Call dispatch failed
-        DispatchFailed,
     }
 
     #[pallet::event]
