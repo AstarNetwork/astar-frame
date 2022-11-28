@@ -11,12 +11,9 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::{
-        dispatch::GetDispatchInfo,
+        dispatch::{Dispatchable, GetDispatchInfo},
         pallet_prelude::*,
-        traits::{
-            Currency, ExistenceRequirement, Get, OnUnbalanced, UnfilteredDispatchable,
-            WithdrawReasons,
-        },
+        traits::{Currency, ExistenceRequirement, Get, OnUnbalanced, WithdrawReasons},
     };
     use frame_system::{ensure_none, pallet_prelude::*};
     use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -36,7 +33,7 @@ pub mod pallet {
 
         /// A signable call.
         type RuntimeCall: Parameter
-            + UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+            + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
             + GetDispatchInfo;
 
         /// User defined signature type.
@@ -95,7 +92,7 @@ pub mod pallet {
         /// # </weight>
         #[pallet::weight({
             let dispatch_info = call.get_dispatch_info();
-            (dispatch_info.weight.saturating_add(Weight::from_ref_time(10_000)), dispatch_info.class)
+            (dispatch_info.weight.saturating_add(T::DbWeight::get().reads(1)).saturating_add(T::DbWeight::get().writes(1)), dispatch_info.class)
         })]
         pub fn call(
             origin: OriginFor<T>,
@@ -135,7 +132,7 @@ pub mod pallet {
 
             // Dispatch call
             let new_origin = frame_system::RawOrigin::Signed(signer.clone()).into();
-            let res = call.dispatch_bypass_filter(new_origin).map(|_| ());
+            let res = call.dispatch(new_origin).map(|_| ());
             Self::deposit_event(Event::Executed(signer, res.map_err(|e| e.error)));
 
             // Fee already charged
