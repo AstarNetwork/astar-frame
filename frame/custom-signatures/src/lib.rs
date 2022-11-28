@@ -73,10 +73,12 @@ pub mod pallet {
         InvalidSignature,
         /// Bad nonce parameter.
         BadNonce,
+        /// Call dispatch failed
+        DispatchFailed,
     }
 
     #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
         /// A call just executed. \[result\]
         Executed(T::AccountId, DispatchResult),
@@ -88,11 +90,14 @@ pub mod pallet {
         /// - O(1).
         /// - Limited storage reads.
         /// - One DB write (event).
-        /// - Weight of derivative `call` execution + 10,000.
+        /// - Weight of derivative `call` execution + read/write + 10_000.
         /// # </weight>
         #[pallet::weight({
             let dispatch_info = call.get_dispatch_info();
-            (dispatch_info.weight.saturating_add(T::DbWeight::get().reads(1)).saturating_add(T::DbWeight::get().writes(1)), dispatch_info.class)
+            (dispatch_info.weight.saturating_add(T::DbWeight::get().reads(1))
+                                 .saturating_add(T::DbWeight::get().writes(1))
+                                 .saturating_add(Weight::from_ref_time(10_000)),
+             dispatch_info.class)
         })]
         pub fn call(
             origin: OriginFor<T>,

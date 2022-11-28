@@ -1,10 +1,14 @@
 use crate as custom_signatures;
+use assert_matches::assert_matches;
 use codec::Encode;
 use custom_signatures::*;
-use frame_support::{assert_err, assert_ok, parameter_types};
+use frame_support::{
+    traits::Contains,
+    {assert_err, assert_ok, parameter_types},
+};
 use hex_literal::hex;
 use sp_core::{ecdsa, Pair};
-use sp_io::hashing::keccak_256;
+use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::{
     testing::{Header, H256},
@@ -39,9 +43,22 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+pub struct NoRemarkFilter;
+impl Contains<RuntimeCall> for NoRemarkFilter {
+    fn contains(call: &RuntimeCall) -> bool {
+        match call {
+            RuntimeCall::System(method) => match method {
+                frame_system::Call::remark { .. } => false,
+                _ => true,
+            },
+            _ => true,
+        }
+    }
+}
+
 impl frame_system::Config for Runtime {
     type RuntimeOrigin = RuntimeOrigin;
-    type BaseCallFilter = frame_support::traits::Everything;
+    type BaseCallFilter = NoRemarkFilter;
     type Index = u32;
     type BlockNumber = BlockNumber;
     type RuntimeCall = RuntimeCall;
@@ -82,10 +99,11 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
+const MAGIC_NUMBER: u16 = 0xff50;
 parameter_types! {
     pub const Priority: TransactionPriority = TransactionPriority::MAX;
     pub const CallFee: Balance = 42;
-    pub const CallMagicNumber: u16 = 0xff50;
+    pub const CallMagicNumber: u16 = MAGIC_NUMBER;
 }
 
 impl Config for Runtime {
@@ -100,7 +118,7 @@ impl Config for Runtime {
     type UnsignedPriority = Priority;
 }
 
-fn new_test_ext() -> sp_io::TestExternalities {
+fn new_test_ext() -> TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Runtime>()
         .unwrap();
@@ -111,7 +129,10 @@ fn new_test_ext() -> sp_io::TestExternalities {
         balances: vec![(account, 1_000_000_000)],
     }
     .assimilate_storage(&mut storage);
-    storage.into()
+
+    let mut ext = TestExternalities::from(storage);
+    ext.execute_with(|| System::set_block_number(1));
+    ext
 }
 
 /// Simple `eth_sign` implementation, should be equal to exported by RPC
@@ -167,7 +188,7 @@ fn balance_transfer() {
             value: 1_000,
         }
         .into();
-        let payload = (0xff50u16, 0u32, call.clone());
+        let payload = (MAGIC_NUMBER, 0u32, call.clone());
         let signature = eth_sign(&ECDSA_SEED, payload.encode().as_ref()).into();
 
         assert_eq!(System::account(account.clone()).nonce, 0);
@@ -181,6 +202,15 @@ fn balance_transfer() {
         assert_eq!(System::account(alice.clone()).data.free, 1_000);
         assert_eq!(System::account(account.clone()).nonce, 1);
         assert_eq!(System::account(account.clone()).data.free, 999_998_958);
+        assert_matches!(
+            System::events()
+                .last()
+                .expect("events expected")
+                .event
+                .clone(),
+            RuntimeEvent::CustomSignatures(Event::Executed(used_account, Ok(..),))
+            if used_account == account
+        );
 
         let signature = eth_sign(&ECDSA_SEED, payload.encode().as_ref()).into();
         assert_err!(
@@ -194,7 +224,7 @@ fn balance_transfer() {
             Error::<Runtime>::BadNonce,
         );
 
-        let payload = (0xff50u16, 1u32, call.clone());
+        let payload = (MAGIC_NUMBER, 1u32, call.clone());
         let signature = eth_sign(&ECDSA_SEED, payload.encode().as_ref()).into();
         assert_eq!(System::account(account.clone()).nonce, 1);
         assert_ok!(CustomSignatures::call(
@@ -231,7 +261,7 @@ fn call_fixtures() {
         hex!["0000c4305fb88b6ccb43d6552dc11d18e7b0ee3185247adcc6e885eb284adf6c563da10f"],
     );
 
-    let payload = (0xff50u16, 0u32, call.clone());
+    let payload = (MAGIC_NUMBER, 0u32, call.clone());
     assert_eq!(
         payload.encode(),
         hex![
@@ -241,4 +271,43 @@ fn call_fixtures() {
 
     let signature = hex!["6ecb474240df46ee5cde8f51cf5ccf4c75d15ac3c1772aea6c8189604263c98b16350883438c4eaa447ebcb6889d516f70351fd704bb3521072cd2fccc7c99dc1c"];
     assert_eq!(eth_sign(&seed, payload.encode().as_ref()), signature)
+}
+
+#[test]
+fn not_allowed_call_filtered() {
+    new_test_ext().execute_with(|| {
+        let pair = ecdsa::Pair::from_seed(&ECDSA_SEED);
+        let account = MultiSigner::from(pair.public()).into_account();
+
+        let alice: <Runtime as frame_system::Config>::AccountId = Keyring::Alice.into();
+        assert_eq!(System::account(alice.clone()).data.free, 0);
+
+        let call: RuntimeCall = frame_system::Call::<Runtime>::remark {
+            remark: Vec::<_>::new(),
+        }
+        .into();
+
+        let payload = (MAGIC_NUMBER, 0u32, call.clone());
+        let signature = eth_sign(&ECDSA_SEED, payload.encode().as_ref()).into();
+
+        assert_eq!(System::account(account.clone()).nonce, 0);
+        assert_ok!(CustomSignatures::call(
+            RuntimeOrigin::none(),
+            Box::new(call.clone()),
+            account.clone(),
+            signature,
+            0,
+        ));
+        assert_eq!(System::account(account.clone()).nonce, 1);
+
+        assert_matches!(
+            System::events()
+                .last()
+                .expect("events expected")
+                .event
+                .clone(),
+            RuntimeEvent::CustomSignatures(Event::Executed(used_account, Err(..),))
+            if used_account == account
+        );
+    })
 }
