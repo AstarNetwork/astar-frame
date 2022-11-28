@@ -286,6 +286,8 @@ fn not_allowed_call_filtered() {
             remark: Vec::<_>::new(),
         }
         .into();
+        // sanity check, call should be filtered out
+        assert!(!<Runtime as frame_system::Config>::BaseCallFilter::contains(&call));
 
         let payload = (MAGIC_NUMBER, 0u32, call.clone());
         let signature = eth_sign(&ECDSA_SEED, payload.encode().as_ref()).into();
