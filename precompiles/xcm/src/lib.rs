@@ -34,6 +34,9 @@ pub enum Action {
         "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
 }
 
+/// Dummy H160 address representing native currency (e.g. ASTR or SDN)
+const NATIVE_ADDRESS: H160 = H160::zero();
+
 /// A precompile that expose XCM related functions.
 pub struct XcmPrecompile<T, C>(PhantomData<(T, C)>);
 
@@ -204,10 +207,18 @@ where
         };
 
         let fee_asset = {
-            let fee_asset_id = R::address_to_asset_id(fee_asset_addr.into())
-                .ok_or(revert("Failed to resolve fee asset id from address"))?;
-            C::reverse_ref(fee_asset_id)
-                .map_err(|_| revert("Failed to resolve fee asset multilocation from local id"))?
+            let address: H160 = fee_asset_addr.into();
+
+            // Special case where zero address maps to native token by convention.
+            if address == NATIVE_ADDRESS {
+                Here.into()
+            } else {
+                let fee_asset_id = R::address_to_asset_id(address)
+                    .ok_or(revert("Failed to resolve fee asset id from address"))?;
+                C::reverse_ref(fee_asset_id).map_err(|_| {
+                    revert("Failed to resolve fee asset multilocation from local id")
+                })?
+            }
         };
 
         if fee_amount > u128::MAX.into() {
@@ -269,7 +280,7 @@ where
                 let address: H160 = address.into();
 
                 // Special case where zero address maps to native token by convention.
-                if address == H160::zero() {
+                if address == NATIVE_ADDRESS {
                     Some(Here.into())
                 } else {
                     R::address_to_asset_id(address).and_then(|x| C::reverse_ref(x).ok())
