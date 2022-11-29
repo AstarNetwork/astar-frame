@@ -3,7 +3,11 @@
 use super::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{construct_runtime, parameter_types, traits::Everything};
+use frame_support::{
+    construct_runtime, parameter_types,
+    traits::{AsEnsureOriginWithArg, Everything},
+    weights::Weight,
+};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
@@ -235,6 +239,7 @@ impl pallet_assets::Config for Runtime {
     type StringLimit = AssetsStringLimit;
     type Freezer = ();
     type Extra = ();
+    type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
     type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
@@ -262,7 +267,7 @@ where
 parameter_types! {
     pub const PrecompilesValue: TestPrecompileSet<Runtime> =
         TestPrecompileSet(PhantomData);
-    pub WeightPerGas: u64 = 1;
+    pub WeightPerGas: Weight = Weight::from_ref_time(1);
 }
 
 impl pallet_evm::Config for Runtime {
@@ -343,7 +348,7 @@ thread_local! {
     pub static SENT_XCM: RefCell<Vec<(MultiLocation, Xcm<()>)>> = RefCell::new(Vec::new());
 }
 
-pub(crate) fn sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
+pub(crate) fn _sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
     SENT_XCM.with(|q| (*q.borrow()).clone())
 }
 

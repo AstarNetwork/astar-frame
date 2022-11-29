@@ -204,7 +204,7 @@ where
 
 parameter_types! {
     pub PrecompilesValue: DappPrecompile<TestRuntime> = DappPrecompile(Default::default());
-    pub WeightPerGas: u64 = 1;
+    pub WeightPerGas: Weight = Weight::from_ref_time(1);
 }
 
 impl pallet_evm::Config for TestRuntime {
