@@ -1899,7 +1899,10 @@ fn default_reward_destination_is_free_balance() {
         initialize_first_block();
 
         let staker = 1;
-        assert_eq!(DappsStaking::ledger(&staker).reward_destination, RewardDestination::FreeBalance);
+        assert_eq!(
+            DappsStaking::ledger(&staker).reward_destination,
+            RewardDestination::FreeBalance
+        );
     });
 }
 
