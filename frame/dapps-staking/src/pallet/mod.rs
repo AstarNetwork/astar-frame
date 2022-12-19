@@ -17,7 +17,7 @@ use sp_runtime::{
     traits::{AccountIdConversion, Saturating, Zero},
     Perbill,
 };
-use sp_std::convert::From;
+use sp_std::{convert::From, mem};
 
 const STAKING_ID: LockIdentifier = *b"dapstake";
 
@@ -93,6 +93,13 @@ pub mod pallet {
         /// before adding additional `EraStake` values.
         #[pallet::constant]
         type MaxEraStakeValues: Get<u32>;
+
+        /// Number of eras that need to pass until dApp rewards for the unregistered contracts can be burned.
+        /// Developer can still claim rewards after this period has passed, iff it hasn't been burned yet.
+        ///
+        /// For example, if retention is set to `2` and current era is `10`, it means that all unclaimed rewards bellow era `8` can be burned.
+        #[pallet::constant]
+        type UnregisteredDappRewardRetention: Get<u32>;
 
         /// The overarching event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -221,6 +228,10 @@ pub mod pallet {
             BalanceOf<T>,
             T::SmartContract,
         ),
+        /// Stale, unclaimed reward from an unregistered contract has been burned.
+        ///
+        /// \(developer account, smart contract, era, amount burned\)
+        StaleRewardBurned(T::AccountId, T::SmartContract, EraIndex, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -799,28 +810,10 @@ pub mod pallet {
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
 
-            let current_era = Self::current_era();
-            if let DAppState::Unregistered(unregister_era) = dapp_info.state {
-                ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
-            }
-            ensure!(era < current_era, Error::<T>::EraOutOfBounds);
-
             let mut contract_stake_info =
                 Self::contract_stake_info(&contract_id, era).unwrap_or_default();
-            ensure!(
-                !contract_stake_info.contract_reward_claimed,
-                Error::<T>::AlreadyClaimedInThisEra,
-            );
-            ensure!(
-                contract_stake_info.total > Zero::zero(),
-                Error::<T>::NotStakedContract,
-            );
 
-            let reward_and_stake =
-                Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
-
-            // Calculate the contract reward for this era.
-            let (dapp_reward, _) = Self::dev_stakers_split(&contract_stake_info, &reward_and_stake);
+            let dapp_reward = Self::calculate_dapp_reward(&contract_stake_info, &dapp_info, era)?;
 
             // Withdraw reward funds from the dapps staking
             let reward_imbalance = T::Currency::withdraw(
@@ -918,9 +911,86 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        #[pallet::weight(T::WeightInfo::claim_dapp())]
+        pub fn burn_stale_reward(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+            #[pallet::compact] era: EraIndex,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            ensure_root(origin)?;
+
+            let dapp_info =
+                RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
+            let current_era = Self::current_era();
+
+            let burn_era_limit =
+                current_era.saturating_sub(T::UnregisteredDappRewardRetention::get());
+            ensure!(era < burn_era_limit, Error::<T>::EraOutOfBounds);
+
+            let mut contract_stake_info =
+                Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+
+            let dapp_reward = Self::calculate_dapp_reward(&contract_stake_info, &dapp_info, era)?;
+
+            // Withdraw reward funds from the dapps staking pot and burn them
+            let imbalance_to_burn = T::Currency::withdraw(
+                &Self::account_id(),
+                dapp_reward,
+                WithdrawReasons::TRANSFER,
+                ExistenceRequirement::AllowDeath,
+            )?;
+            mem::drop(imbalance_to_burn);
+
+            // mark entry as `claimed` but it means it's just handled (want to avoid rename since pallet will soon be redesigned).
+            contract_stake_info.contract_reward_claimed = true;
+            ContractEraStake::<T>::insert(&contract_id, era, contract_stake_info);
+
+            Self::deposit_event(Event::<T>::StaleRewardBurned(
+                dapp_info.developer,
+                contract_id.clone(),
+                era,
+                dapp_reward,
+            ));
+
+            Ok(().into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
+        /// Calculate the dApp reward for the specified era.
+        /// If successfull, returns reward amount.
+        /// In case reward cannot be claimed or was already claimed, an error is raised.
+        fn calculate_dapp_reward(
+            contract_stake_info: &ContractStakeInfo<BalanceOf<T>>,
+            dapp_info: &DAppInfo<T::AccountId>,
+            era: EraIndex,
+        ) -> Result<BalanceOf<T>, Error<T>> {
+            let current_era = Self::current_era();
+            if let DAppState::Unregistered(unregister_era) = dapp_info.state {
+                ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
+            }
+            ensure!(era < current_era, Error::<T>::EraOutOfBounds);
+
+            ensure!(
+                !contract_stake_info.contract_reward_claimed,
+                Error::<T>::AlreadyClaimedInThisEra,
+            );
+            ensure!(
+                contract_stake_info.total > Zero::zero(),
+                Error::<T>::NotStakedContract,
+            );
+
+            let reward_and_stake =
+                Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
+
+            // Calculate the contract reward for this era.
+            let (dapp_reward, _) = Self::dev_stakers_split(&contract_stake_info, &reward_and_stake);
+
+            Ok(dapp_reward)
+        }
+
         /// An utility method used to stake specified amount on an arbitrary contract.
         ///
         /// `StakerInfo` and `ContractStakeInfo` are provided and all checks are made to ensure that it's possible to
