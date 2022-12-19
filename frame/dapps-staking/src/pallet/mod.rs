@@ -912,6 +912,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Used to burn unclaimed & stale rewards from unregistered contract
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn burn_stale_reward(
             origin: OriginFor<T>,
@@ -923,6 +924,11 @@ pub mod pallet {
 
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
+            ensure!(
+                dapp_info.is_unregistered(),
+                Error::<T>::NotUnregisteredContract
+            );
+
             let current_era = Self::current_era();
 
             let burn_era_limit =

@@ -34,6 +34,7 @@
 //! - `maintenance_mode` - enables or disables pallet maintenance mode
 //! - `set_reward_destination` - sets reward destination for the staker rewards
 //! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)
+//! - `burn_stale_reward` - root-only call to burn unclaimed, stale rewards from unregistered contracts
 //!
 //! User is encouraged to refer to specific function implementations for more comprehensive documentation.
 //!
@@ -122,6 +123,15 @@ impl<AccountId> DAppInfo<AccountId> {
         Self {
             developer,
             state: DAppState::Registered,
+        }
+    }
+
+    /// `true` if dApp has been unregistered, `false` otherwise
+    fn is_unregistered(&self) -> bool {
+        if let DAppState::Unregistered(_) = self.state {
+            true
+        } else {
+            false
         }
     }
 }

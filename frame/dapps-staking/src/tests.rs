@@ -2215,6 +2215,33 @@ fn burn_stale_reward_is_ok() {
 }
 
 #[test]
+fn burn_stale_reward_from_registered_dapp_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+
+        // Register & stake on contract
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance enough eras so stale rewards would become burnable, in case dapp was unregistered
+        let eras_advanced = REWARD_RETENTION_PERIOD;
+        advance_to_era(start_era + eras_advanced);
+
+        // Rewards shouldn't be burnable since retention period hasn't expired yet
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::root(), contract_id, start_era,),
+            Error::<TestRuntime>::NotUnregisteredContract
+        );
+    })
+}
+
+#[test]
 fn burn_stale_reward_before_retention_period_finished_fails() {
     ExternalityBuilder::build().execute_with(|| {
         initialize_first_block();
