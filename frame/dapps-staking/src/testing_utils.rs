@@ -681,3 +681,40 @@ pub(crate) fn assert_set_reward_destination(
 
     assert_eq!(ledger.reward_destination, reward_destination);
 }
+
+/// Used to burn stale rewards with success assertions
+pub(crate) fn assert_burn_stale_reward(
+    contract_id: &MockSmartContract<AccountId>,
+    claim_era: EraIndex,
+) {
+    let developer = DappsStaking::dapp_info(contract_id).unwrap().developer;
+    let init_state = MemorySnapshot::all(claim_era, contract_id, developer);
+    let issuance_before_claim = <TestRuntime as Config>::Currency::total_issuance();
+
+    assert!(!init_state.contract_info.contract_reward_claimed);
+
+    // Calculate contract portion of the reward
+    let (calculated_reward, _) =
+        DappsStaking::dev_stakers_split(&init_state.contract_info, &init_state.era_info);
+
+    assert_ok!(DappsStaking::burn_stale_reward(
+        RuntimeOrigin::root(),
+        contract_id.clone(),
+        claim_era,
+    ));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::StaleRewardBurned(
+        developer,
+        contract_id.clone(),
+        claim_era,
+        calculated_reward,
+    )));
+
+    let final_state = MemorySnapshot::all(claim_era, &contract_id, developer);
+    let issuance_after_claim = <TestRuntime as Config>::Currency::total_issuance();
+    assert_eq!(init_state.free_balance, final_state.free_balance);
+    assert!(final_state.contract_info.contract_reward_claimed);
+    assert_eq!(
+        issuance_before_claim - calculated_reward,
+        issuance_after_claim
+    );
+}

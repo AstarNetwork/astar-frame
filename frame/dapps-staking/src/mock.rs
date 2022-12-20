@@ -12,7 +12,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, ConstU32, IdentityLookup},
 };
 
 pub(crate) type AccountId = u64;
@@ -32,6 +32,7 @@ pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
+pub(crate) const REWARD_RETENTION_PERIOD: u32 = 2;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -142,6 +143,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
+    type UnregisteredDappRewardRetention = ConstU32<REWARD_RETENTION_PERIOD>;
 }
 
 #[derive(

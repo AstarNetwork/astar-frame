@@ -2189,3 +2189,124 @@ fn custom_max_encoded_len() {
         max_staker_info_len as usize
     );
 }
+
+#[test]
+fn burn_stale_reward_is_ok() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+
+        // Register & stake on contract
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance enough eras so stale rewards become burnable
+        let eras_advanced = REWARD_RETENTION_PERIOD + 1;
+        advance_to_era(start_era + eras_advanced);
+        assert_unregister(developer, &contract_id);
+
+        assert_burn_stale_reward(&contract_id, start_era);
+    })
+}
+
+#[test]
+fn burn_stale_reward_from_registered_dapp_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+
+        // Register & stake on contract
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance enough eras so stale rewards would become burnable, in case dapp was unregistered
+        let eras_advanced = REWARD_RETENTION_PERIOD;
+        advance_to_era(start_era + eras_advanced);
+
+        // Rewards shouldn't be burnable since retention period hasn't expired yet
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::root(), contract_id, start_era,),
+            Error::<TestRuntime>::NotUnregisteredContract
+        );
+    })
+}
+
+#[test]
+fn burn_stale_reward_before_retention_period_finished_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        let start_era = DappsStaking::current_era();
+
+        // Register & stake on contract
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance enough eras so stale rewards become burnable
+        let eras_advanced = REWARD_RETENTION_PERIOD;
+        advance_to_era(start_era + eras_advanced);
+        assert_unregister(developer, &contract_id);
+
+        // Rewards shouldn't be burnable since retention period hasn't expired yet
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::root(), contract_id, start_era,),
+            Error::<TestRuntime>::EraOutOfBounds
+        );
+    })
+}
+
+#[test]
+fn burn_stale_reward_negative_checks() {
+    ExternalityBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 3;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        // Cannot burn from non-existing contract
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::root(), contract_id, 1,),
+            Error::<TestRuntime>::NotOperatedContract
+        );
+
+        // Cannot burn unless called with root privileges
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::signed(developer), contract_id, 1,),
+            BadOrigin
+        );
+
+        // Register & stake on contract
+        assert_register(developer, &contract_id);
+        assert_bond_and_stake(staker, &contract_id, 100);
+
+        // Advance enough eras so stale rewards become burnable
+        let start_era = DappsStaking::current_era();
+        let eras_advanced = REWARD_RETENTION_PERIOD + 2;
+        advance_to_era(start_era + eras_advanced);
+        assert_unregister(developer, &contract_id);
+
+        // Claim them (before they are burned)
+        assert_claim_dapp(&contract_id, start_era);
+
+        // No longer possible to burn if reward was claimed
+        assert_noop!(
+            DappsStaking::burn_stale_reward(RuntimeOrigin::root(), contract_id, start_era,),
+            Error::<TestRuntime>::AlreadyClaimedInThisEra
+        );
+    })
+}
