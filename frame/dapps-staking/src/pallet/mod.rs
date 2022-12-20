@@ -912,7 +912,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Used to burn unclaimed & stale rewards from unregistered contract
+        /// Used to burn unclaimed & stale rewards from an unregistered contract.
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn burn_stale_reward(
             origin: OriginFor<T>,

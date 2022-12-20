@@ -128,11 +128,7 @@ impl<AccountId> DAppInfo<AccountId> {
 
     /// `true` if dApp has been unregistered, `false` otherwise
     fn is_unregistered(&self) -> bool {
-        if let DAppState::Unregistered(_) = self.state {
-            true
-        } else {
-            false
-        }
+        matches!(self.state, DAppState::Unregistered(_))
     }
 }
 
