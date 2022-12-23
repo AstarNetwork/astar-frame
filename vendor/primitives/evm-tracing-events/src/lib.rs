@@ -46,7 +46,7 @@ use sp_runtime_interface::pass_by::PassByCodec;
 environmental::environmental!(listener: dyn Listener + 'static);
 
 pub fn using<R, F: FnOnce() -> R>(l: &mut (dyn Listener + 'static), f: F) -> R {
-	listener::using(l, f)
+    listener::using(l, f)
 }
 
 /// Allow to configure which data of the Step event
@@ -54,26 +54,26 @@ pub fn using<R, F: FnOnce() -> R>(l: &mut (dyn Listener + 'static), f: F) -> R {
 /// in the runtime which have a significant cost for each step.
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Encode, Decode, Default, PassByCodec)]
 pub struct StepEventFilter {
-	pub enable_stack: bool,
-	pub enable_memory: bool,
+    pub enable_stack: bool,
+    pub enable_memory: bool,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Encode, Decode)]
 pub enum Event {
-	Evm(evm::EvmEvent),
-	Gasometer(gasometer::GasometerEvent),
-	Runtime(runtime::RuntimeEvent),
-	CallListNew(),
+    Evm(evm::EvmEvent),
+    Gasometer(gasometer::GasometerEvent),
+    Runtime(runtime::RuntimeEvent),
+    CallListNew(),
 }
 
 impl Event {
-	/// Access the global reference and call it's `event` method, passing the `Event` itself as
-	/// argument.
-	///
-	/// This only works if we are `using` a global reference to a `Listener` implementor.
-	pub fn emit(self) {
-		listener::with(|listener| listener.event(self));
-	}
+    /// Access the global reference and call it's `event` method, passing the `Event` itself as
+    /// argument.
+    ///
+    /// This only works if we are `using` a global reference to a `Listener` implementor.
+    pub fn emit(self) {
+        listener::with(|listener| listener.event(self));
+    }
 }
 
 /// Main trait to proxy emitted messages.
@@ -81,36 +81,36 @@ impl Event {
 /// - Inside the runtime to proxy the events through the host functions
 /// - Inside the client to forward those events to the client listener.
 pub trait Listener {
-	fn event(&mut self, event: Event);
+    fn event(&mut self, event: Event);
 
-	/// Allow the runtime to know which data should be discarded and not cloned.
-	/// WARNING: It is only called once when the runtime tracing is instantiated to avoid
-	/// performing many ext calls.
-	fn step_event_filter(&self) -> StepEventFilter;
+    /// Allow the runtime to know which data should be discarded and not cloned.
+    /// WARNING: It is only called once when the runtime tracing is instantiated to avoid
+    /// performing many ext calls.
+    fn step_event_filter(&self) -> StepEventFilter;
 }
 
 pub fn step_event_filter() -> Option<StepEventFilter> {
-	let mut filter = None;
-	listener::with(|listener| filter = Some(listener.step_event_filter()));
-	filter
+    let mut filter = None;
+    listener::with(|listener| filter = Some(listener.step_event_filter()));
+    filter
 }
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq)]
 pub struct Context {
-	/// Execution address.
-	pub address: H160,
-	/// Caller of the EVM.
-	pub caller: H160,
-	/// Apparent value of the EVM.
-	pub apparent_value: U256,
+    /// Execution address.
+    pub address: H160,
+    /// Caller of the EVM.
+    pub caller: H160,
+    /// Apparent value of the EVM.
+    pub apparent_value: U256,
 }
 
 impl From<evm_runtime::Context> for Context {
-	fn from(i: evm_runtime::Context) -> Self {
-		Self {
-			address: i.address,
-			caller: i.caller,
-			apparent_value: i.apparent_value,
-		}
-	}
+    fn from(i: evm_runtime::Context) -> Self {
+        Self {
+            address: i.address,
+            caller: i.caller,
+            apparent_value: i.apparent_value,
+        }
+    }
 }
