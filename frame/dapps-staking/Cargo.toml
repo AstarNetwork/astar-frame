@@ -1,6 +1,6 @@
 [package]
 name = "pallet-dapps-staking"
-version = "3.8.0"
+version = "3.9.0"
 authors = ["Stake Technologies <devops@stake.co.jp>"]
 edition = "2021"
 homepage = "https://astar.network/"
@@ -45,9 +45,10 @@ std = [
 	"pallet-session/std",
 	"pallet-timestamp/std",
 	"sp-staking/std",
+	"frame-benchmarking?/std",
 ]
 runtime-benchmarks = [
-	"frame-benchmarking",
+	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",

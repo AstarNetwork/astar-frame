@@ -16,7 +16,7 @@ use sp_core::{H160, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, ConstU32, IdentityLookup},
     AccountId32,
 };
 extern crate alloc;
@@ -276,6 +276,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
+    type UnregisteredDappRewardRetention = ConstU32<2>;
 }
 
 pub struct ExternalityBuilder {
