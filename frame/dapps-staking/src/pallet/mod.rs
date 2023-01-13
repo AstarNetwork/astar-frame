@@ -335,6 +335,7 @@ pub mod pallet {
         /// Depending on the pallet configuration/state it is possible that developer needs to be whitelisted prior to registration.
         ///
         /// As part of this call, `RegisterDeposit` will be reserved from devs account.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
@@ -369,6 +370,7 @@ pub mod pallet {
         /// Deposit is returned to the developer but existing stakers should manually call `withdraw_from_unregistered` if they wish to to unstake.
         ///
         /// **Warning**: After this action ,contract can not be registered for dapps staking again.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::unregister())]
         pub fn unregister(
             origin: OriginFor<T>,
@@ -399,6 +401,7 @@ pub mod pallet {
         /// Withdraw locked funds from a contract that was unregistered.
         ///
         /// Funds don't need to undergo the unbonding period - they are returned immediately to the staker's free balance.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::withdraw_from_unregistered())]
         pub fn withdraw_from_unregistered(
             origin: OriginFor<T>,
@@ -459,6 +462,7 @@ pub mod pallet {
         /// unless account already has bonded value equal or more than 'minimum_balance'.
         ///
         /// The dispatch origin for this call must be _Signed_ by the staker's account.
+        #[pallet::call_index(3)]
         #[pallet::weight(T::WeightInfo::bond_and_stake())]
         pub fn bond_and_stake(
             origin: OriginFor<T>,
@@ -525,6 +529,7 @@ pub mod pallet {
         ///
         /// In case remaining staked balance on contract is below minimum staking amount,
         /// entire stake for that contract will be unstaked.
+        #[pallet::call_index(4)]
         #[pallet::weight(T::WeightInfo::unbond_and_unstake())]
         pub fn unbond_and_unstake(
             origin: OriginFor<T>,
@@ -588,6 +593,7 @@ pub mod pallet {
         ///
         /// If there are unbonding chunks which will be fully unbonded in future eras,
         /// they will remain and can be withdrawn later.
+        #[pallet::call_index(5)]
         #[pallet::weight(T::WeightInfo::withdraw_unbonded())]
         pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
@@ -623,6 +629,7 @@ pub mod pallet {
         /// Minor difference is that there is no unbonding period so this call won't
         /// check whether max number of unbonding chunks is exceeded.
         ///
+        #[pallet::call_index(6)]
         #[pallet::weight(T::WeightInfo::nomination_transfer())]
         pub fn nomination_transfer(
             origin: OriginFor<T>,
@@ -697,6 +704,7 @@ pub mod pallet {
         ///
         /// The rewards are always added to the staker's free balance (account) but depending on the reward destination configuration,
         /// they might be immediately re-staked.
+        #[pallet::call_index(7)]
         #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
@@ -798,6 +806,7 @@ pub mod pallet {
         /// Claim earned dapp rewards for the specified era.
         ///
         /// Call must ensure that the specified era is eligible for reward payout and that it hasn't already been paid out for the dapp.
+        #[pallet::call_index(8)]
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn claim_dapp(
             origin: OriginFor<T>,
@@ -841,6 +850,7 @@ pub mod pallet {
         /// Force a new era at the start of the next block.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(9)]
         #[pallet::weight(T::WeightInfo::force_new_era())]
         pub fn force_new_era(origin: OriginFor<T>) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
@@ -852,6 +862,7 @@ pub mod pallet {
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(10)]
         #[pallet::weight(T::WeightInfo::maintenance_mode())]
         pub fn maintenance_mode(
             origin: OriginFor<T>,
@@ -874,6 +885,7 @@ pub mod pallet {
         ///
         /// User must be an active staker in order to use this call.
         /// This will apply to all existing unclaimed rewards.
+        #[pallet::call_index(11)]
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
@@ -898,6 +910,7 @@ pub mod pallet {
         /// The purpose of this call is only for fixing one of the issues detected with dapps-staking.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(12)]
         #[pallet::weight(T::DbWeight::get().writes(1))]
         pub fn set_contract_stake_info(
             origin: OriginFor<T>,
@@ -913,6 +926,7 @@ pub mod pallet {
         }
 
         /// Used to burn unclaimed & stale rewards from an unregistered contract.
+        #[pallet::call_index(13)]
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn burn_stale_reward(
             origin: OriginFor<T>,
