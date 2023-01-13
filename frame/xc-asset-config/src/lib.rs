@@ -204,6 +204,7 @@ pub mod pallet {
         /// Register new asset location to asset Id mapping.
         ///
         /// This makes the asset eligible for XCM interaction.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::register_asset_location())]
         pub fn register_asset_location(
             origin: OriginFor<T>,
@@ -234,6 +235,7 @@ pub mod pallet {
 
         /// Change the amount of units we are charging per execution second
         /// for a given AssetLocation.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::set_asset_units_per_second())]
         pub fn set_asset_units_per_second(
             origin: OriginFor<T>,
@@ -260,6 +262,7 @@ pub mod pallet {
 
         /// Change the xcm type mapping for a given asset Id.
         /// The new asset type will inherit old `units per second` value.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::change_existing_asset_location())]
         pub fn change_existing_asset_location(
             origin: OriginFor<T>,
@@ -296,6 +299,7 @@ pub mod pallet {
         /// Removes asset from the set of supported payment assets.
         ///
         /// The asset can still be interacted with via XCM but it cannot be used to pay for execution time.
+        #[pallet::call_index(3)]
         #[pallet::weight(T::WeightInfo::remove_payment_asset())]
         pub fn remove_payment_asset(
             origin: OriginFor<T>,
@@ -312,6 +316,7 @@ pub mod pallet {
         }
 
         /// Removes all information related to asset, removing it from XCM support.
+        #[pallet::call_index(4)]
         #[pallet::weight(T::WeightInfo::remove_asset())]
         pub fn remove_asset(
             origin: OriginFor<T>,

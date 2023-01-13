@@ -107,6 +107,7 @@ pub mod pallet {
         /// - One DB write (event).
         /// - Weight of derivative `call` execution + read/write + 10_000.
         /// # </weight>
+        #[pallet::call_index(0)]
         #[pallet::weight({
             let dispatch_info = call.get_dispatch_info();
             (dispatch_info.weight.saturating_add(T::DbWeight::get().reads(1))
