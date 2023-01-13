@@ -294,6 +294,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Set the list of invulnerable (fixed) collators.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
         pub fn set_invulnerables(
             origin: OriginFor<T>,
@@ -325,6 +326,7 @@ pub mod pallet {
         /// Set the ideal number of collators (not including the invulnerables).
         /// If lowering this number, then the number of running collators could be higher than this figure.
         /// Aside from that edge case, there should be no other way to have more collators than the desired number.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::set_desired_candidates())]
         pub fn set_desired_candidates(
             origin: OriginFor<T>,
@@ -341,6 +343,7 @@ pub mod pallet {
         }
 
         /// Set the candidacy bond amount.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::set_candidacy_bond())]
         pub fn set_candidacy_bond(
             origin: OriginFor<T>,
@@ -356,6 +359,7 @@ pub mod pallet {
         /// registered session keys and (b) be able to reserve the `CandidacyBond`.
         ///
         /// This call is not available to `Invulnerable` collators.
+        #[pallet::call_index(3)]
         #[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
         pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
@@ -410,6 +414,7 @@ pub mod pallet {
         /// This call will fail if the total number of candidates would drop below `MinCandidates`.
         ///
         /// This call is not available to `Invulnerable` collators.
+        #[pallet::call_index(4)]
         #[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
         pub fn leave_intent(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;

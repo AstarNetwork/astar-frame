@@ -163,6 +163,7 @@ pub mod pallet {
         ///
         /// Emits `DistributionConfigurationChanged` with config embeded into event itself.
         ///
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::set_configuration())]
         pub fn set_configuration(
             origin: OriginFor<T>,
