@@ -15,7 +15,7 @@ use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
-use sp_core::{H160, H256};
+use sp_core::{H160, H256, ConstU32};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -241,6 +241,8 @@ impl pallet_assets::Config for Runtime {
     type Extra = ();
     type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
     type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+    type RemoveItemsLimit = ConstU32<0>;
+    type AssetIdParameter = AssetId;
 }
 
 pub struct AssetIdConverter<AssetId>(PhantomData<AssetId>);
