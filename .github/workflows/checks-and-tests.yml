@@ -57,6 +57,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Install deps
+      run: sudo apt -y install protobuf-compiler
+
     - name: Run all tests & Generate report
       uses: actions-rs/tarpaulin@v0.1
       with:
