@@ -10,4 +10,4 @@ The [GNU-v3 license](https://www.gnu.org/licenses/gpl-3.0.html) is the default l
 
 ## Non-commercial usage
 
-The `pallet-dapps-staking` package crate is distributed for non-commertial usage only under the [PolyForm Noncommercial License](https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Noncommercial-1.0.0.txt). A copy of the license can also be found in pallet's directory.
+The `pallet-dapps-staking` crate is distributed for non-commertial usage only under the [PolyForm Noncommercial License](https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Noncommercial-1.0.0.txt). A copy of the license can also be found in pallet's directory.
