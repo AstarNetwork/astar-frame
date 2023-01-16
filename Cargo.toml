@@ -19,4 +19,8 @@ members = [
 	"precompiles/utils",
 	"precompiles/xcm",
 	"precompiles/xvm",
+	"vendor/evm-tracing",
+	"vendor/rpc/debug",
+	"vendor/rpc/trace",
+	"vendor/runtime/evm_tracer",
 ]
