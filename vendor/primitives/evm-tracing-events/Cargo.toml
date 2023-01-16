@@ -1,6 +1,6 @@
 [package]
 name = "evm-tracing-events"
-authors = [ "PureStake" ]
+authors = ["PureStake"]
 edition = "2021"
 homepage = "https://moonbeam.network"
 license = "GPL-3.0-only"
@@ -15,14 +15,14 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 sp-runtime-interface = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
 
 # Ethereum
-ethereum = { version = "0.14.0", default-features = false, features = [ "with-codec" ] }
+ethereum = { version = "0.14.0", default-features = false, features = ["with-codec"] }
 ethereum-types = { version = "0.14", default-features = false }
-evm = { version = "0.37.0", default-features = false, features = [ "with-codec" ] }
+evm = { version = "0.37.0", default-features = false, features = ["with-codec"] }
 evm-gasometer = { version = "0.37.0", default-features = false }
 evm-runtime = { version = "0.37.0", default-features = false }
 
 [features]
-default = [ "std" ]
+default = ["std"]
 std = [
 	"codec/std",
 	"environmental/std",
@@ -33,4 +33,4 @@ std = [
 	"evm/std",
 	"sp-runtime-interface/std",
 ]
-evm-tracing = [ "evm-gasometer/tracing", "evm-runtime/tracing", "evm/tracing" ]
+evm-tracing = ["evm-gasometer/tracing", "evm-runtime/tracing", "evm/tracing"]

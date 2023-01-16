@@ -27,6 +27,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Install deps
+      run: sudo apt -y install protobuf-compiler
+
     - name: Check if code compiles
       run: cargo check --release --all-features --verbose
 

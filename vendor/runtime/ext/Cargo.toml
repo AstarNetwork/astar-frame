@@ -1,6 +1,6 @@
 [package]
 name = "moonbeam-primitives-ext"
-authors = [ "PureStake" ]
+authors = ["PureStake"]
 edition = "2021"
 homepage = "https://moonbeam.network"
 license = "GPL-3.0-only"
@@ -20,7 +20,7 @@ sp-runtime-interface = { git = "https://github.com/paritytech/substrate", branch
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
 
 [features]
-default = [ "std" ]
+default = ["std"]
 std = [
 	"codec/std",
 	"ethereum-types/std",
