@@ -49,3 +49,11 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all-features -- -D warnings
+
+  check-license:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    with:
+      path: .
+      config: <path to JSON config file>
+      strict: false
