@@ -53,6 +53,7 @@ jobs:
   check-license:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    uses: viperproject/check-license-header@v2
     with:
       path: .
       config: <path to JSON config file>
