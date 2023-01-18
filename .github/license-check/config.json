@@ -4,11 +4,10 @@
             "**/*.rs"
         ],
         "exclude": [
-            "./frame/collator-selection/*.rs",
-            "./frame/custom-signatures/*.rs",
-            "./frame/dapps-staking/*.rs",
-            "./vendor/*.rs"
-
+            "frame/collator-selection/**",
+            "frame/custom-signatures/**",
+            "frame/dapps-staking/**",
+            "vendor/**"
         ],
         "license": "./.github/license-check/HEADER-GNUv3"
     }
