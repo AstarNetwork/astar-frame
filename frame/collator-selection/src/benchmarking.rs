@@ -144,7 +144,7 @@ benchmarks! {
     }
 
     set_desired_candidates {
-        let max: u32 = 999;
+        let max: u32 = 148;
         let origin = T::UpdateOrigin::successful_origin();
     }: {
         assert_ok!(
