@@ -7,6 +7,7 @@
             "frame/collator-selection/**",
             "frame/custom-signatures/**",
             "frame/dapps-staking/**",
+            "precompiles/utils/**",
             "vendor/**"
         ],
         "license": "./.github/license-check/HEADER-GNUv3"
