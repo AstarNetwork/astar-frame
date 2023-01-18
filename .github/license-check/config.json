@@ -2,6 +2,12 @@
     {
         "include": [
             "**/*.rs"
-        ]
+        ],
+        "exclude": [
+            "./frame/collator-selection/**",
+            "./frame/custom-signatures/**",
+            "./frame/dapps-staking/**"
+        ],
+        "license": "./.github/license-check/HEADER-GNUv3"
     }
 ]
