@@ -10,6 +10,13 @@
             "precompiles/utils/**",
             "vendor/**"
         ],
-        "license": "./.github/license-check/HEADER-GNUv3"
+        "license": "./.github/license-check/headers/HEADER-GNUv3"
+    },
+    {
+        "include": [
+            "frame/collator-selection/*.rs",
+            "frame/custom-signatures/*.rs"
+        ],
+        "license": "./.github/license-check/headers/HEADER-APACHE2"
     }
 ]
