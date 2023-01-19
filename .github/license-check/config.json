@@ -21,7 +21,7 @@
     },
     {
         "include": [
-            "frame/dapps-staking/**"
+            "frame/dapps-staking/*.rs"
         ],
         "license": "./.github/license-check/headers/HEADER-POLYFORM1"
     }
