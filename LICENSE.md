@@ -11,7 +11,7 @@ Pallets that don't specify a license should be distributed under the GNU-v3 lice
 
 ## Apache 2.0
 
-The `pallet-custom-signature` is distributed under [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.txt).
+The `pallet-custom-signature` and `pallet-collator-selection` are distributed under [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.txt).
 
 ## Non-commercial usage
 
