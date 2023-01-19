@@ -18,5 +18,11 @@
             "frame/custom-signatures/*.rs"
         ],
         "license": "./.github/license-check/headers/HEADER-APACHE2"
+    },
+    {
+        "include": [
+            "frame/dapps-staking/**"
+        ],
+        "license": "./.github/license-check/headers/HEADER-POLYFORM1"
     }
 ]
