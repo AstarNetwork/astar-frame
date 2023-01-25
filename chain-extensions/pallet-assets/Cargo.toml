@@ -21,7 +21,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
-assets-chain-extension-types = { path = "../types/assets", default-features = false, features = ["substrate"] }
+assets-chain-extension-types = { path = "../types/assets", default-features = false }
 
 [features]
 default = ["std"]

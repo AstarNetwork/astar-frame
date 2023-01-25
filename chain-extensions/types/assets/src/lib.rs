@@ -19,7 +19,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use scale_info::scale;
-#[cfg(feature = "substrate")]
 use sp_runtime::{DispatchError, ModuleError};
 
 #[derive(PartialEq, Eq, Copy, Clone, scale::Encode, scale::Decode, Debug)]
@@ -27,47 +26,42 @@ use sp_runtime::{DispatchError, ModuleError};
 pub enum AssetsError {
     /// Success
     Success = 0,
-    /// Error
-    IsError = 1,
+    /// Account balance must be greater than or equal to the transfer amount.
+    BalanceLow = 1,
+    /// The account to alter does not exist.
+    NoAccount = 2,
+    /// The signing account has no permission to do the operation.
+    NoPermission = 3,
+    /// The given asset ID is unknown.
+    Unknown = 4,
+    /// The origin account is frozen.
+    Frozen = 5,
+    /// The asset ID is already taken.
+    InUse = 6,
+    /// Invalid witness data given.
+    BadWitness = 7,
+    /// Minimum balance should be non-zero.
+    MinBalanceZero = 8,
+    /// Unable to increment the consumer reference counters on the account. Either no provider
+    /// reference exists to allow a non-zero balance of a non-self-sufficient asset, or the
+    /// maximum number of consumers has been reached.
+    NoProvider = 9,
+    /// Invalid metadata given.
+    BadMetadata = 10,
+    /// No approval exists that would allow the transfer.
+    Unapproved = 11,
+    /// The source account would not survive the transfer and it needs to stay alive.
+    WouldDie = 12,
+    /// The asset-account already exists.
+    AlreadyExists = 13,
+    /// The asset-account doesn't have an associated deposit.
+    NoDeposit = 14,
+    /// The operation would result in funds being burned.
+    WouldBurn = 15,
+    /// Unknown error
+    RuntimeError = 99,
 }
 
-// #[pallet::error]
-// pub enum Error<T, I = ()> {
-//     /// Account balance must be greater than or equal to the transfer amount.
-//     BalanceLow,
-//     /// The account to alter does not exist.
-//     NoAccount,
-//     /// The signing account has no permission to do the operation.
-//     NoPermission,
-//     /// The given asset ID is unknown.
-//     Unknown,
-//     /// The origin account is frozen.
-//     Frozen,
-//     /// The asset ID is already taken.
-//     InUse,
-//     /// Invalid witness data given.
-//     BadWitness,
-//     /// Minimum balance should be non-zero.
-//     MinBalanceZero,
-//     /// Unable to increment the consumer reference counters on the account. Either no provider
-//     /// reference exists to allow a non-zero balance of a non-self-sufficient asset, or the
-//     /// maximum number of consumers has been reached.
-//     NoProvider,
-//     /// Invalid metadata given.
-//     BadMetadata,
-//     /// No approval exists that would allow the transfer.
-//     Unapproved,
-//     /// The source account would not survive the transfer and it needs to stay alive.
-//     WouldDie,
-//     /// The asset-account already exists.
-//     AlreadyExists,
-//     /// The asset-account doesn't have an associated deposit.
-//     NoDeposit,
-//     /// The operation would result in funds being burned.
-//     WouldBurn,
-// }
-
-#[cfg(feature = "substrate")]
 impl TryFrom<DispatchError> for AssetsError {
     type Error = DispatchError;
 
@@ -77,51 +71,28 @@ impl TryFrom<DispatchError> for AssetsError {
             _ => Some("No module error Info"),
         };
         return match error_text {
-            Some("BalanceLow") => Ok(AssetsError::IsError),
-            Some("NoAccount") => Ok(AssetsError::IsError),
-            Some("NoPermission") => Ok(AssetsError::IsError),
-            Some("Unknown") => Ok(AssetsError::IsError),
-            Some("Frozen") => Ok(AssetsError::IsError),
-            Some("InUse") => Ok(AssetsError::IsError),
-            Some("BadWitness") => Ok(AssetsError::IsError),
-            Some("MinBalanceZero") => Ok(AssetsError::IsError),
-            Some("NoProvider") => Ok(AssetsError::IsError),
-            Some("BadMetadata") => Ok(AssetsError::IsError),
-            Some("Unapproved") => Ok(AssetsError::IsError),
-            Some("WouldDie") => Ok(AssetsError::IsError),
-            Some("AlreadyExists") => Ok(AssetsError::IsError),
-            Some("NoDeposit") => Ok(AssetsError::IsError),
-            Some("WouldBurn") => Ok(AssetsError::IsError),
-            _ => Ok(AssetsError::IsError),
+            Some("BalanceLow") => Ok(AssetsError::BalanceLow),
+            Some("NoAccount") => Ok(AssetsError::NoAccount),
+            Some("NoPermission") => Ok(AssetsError::NoPermission),
+            Some("Unknown") => Ok(AssetsError::Unknown),
+            Some("Frozen") => Ok(AssetsError::Frozen),
+            Some("InUse") => Ok(AssetsError::InUse),
+            Some("BadWitness") => Ok(AssetsError::BadWitness),
+            Some("MinBalanceZero") => Ok(AssetsError::MinBalanceZero),
+            Some("NoProvider") => Ok(AssetsError::NoProvider),
+            Some("BadMetadata") => Ok(AssetsError::BadMetadata),
+            Some("Unapproved") => Ok(AssetsError::Unapproved),
+            Some("WouldDie") => Ok(AssetsError::WouldDie),
+            Some("AlreadyExists") => Ok(AssetsError::AlreadyExists),
+            Some("NoDeposit") => Ok(AssetsError::NoDeposit),
+            Some("WouldBurn") => Ok(AssetsError::WouldBurn),
+            _ => Ok(AssetsError::RuntimeError),
         };
-    }
-}
-
-#[cfg(feature = "ink")]
-impl ink_env::chain_extension::FromStatusCode for AssetsError {
-    fn from_status_code(status_code: u32) -> Result<(), Self> {
-        match status_code {
-            0 => Ok(()),
-            1 => Err(Self::IsError),
-            _ => panic!("encountered unknown status code"),
-        }
-    }
-}
-
-#[cfg(feature = "ink")]
-impl From<scale::Error> for AssetsError {
-    fn from(_: scale::Error) -> Self {
-        panic!("encountered unexpected invalid SCALE encoding")
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode, scale::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-#[cfg_attr(
-feature = "ink",
-derive(ink_storage::traits::SpreadLayout, ink_storage::traits::PackedLayout,)
-)]
-#[cfg_attr(all(feature = "ink", feature = "std"), derive(ink_storage::traits::StorageLayout))]
 pub enum Origin {
     Caller,
     Address,
@@ -129,13 +100,6 @@ pub enum Origin {
 
 impl Default for Origin {
     fn default() -> Self {
-        Self::Address
-    }
-}
-
-#[cfg(feature = "ink")]
-impl ink_storage::traits::SpreadAllocate for Origin {
-    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
         Self::Address
     }
 }
