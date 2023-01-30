@@ -86,6 +86,12 @@ pub mod pallet {
         fn xc_asset_unregistered(asset_id: T::AssetId);
     }
 
+    /// Implementation that does nothing
+    impl<T: Config> XcAssetChanged<T> for () {
+        fn xc_asset_registered(_: T::AssetId) {}
+        fn xc_asset_unregistered(_: T::AssetId) {}
+    }
+
     /// Defines conversion between asset Id and cross-chain asset location
     pub trait XcAssetLocation<AssetId> {
         /// Get asset type from assetId
