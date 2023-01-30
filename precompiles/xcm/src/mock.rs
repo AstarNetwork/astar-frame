@@ -15,7 +15,7 @@ use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
-use sp_core::{H160, H256, ConstU32};
+use sp_core::{ConstU32, H160, H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
