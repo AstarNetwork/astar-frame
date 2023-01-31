@@ -19,6 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Encode;
+use frame_support::traits::fungibles::InspectMetadata;
 use assets_chain_extension_types::{AssetsError, Origin};
 use frame_system::RawOrigin;
 use pallet_assets::WeightInfo;
@@ -29,6 +30,8 @@ use sp_core::Get;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
+use frame_support::traits::tokens::fungibles::approvals::Inspect;
+use sp_std::vec::Vec;
 
 enum AssetsFunc {
     Create,
@@ -38,6 +41,13 @@ enum AssetsFunc {
     BalanceOf,
     TotalSupply,
     Allowance,
+    ApproveTransfer,
+    CancelApproval,
+    TransferApproved,
+    SetMetadata,
+    MetadataName,
+    MetadataSymbol,
+    MetadataDecimals,
 }
 
 impl TryFrom<u16> for AssetsFunc {
@@ -52,6 +62,13 @@ impl TryFrom<u16> for AssetsFunc {
             5 => Ok(AssetsFunc::BalanceOf),
             6 => Ok(AssetsFunc::TotalSupply),
             7 => Ok(AssetsFunc::Allowance),
+            8 => Ok(AssetsFunc::ApproveTransfer),
+            9 => Ok(AssetsFunc::CancelApproval),
+            10 =>Ok(AssetsFunc::TransferApproved),
+            11 =>Ok(AssetsFunc::SetMetadata),
+            12 =>Ok(AssetsFunc::MetadataName),
+            13 =>Ok(AssetsFunc::MetadataSymbol),
+            14 =>Ok(AssetsFunc::MetadataDecimals),
             _ => Err(DispatchError::Other(
                 "PalletAssetsExtension: Unimplemented func_id",
             )),
@@ -233,17 +250,174 @@ where
                 env.write(&total_supply.encode(), false, None)?;
             }
             AssetsFunc::Allowance => {
-                //TODO update
-                let (id, who): (
+                let (id, owner, delegate): (
                     <T as pallet_assets::Config>::AssetId,
+                    T::AccountId,
                     T::AccountId,
                 ) = env.read_as()?;
 
                 let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
-                let balance = pallet_assets::Pallet::<T>::balance(id,who);
-                env.write(&balance.encode(), false, None)?;
+                let allowance = pallet_assets::Pallet::<T>::allowance(id, &owner, &delegate);
+                env.write(&allowance.encode(), false, None)?;
+            }
+            AssetsFunc::ApproveTransfer => {
+                let (origin, id, delegate, amount): (
+                    Origin,
+                    <T as pallet_assets::Config>::AssetId,
+                    T::AccountId,
+                    T::Balance
+                ) = env.read_as()?;
+
+                let base_weight = <T as pallet_assets::Config>::WeightInfo::approve_transfer();
+                env.charge_weight(base_weight)?;
+
+                let runtime_origin = RawOrigin::Signed(match origin {
+                    Origin::Caller => {
+                        env.ext().caller().clone()
+                    }
+                    Origin::Address => env.ext().address().clone(),
+                });
+
+                let call_result = pallet_assets::Pallet::<T>::approve_transfer(
+                    runtime_origin.into(),
+                    id,
+                    delegate.into(),
+                    amount,
+                );
+                return match call_result {
+                    Err(e) => {
+                        let mapped_error = AssetsError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                }
+            }
+            AssetsFunc::CancelApproval => {
+                let (origin, id, delegate): (
+                    Origin,
+                    <T as pallet_assets::Config>::AssetId,
+                    T::AccountId
+                ) = env.read_as()?;
+
+                let base_weight = <T as pallet_assets::Config>::WeightInfo::cancel_approval();
+                env.charge_weight(base_weight)?;
+
+                let runtime_origin = RawOrigin::Signed(match origin {
+                    Origin::Caller => {
+                        env.ext().caller().clone()
+                    }
+                    Origin::Address => env.ext().address().clone(),
+                });
+
+                let call_result = pallet_assets::Pallet::<T>::cancel_approval(
+                    runtime_origin.into(),
+                    id,
+                    delegate.into()
+                );
+                return match call_result {
+                    Err(e) => {
+                        let mapped_error = AssetsError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                }
+            }
+            AssetsFunc::TransferApproved => {
+                let (origin, id, owner, destination, amount): (
+                    Origin,
+                    <T as pallet_assets::Config>::AssetId,
+                    T::AccountId,
+                    T::AccountId,
+                    T::Balance
+                ) = env.read_as()?;
+
+                let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer_approved();
+                env.charge_weight(base_weight)?;
+
+                let runtime_origin = RawOrigin::Signed(match origin {
+                    Origin::Caller => {
+                        env.ext().caller().clone()
+                    }
+                    Origin::Address => env.ext().address().clone(),
+                });
+
+                let call_result = pallet_assets::Pallet::<T>::transfer_approved(
+                    runtime_origin.into(),
+                    id,
+                    owner.into(),
+                    destination.into(),
+                    amount
+                );
+                return match call_result {
+                    Err(e) => {
+                        let mapped_error = AssetsError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                }
+            }
+            AssetsFunc::SetMetadata => {
+                let (origin, id, name, symbol, decimals): (
+                    Origin,
+                    <T as pallet_assets::Config>::AssetId,
+                    Vec<u8>,
+                    Vec<u8>,
+                    u8
+                ) = env.read_as_unbounded(env.in_len())?;
+
+                let base_weight = <T as pallet_assets::Config>::WeightInfo::set_metadata(name.len() as u32, symbol.len() as u32);
+                env.charge_weight(base_weight)?;
+
+                let runtime_origin = RawOrigin::Signed(match origin {
+                    Origin::Caller => {
+                        env.ext().caller().clone()
+                    }
+                    Origin::Address => env.ext().address().clone(),
+                });
+
+                let call_result = pallet_assets::Pallet::<T>::set_metadata(
+                    runtime_origin.into(),
+                    id,
+                    name,
+                    symbol,
+                    decimals
+                );
+                return match call_result {
+                    Err(e) => {
+                        let mapped_error = AssetsError::try_from(e)?;
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                }
+            }
+            AssetsFunc::MetadataName => {
+                let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
+
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+                env.charge_weight(base_weight)?;
+
+                let name = pallet_assets::Pallet::<T>::name(&id);
+                env.write(&name.encode(), false, None)?;
+            }
+            AssetsFunc::MetadataSymbol => {
+                let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
+
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+                env.charge_weight(base_weight)?;
+
+                let symbol = pallet_assets::Pallet::<T>::symbol(&id);
+                env.write(&symbol.encode(), false, None)?;
+            }
+            AssetsFunc::MetadataDecimals => {
+                let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
+
+                let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+                env.charge_weight(base_weight)?;
+
+                let decimals = pallet_assets::Pallet::<T>::decimals(&id);
+                env.write(&decimals.encode(), false, None)?;
             }
         }
 
