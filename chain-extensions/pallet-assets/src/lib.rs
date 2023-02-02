@@ -18,9 +18,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use assets_chain_extension_types::{AssetsError, Origin};
 use codec::Encode;
 use frame_support::traits::fungibles::InspectMetadata;
-use assets_chain_extension_types::{AssetsError, Origin};
+use frame_support::traits::tokens::fungibles::approvals::Inspect;
 use frame_system::RawOrigin;
 use pallet_assets::WeightInfo;
 use pallet_contracts::chain_extension::{
@@ -30,7 +31,6 @@ use sp_core::Get;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
-use frame_support::traits::tokens::fungibles::approvals::Inspect;
 use sp_std::vec::Vec;
 
 enum AssetsFunc {
@@ -64,11 +64,11 @@ impl TryFrom<u16> for AssetsFunc {
             7 => Ok(AssetsFunc::Allowance),
             8 => Ok(AssetsFunc::ApproveTransfer),
             9 => Ok(AssetsFunc::CancelApproval),
-            10 =>Ok(AssetsFunc::TransferApproved),
-            11 =>Ok(AssetsFunc::SetMetadata),
-            12 =>Ok(AssetsFunc::MetadataName),
-            13 =>Ok(AssetsFunc::MetadataSymbol),
-            14 =>Ok(AssetsFunc::MetadataDecimals),
+            10 => Ok(AssetsFunc::TransferApproved),
+            11 => Ok(AssetsFunc::SetMetadata),
+            12 => Ok(AssetsFunc::MetadataName),
+            13 => Ok(AssetsFunc::MetadataSymbol),
+            14 => Ok(AssetsFunc::MetadataDecimals),
             _ => Err(DispatchError::Other(
                 "PalletAssetsExtension: Unimplemented func_id",
             )),
@@ -105,16 +105,14 @@ where
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::create();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -130,23 +128,21 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::Transfer => {
                 let (origin, id, target, amount): (
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -162,23 +158,21 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::Mint => {
                 let (origin, id, beneficiary, amount): (
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::mint();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -194,23 +188,21 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::Burn => {
                 let (origin, id, who, amount): (
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::burn();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -226,18 +218,16 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::BalanceOf => {
-                let (id, who): (
-                    <T as pallet_assets::Config>::AssetId,
-                    T::AccountId,
-                ) = env.read_as()?;
+                let (id, who): (<T as pallet_assets::Config>::AssetId, T::AccountId) =
+                    env.read_as()?;
 
                 let base_weight = <T as frame_system::Config>::DbWeight::get().reads(1);
                 env.charge_weight(base_weight)?;
 
-                let balance = pallet_assets::Pallet::<T>::balance(id,who);
+                let balance = pallet_assets::Pallet::<T>::balance(id, who);
                 env.write(&balance.encode(), false, None)?;
             }
             AssetsFunc::TotalSupply => {
@@ -267,16 +257,14 @@ where
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::approve_transfer();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -292,29 +280,27 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::CancelApproval => {
                 let (origin, id, delegate): (
                     Origin,
                     <T as pallet_assets::Config>::AssetId,
-                    T::AccountId
+                    T::AccountId,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::cancel_approval();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
                 let call_result = pallet_assets::Pallet::<T>::cancel_approval(
                     runtime_origin.into(),
                     id.into(),
-                    delegate.into()
+                    delegate.into(),
                 );
                 return match call_result {
                     Err(e) => {
@@ -322,7 +308,7 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::TransferApproved => {
                 let (origin, id, owner, destination, amount): (
@@ -330,16 +316,14 @@ where
                     <T as pallet_assets::Config>::AssetId,
                     T::AccountId,
                     T::AccountId,
-                    T::Balance
+                    T::Balance,
                 ) = env.read_as()?;
 
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer_approved();
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -348,7 +332,7 @@ where
                     id.into(),
                     owner.into(),
                     destination.into(),
-                    amount
+                    amount,
                 );
                 return match call_result {
                     Err(e) => {
@@ -356,7 +340,7 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::SetMetadata => {
                 let (origin, id, name, symbol, decimals): (
@@ -364,16 +348,17 @@ where
                     <T as pallet_assets::Config>::AssetId,
                     Vec<u8>,
                     Vec<u8>,
-                    u8
+                    u8,
                 ) = env.read_as_unbounded(env.in_len())?;
 
-                let base_weight = <T as pallet_assets::Config>::WeightInfo::set_metadata(name.len() as u32, symbol.len() as u32);
+                let base_weight = <T as pallet_assets::Config>::WeightInfo::set_metadata(
+                    name.len() as u32,
+                    symbol.len() as u32,
+                );
                 env.charge_weight(base_weight)?;
 
                 let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => {
-                        env.ext().caller().clone()
-                    }
+                    Origin::Caller => env.ext().caller().clone(),
                     Origin::Address => env.ext().address().clone(),
                 });
 
@@ -382,7 +367,7 @@ where
                     id.into(),
                     name,
                     symbol,
-                    decimals
+                    decimals,
                 );
                 return match call_result {
                     Err(e) => {
@@ -390,7 +375,7 @@ where
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
                     Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
-                }
+                };
             }
             AssetsFunc::MetadataName => {
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;

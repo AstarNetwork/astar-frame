@@ -17,7 +17,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 [features]
 default = ["std"]
 std = [
-    "scale-info/std",
-    "scale/std",
-    "sp-runtime/std",
+	"scale-info/std",
+	"scale/std",
+	"sp-runtime/std",
 ]

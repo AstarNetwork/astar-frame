@@ -48,7 +48,7 @@ use frame_system::EnsureRoot;
 use pallet_evm::{AddressMapping, EnsureAddressNever, EnsureAddressRoot};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256, ConstU32};
+use sp_core::{ConstU32, H160, H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
