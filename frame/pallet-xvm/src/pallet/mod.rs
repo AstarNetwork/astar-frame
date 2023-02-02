@@ -64,6 +64,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(context.max_weight)]
         pub fn xvm_call(
             origin: OriginFor<T>,
@@ -95,6 +96,7 @@ pub mod pallet {
             Ok(Some(consumed_weight).into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(context.max_weight)]
         pub fn xvm_send(
             origin: OriginFor<T>,
@@ -115,6 +117,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(2)]
         #[pallet::weight(context.max_weight)]
         pub fn xvm_query(origin: OriginFor<T>, context: XvmContext) -> DispatchResultWithPostInfo {
             let inbox = ensure_signed(origin)?;
