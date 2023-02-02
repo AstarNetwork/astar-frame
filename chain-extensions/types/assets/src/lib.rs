@@ -18,12 +18,13 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use scale_info::scale;
+use scale::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_runtime::{DispatchError, ModuleError};
 
-#[derive(PartialEq, Eq, Copy, Clone, scale::Encode, scale::Decode, Debug)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum AssetsError {
+#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
+#[cfg_attr(feature = "std", derive(TypeInfo))]
+pub enum Outcome {
     /// Success
     Success = 0,
     /// Account balance must be greater than or equal to the transfer amount.
@@ -62,37 +63,35 @@ pub enum AssetsError {
     RuntimeError = 99,
 }
 
-impl TryFrom<DispatchError> for AssetsError {
-    type Error = DispatchError;
-
-    fn try_from(input: DispatchError) -> Result<Self, Self::Error> {
+impl From<DispatchError> for Outcome {
+    fn from(input: DispatchError) -> Self {
         let error_text = match input {
             DispatchError::Module(ModuleError { message, .. }) => message,
             _ => Some("No module error Info"),
         };
         return match error_text {
-            Some("BalanceLow") => Ok(AssetsError::BalanceLow),
-            Some("NoAccount") => Ok(AssetsError::NoAccount),
-            Some("NoPermission") => Ok(AssetsError::NoPermission),
-            Some("Unknown") => Ok(AssetsError::Unknown),
-            Some("Frozen") => Ok(AssetsError::Frozen),
-            Some("InUse") => Ok(AssetsError::InUse),
-            Some("BadWitness") => Ok(AssetsError::BadWitness),
-            Some("MinBalanceZero") => Ok(AssetsError::MinBalanceZero),
-            Some("NoProvider") => Ok(AssetsError::NoProvider),
-            Some("BadMetadata") => Ok(AssetsError::BadMetadata),
-            Some("Unapproved") => Ok(AssetsError::Unapproved),
-            Some("WouldDie") => Ok(AssetsError::WouldDie),
-            Some("AlreadyExists") => Ok(AssetsError::AlreadyExists),
-            Some("NoDeposit") => Ok(AssetsError::NoDeposit),
-            Some("WouldBurn") => Ok(AssetsError::WouldBurn),
-            _ => Ok(AssetsError::RuntimeError),
+            Some("BalanceLow") => Outcome::BalanceLow,
+            Some("NoAccount") => Outcome::NoAccount,
+            Some("NoPermission") => Outcome::NoPermission,
+            Some("Unknown") => Outcome::Unknown,
+            Some("Frozen") => Outcome::Frozen,
+            Some("InUse") => Outcome::InUse,
+            Some("BadWitness") => Outcome::BadWitness,
+            Some("MinBalanceZero") => Outcome::MinBalanceZero,
+            Some("NoProvider") => Outcome::NoProvider,
+            Some("BadMetadata") => Outcome::BadMetadata,
+            Some("Unapproved") => Outcome::Unapproved,
+            Some("WouldDie") => Outcome::WouldDie,
+            Some("AlreadyExists") => Outcome::AlreadyExists,
+            Some("NoDeposit") => Outcome::NoDeposit,
+            Some("WouldBurn") => Outcome::WouldBurn,
+            _ => Outcome::RuntimeError,
         };
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode, scale::MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(TypeInfo))]
 pub enum Origin {
     Caller,
     Address,

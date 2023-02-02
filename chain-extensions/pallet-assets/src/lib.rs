@@ -18,7 +18,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use assets_chain_extension_types::{AssetsError, Origin};
+use assets_chain_extension_types::{Origin, Outcome};
 use codec::Encode;
 use frame_support::traits::fungibles::InspectMetadata;
 use frame_support::traits::tokens::fungibles::approvals::Inspect;
@@ -124,10 +124,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::Transfer => {
@@ -154,10 +154,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::Mint => {
@@ -184,10 +184,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::Burn => {
@@ -214,10 +214,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::BalanceOf => {
@@ -276,10 +276,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::CancelApproval => {
@@ -304,10 +304,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::TransferApproved => {
@@ -336,10 +336,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::SetMetadata => {
@@ -371,10 +371,10 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        let mapped_error = AssetsError::try_from(e)?;
+                        let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(AssetsError::Success as u32)),
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
                 };
             }
             AssetsFunc::MetadataName => {
@@ -406,6 +406,6 @@ where
             }
         }
 
-        Ok(RetVal::Converging(AssetsError::Success as u32))
+        Ok(RetVal::Converging(Outcome::Success as u32))
     }
 }
