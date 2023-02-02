@@ -120,7 +120,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::create(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     admin.into(),
                     min_balance,
                 );
@@ -152,7 +152,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::transfer(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     target.into(),
                     amount,
                 );
@@ -184,7 +184,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::mint(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     beneficiary.into(),
                     amount,
                 );
@@ -216,7 +216,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::burn(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     who.into(),
                     amount,
                 );
@@ -282,7 +282,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::approve_transfer(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     delegate.into(),
                     amount,
                 );
@@ -313,7 +313,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::cancel_approval(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     delegate.into()
                 );
                 return match call_result {
@@ -345,7 +345,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::transfer_approved(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     owner.into(),
                     destination.into(),
                     amount
@@ -379,7 +379,7 @@ where
 
                 let call_result = pallet_assets::Pallet::<T>::set_metadata(
                     runtime_origin.into(),
-                    id,
+                    id.into(),
                     name,
                     symbol,
                     decimals
