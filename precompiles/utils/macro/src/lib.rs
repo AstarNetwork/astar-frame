@@ -1,5 +1,9 @@
+// This file is part of Astar.
+
 // Copyright 2019-2022 PureStake Inc.
-// Copyright 2022      Stake Technologies
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // This file is part of Utils package, originally developed by Purestake Inc.
 // Utils package used in Astar Network in terms of GPLv3.
 //

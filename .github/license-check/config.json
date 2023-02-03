@@ -1,0 +1,28 @@
+[
+    {
+        "include": [
+            "**/*.rs"
+        ],
+        "exclude": [
+            "frame/collator-selection/**",
+            "frame/custom-signatures/**",
+            "frame/dapps-staking/**",
+            "precompiles/utils/**",
+            "vendor/**"
+        ],
+        "license": "./.github/license-check/headers/HEADER-GNUv3"
+    },
+    {
+        "include": [
+            "frame/collator-selection/*.rs",
+            "frame/custom-signatures/*.rs"
+        ],
+        "license": "./.github/license-check/headers/HEADER-APACHE2"
+    },
+    {
+        "include": [
+            "frame/dapps-staking/*.rs"
+        ],
+        "license": "./.github/license-check/headers/HEADER-POLYFORM1"
+    }
+]

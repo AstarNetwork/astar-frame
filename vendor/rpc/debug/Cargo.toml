@@ -1,0 +1,38 @@
+[package]
+name = "moonbeam-rpc-debug"
+authors = ["PureStake"]
+edition = "2021"
+homepage = "https://moonbeam.network"
+license = "GPL-3.0-only"
+repository = "https://github.com/PureStake/moonbeam/"
+version = "0.1.0"
+
+[dependencies]
+futures = { version = "0.3", features = ["compat"] }
+hex-literal = "0.3.4"
+jsonrpsee = { version = "0.15.0", default-features = false, features = ["macros", "server"] }
+tokio = { version = "1.10", features = ["sync", "time"] }
+
+# Moonbeam
+moonbeam-client-evm-tracing = { path = "../../evm-tracing" }
+moonbeam-rpc-core-debug = { path = "../../rpc-core/debug" }
+moonbeam-rpc-core-types = { path = "../../rpc-core/types" }
+moonbeam-rpc-primitives-debug = { path = "../../primitives/debug" }
+
+# Substrate
+sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sc-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+
+# Frontier
+ethereum = { version = "0.14.0", default-features = false, features = ["with-codec"] }
+ethereum-types = "0.14"
+fc-consensus = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33" }
+fc-db = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33" }
+fc-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33", features = ["rpc_binary_search_estimate"] }
+fp-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33" }

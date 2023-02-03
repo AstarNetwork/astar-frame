@@ -1,4 +1,6 @@
-// Copyright (C) 2021 Parity Technologies (UK) Ltd.
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -126,7 +128,7 @@ benchmarks! {
     }
 
     set_desired_candidates {
-        let max: u32 = 999;
+        let max: u32 = 148;
         let origin = T::UpdateOrigin::successful_origin();
     }: {
         assert_ok!(
