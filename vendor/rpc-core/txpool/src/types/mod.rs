@@ -29,10 +29,10 @@ pub type TransactionMap<T> = HashMap<H160, HashMap<U256, T>>;
 
 #[derive(Debug, Serialize)]
 pub struct TxPoolResult<T: Serialize> {
-	pub pending: T,
-	pub queued: T,
+    pub pending: T,
+    pub queued: T,
 }
 
 pub trait Get {
-	fn get(hash: H256, from_address: H160, txn: &EthereumTransaction) -> Self;
+    fn get(hash: H256, from_address: H160, txn: &EthereumTransaction) -> Self;
 }

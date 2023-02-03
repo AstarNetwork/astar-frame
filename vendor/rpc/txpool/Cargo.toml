@@ -1,6 +1,6 @@
 [package]
 name = "moonbeam-rpc-txpool"
-authors = [ "PureStake" ]
+authors = ["PureStake"]
 edition = "2021"
 homepage = "https://moonbeam.network"
 license = "GPL-3.0-only"
@@ -8,9 +8,9 @@ repository = "https://github.com/PureStake/moonbeam/"
 version = "0.6.0"
 
 [dependencies]
-jsonrpsee = { version = "0.15.0", default-features = false, features = [ "macros", "server" ] }
+jsonrpsee = { version = "0.15.0", default-features = false, features = ["macros", "server"] }
 rlp = "0.5"
-serde = { version = "1.0", features = [ "derive" ] }
+serde = { version = "1.0", features = ["derive"] }
 sha3 = "0.10"
 
 # Moonbeam
@@ -29,4 +29,4 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 
 # Frontier
 ethereum-types = "0.14"
-fc-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33", features = [ "rpc_binary_search_estimate" ] }
+fc-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33", features = ["rpc_binary_search_estimate"] }
