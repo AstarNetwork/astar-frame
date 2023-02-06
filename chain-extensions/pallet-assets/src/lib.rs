@@ -18,11 +18,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use assets_chain_extension_types::{Origin, Outcome};
+use assets_chain_extension_types::{GetOrigin, Origin, Outcome};
 use codec::Encode;
 use frame_support::traits::fungibles::InspectMetadata;
 use frame_support::traits::tokens::fungibles::approvals::Inspect;
-use frame_system::RawOrigin;
 use pallet_assets::WeightInfo;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
@@ -111,13 +110,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::create();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::create(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     admin.into(),
                     min_balance,
@@ -141,13 +135,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::transfer(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     target.into(),
                     amount,
@@ -171,13 +160,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::mint();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::mint(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     beneficiary.into(),
                     amount,
@@ -201,13 +185,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::burn();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::burn(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     who.into(),
                     amount,
@@ -263,13 +242,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::approve_transfer();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::approve_transfer(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     delegate.into(),
                     amount,
@@ -292,13 +266,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::cancel_approval();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::cancel_approval(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     delegate.into(),
                 );
@@ -322,13 +291,8 @@ where
                 let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer_approved();
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::transfer_approved(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     owner.into(),
                     destination.into(),
@@ -357,13 +321,8 @@ where
                 );
                 env.charge_weight(base_weight)?;
 
-                let runtime_origin = RawOrigin::Signed(match origin {
-                    Origin::Caller => env.ext().caller().clone(),
-                    Origin::Address => env.ext().address().clone(),
-                });
-
                 let call_result = pallet_assets::Pallet::<T>::set_metadata(
-                    runtime_origin.into(),
+                    Origin::get_origin(&origin, env).into(),
                     id.into(),
                     name,
                     symbol,

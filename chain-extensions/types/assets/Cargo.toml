@@ -12,6 +12,8 @@ description = "Types definitions forassets chain-extension"
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
 
 [features]
@@ -20,4 +22,6 @@ std = [
 	"scale-info/std",
 	"scale/std",
 	"sp-runtime/std",
+	"frame-system/std",
+	"pallet-contracts/std",
 ]

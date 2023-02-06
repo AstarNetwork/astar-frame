@@ -18,8 +18,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_system::RawOrigin;
+use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext, SysConfig};
 use scale::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_runtime::app_crypto::UncheckedFrom;
 use sp_runtime::{DispatchError, ModuleError};
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
@@ -100,5 +103,34 @@ pub enum Origin {
 impl Default for Origin {
     fn default() -> Self {
         Self::Address
+    }
+}
+
+pub trait GetOrigin<T: frame_system::Config> {
+    fn get_origin<E: Ext>(
+        &self,
+        env: Environment<E, BufInBufOutState>,
+    ) -> RawOrigin<<T as SysConfig>::AccountId>
+    where
+        E: Ext<T = T>,
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>;
+}
+
+impl<T> GetOrigin<T> for Origin
+where
+    T: pallet_contracts::Config,
+{
+    fn get_origin<E: Ext>(
+        &self,
+        mut env: Environment<E, BufInBufOutState>,
+    ) -> RawOrigin<<T as SysConfig>::AccountId>
+    where
+        E: Ext<T = T>,
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+    {
+        RawOrigin::Signed(match self {
+            Origin::Caller => env.ext().caller().clone(),
+            Origin::Address => env.ext().address().clone(),
+        })
     }
 }
