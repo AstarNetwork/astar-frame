@@ -21,11 +21,11 @@
 use scale::{Decode, Encode};
 
 #[cfg(feature = "substrate")]
-use scale::MaxEncodedLen;
-#[cfg(feature = "substrate")]
 use frame_system::RawOrigin;
 #[cfg(feature = "substrate")]
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext, SysConfig};
+#[cfg(feature = "substrate")]
+use scale::MaxEncodedLen;
 #[cfg(feature = "substrate")]
 use sp_runtime::app_crypto::UncheckedFrom;
 #[cfg(feature = "substrate")]
@@ -132,8 +132,14 @@ impl ink_env::chain_extension::FromStatusCode for Outcome {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "substrate", derive(MaxEncodedLen))]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-#[cfg_attr(feature = "ink", derive(ink_storage::traits::SpreadLayout, ink_storage::traits::PackedLayout))]
-#[cfg_attr(all(feature = "ink", feature = "std"), derive(ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "ink",
+    derive(ink_storage::traits::SpreadLayout, ink_storage::traits::PackedLayout)
+)]
+#[cfg_attr(
+    all(feature = "ink", feature = "std"),
+    derive(ink_storage::traits::StorageLayout)
+)]
 pub enum Origin {
     Caller,
     Address,
