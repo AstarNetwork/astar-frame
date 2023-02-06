@@ -18,15 +18,21 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use scale::{Decode, Encode};
+
+#[cfg(feature = "substrate")]
+use scale::MaxEncodedLen;
+#[cfg(feature = "substrate")]
 use frame_system::RawOrigin;
+#[cfg(feature = "substrate")]
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext, SysConfig};
-use scale::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
+#[cfg(feature = "substrate")]
 use sp_runtime::app_crypto::UncheckedFrom;
+#[cfg(feature = "substrate")]
 use sp_runtime::{DispatchError, ModuleError};
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
-#[cfg_attr(feature = "std", derive(TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum Outcome {
     /// Success
     Success = 0,
@@ -62,10 +68,14 @@ pub enum Outcome {
     NoDeposit = 14,
     /// The operation would result in funds being burned.
     WouldBurn = 15,
+    #[cfg(feature = "ink")]
+    /// Encountered unknown status code
+    UnknownStatusCode,
     /// Unknown error
     RuntimeError = 99,
 }
 
+#[cfg(feature = "substrate")]
 impl From<DispatchError> for Outcome {
     fn from(input: DispatchError) -> Self {
         let error_text = match input {
@@ -93,8 +103,37 @@ impl From<DispatchError> for Outcome {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(TypeInfo))]
+#[cfg(feature = "ink")]
+impl ink_env::chain_extension::FromStatusCode for Outcome {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1 => Err(Self::BalanceLow),
+            2 => Err(Self::NoAccount),
+            3 => Err(Self::NoPermission),
+            4 => Err(Self::Unknown),
+            5 => Err(Self::Frozen),
+            6 => Err(Self::InUse),
+            7 => Err(Self::BadWitness),
+            8 => Err(Self::MinBalanceZero),
+            9 => Err(Self::NoProvider),
+            10 => Err(Self::BadMetadata),
+            11 => Err(Self::Unapproved),
+            12 => Err(Self::WouldDie),
+            13 => Err(Self::AlreadyExists),
+            14 => Err(Self::NoDeposit),
+            15 => Err(Self::WouldBurn),
+            99 => Err(Self::RuntimeError),
+            _ => Err(Self::UnknownStatusCode),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
+#[cfg_attr(feature = "substrate", derive(MaxEncodedLen))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "ink", derive(ink_storage::traits::SpreadLayout, ink_storage::traits::PackedLayout))]
+#[cfg_attr(all(feature = "ink", feature = "std"), derive(ink_storage::traits::StorageLayout))]
 pub enum Origin {
     Caller,
     Address,
@@ -106,6 +145,14 @@ impl Default for Origin {
     }
 }
 
+#[cfg(feature = "ink")]
+impl ink_storage::traits::SpreadAllocate for Origin {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        Self::Address
+    }
+}
+
+#[cfg(feature = "substrate")]
 pub trait GetOrigin<T: frame_system::Config> {
     fn get_origin<E: Ext>(
         &self,
@@ -116,6 +163,7 @@ pub trait GetOrigin<T: frame_system::Config> {
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>;
 }
 
+#[cfg(feature = "substrate")]
 impl<T> GetOrigin<T> for Origin
 where
     T: pallet_contracts::Config,
