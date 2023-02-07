@@ -90,7 +90,7 @@ where
     T: pallet_assets::Config + pallet_contracts::Config,
     <<T as SysConfig>::Lookup as StaticLookup>::Source: From<<T as SysConfig>::AccountId>,
     <T as SysConfig>::AccountId: From<[u8; 32]>,
-    W: weights::WeightInfo
+    W: weights::WeightInfo,
 {
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
@@ -205,8 +205,7 @@ where
                 let (id, who): (<T as pallet_assets::Config>::AssetId, T::AccountId) =
                     env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::balance_of();
+                let base_weight = <W as weights::WeightInfo>::balance_of();
                 env.charge_weight(base_weight)?;
 
                 let balance = pallet_assets::Pallet::<T>::balance(id, who);
@@ -215,8 +214,7 @@ where
             AssetsFunc::TotalSupply => {
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::total_supply();
+                let base_weight = <W as weights::WeightInfo>::total_supply();
                 env.charge_weight(base_weight)?;
 
                 let total_supply = pallet_assets::Pallet::<T>::total_supply(id);
@@ -229,8 +227,7 @@ where
                     T::AccountId,
                 ) = env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::allowance();
+                let base_weight = <W as weights::WeightInfo>::allowance();
                 env.charge_weight(base_weight)?;
 
                 let allowance = pallet_assets::Pallet::<T>::allowance(id, &owner, &delegate);
@@ -344,8 +341,7 @@ where
             AssetsFunc::MetadataName => {
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::metadata_name();
+                let base_weight = <W as weights::WeightInfo>::metadata_name();
                 env.charge_weight(base_weight)?;
 
                 let name = pallet_assets::Pallet::<T>::name(&id);
@@ -354,8 +350,7 @@ where
             AssetsFunc::MetadataSymbol => {
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::metadata_symbol();
+                let base_weight = <W as weights::WeightInfo>::metadata_symbol();
                 env.charge_weight(base_weight)?;
 
                 let symbol = pallet_assets::Pallet::<T>::symbol(&id);
@@ -364,8 +359,7 @@ where
             AssetsFunc::MetadataDecimals => {
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
-                let base_weight =
-                    <W as weights::WeightInfo>::metadata_decimals();
+                let base_weight = <W as weights::WeightInfo>::metadata_decimals();
                 env.charge_weight(base_weight)?;
 
                 let decimals = pallet_assets::Pallet::<T>::decimals(&id);
