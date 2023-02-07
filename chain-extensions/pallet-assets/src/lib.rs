@@ -18,9 +18,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod weights;
-
-use crate::weights::WeightInfo as ChainExtensionWeightInfo;
+pub mod weights;
 
 use assets_chain_extension_types::{GetOrigin, Origin, Outcome};
 use codec::Encode;
@@ -79,19 +77,20 @@ impl TryFrom<u16> for AssetsFunc {
 }
 
 /// Pallet Assets chain extension.
-pub struct AssetsExtension<T>(PhantomData<T>);
+pub struct AssetsExtension<T, W>(PhantomData<(T, W)>);
 
-impl<T> Default for AssetsExtension<T> {
+impl<T, W> Default for AssetsExtension<T, W> {
     fn default() -> Self {
         AssetsExtension(PhantomData)
     }
 }
 
-impl<T> ChainExtension<T> for AssetsExtension<T>
+impl<T, W> ChainExtension<T> for AssetsExtension<T, W>
 where
     T: pallet_assets::Config + pallet_contracts::Config,
     <<T as SysConfig>::Lookup as StaticLookup>::Source: From<<T as SysConfig>::AccountId>,
     <T as SysConfig>::AccountId: From<[u8; 32]>,
+    W: weights::WeightInfo
 {
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
@@ -207,7 +206,7 @@ where
                     env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::balance_of();
+                    <W as weights::WeightInfo>::balance_of();
                 env.charge_weight(base_weight)?;
 
                 let balance = pallet_assets::Pallet::<T>::balance(id, who);
@@ -217,7 +216,7 @@ where
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::total_supply();
+                    <W as weights::WeightInfo>::total_supply();
                 env.charge_weight(base_weight)?;
 
                 let total_supply = pallet_assets::Pallet::<T>::total_supply(id);
@@ -231,7 +230,7 @@ where
                 ) = env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::allowance();
+                    <W as weights::WeightInfo>::allowance();
                 env.charge_weight(base_weight)?;
 
                 let allowance = pallet_assets::Pallet::<T>::allowance(id, &owner, &delegate);
@@ -346,7 +345,7 @@ where
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::metadata_name();
+                    <W as weights::WeightInfo>::metadata_name();
                 env.charge_weight(base_weight)?;
 
                 let name = pallet_assets::Pallet::<T>::name(&id);
@@ -356,7 +355,7 @@ where
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::metadata_symbol();
+                    <W as weights::WeightInfo>::metadata_symbol();
                 env.charge_weight(base_weight)?;
 
                 let symbol = pallet_assets::Pallet::<T>::symbol(&id);
@@ -366,7 +365,7 @@ where
                 let id: <T as pallet_assets::Config>::AssetId = env.read_as()?;
 
                 let base_weight =
-                    <weights::SubstrateWeight<T> as ChainExtensionWeightInfo>::metadata_decimals();
+                    <W as weights::WeightInfo>::metadata_decimals();
                 env.charge_weight(base_weight)?;
 
                 let decimals = pallet_assets::Pallet::<T>::decimals(&id);
