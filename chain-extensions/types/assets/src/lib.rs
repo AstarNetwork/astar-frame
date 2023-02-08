@@ -68,7 +68,7 @@ pub enum Outcome {
     NoDeposit = 14,
     /// The operation would result in funds being burned.
     WouldBurn = 15,
-    #[cfg(feature = "ink")]
+    #[cfg(feature = "ink-no-std")]
     /// Encountered unknown status code
     UnknownStatusCode,
     /// Unknown error
@@ -103,8 +103,8 @@ impl From<DispatchError> for Outcome {
     }
 }
 
-#[cfg(feature = "ink")]
-impl ink_env::chain_extension::FromStatusCode for Outcome {
+#[cfg(feature = "ink-no-std")]
+impl ink::env::chain_extension::FromStatusCode for Outcome {
     fn from_status_code(status_code: u32) -> Result<(), Self> {
         match status_code {
             0 => Ok(()),
@@ -133,12 +133,8 @@ impl ink_env::chain_extension::FromStatusCode for Outcome {
 #[cfg_attr(feature = "substrate", derive(MaxEncodedLen))]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[cfg_attr(
-    feature = "ink",
-    derive(ink_storage::traits::SpreadLayout, ink_storage::traits::PackedLayout)
-)]
-#[cfg_attr(
-    all(feature = "ink", feature = "std"),
-    derive(ink_storage::traits::StorageLayout)
+    all(feature = "ink-no-std", feature = "std"),
+    derive(ink::storage::traits::StorageLayout)
 )]
 pub enum Origin {
     Caller,
@@ -147,13 +143,6 @@ pub enum Origin {
 
 impl Default for Origin {
     fn default() -> Self {
-        Self::Address
-    }
-}
-
-#[cfg(feature = "ink")]
-impl ink_storage::traits::SpreadAllocate for Origin {
-    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
         Self::Address
     }
 }
