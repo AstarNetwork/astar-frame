@@ -22,5 +22,6 @@ members = [
 	"vendor/evm-tracing",
 	"vendor/rpc/debug",
 	"vendor/rpc/trace",
+	"vendor/rpc/txpool",
 	"vendor/runtime/evm_tracer",
 ]

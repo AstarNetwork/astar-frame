@@ -1,0 +1,28 @@
+[package]
+name = "moonbeam-rpc-primitives-txpool"
+authors = ["PureStake"]
+edition = "2021"
+homepage = "https://moonbeam.network"
+license = "GPL-3.0-only"
+repository = "https://github.com/PureStake/moonbeam/"
+version = "0.6.0"
+
+[dependencies]
+ethereum = { version = "0.14.0", default-features = false, features = ["with-codec"] }
+
+# Substrate
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"ethereum/std",
+	"sp-api/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
