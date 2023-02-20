@@ -11,21 +11,21 @@ serde = { version = "1.0.106", optional = true }
 
 # Substrate
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 # Benchmarks
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", optional = true, default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", optional = true, default-features = false }
 
 # EVM support 
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.33", default-features = false, optional = true, features = ["forbid-evm-reentrancy"] }
+pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false, optional = true, features = ["forbid-evm-reentrancy"] }
 
 # Substrate WASM VM support
-pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", default-features = false, optional = true }
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 
 [dev-dependencies]
 

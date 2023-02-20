@@ -19,9 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_system::RawOrigin;
-use pallet_contracts::chain_extension::{
-    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
-};
+use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
 use pallet_xvm::XvmContext;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
@@ -62,7 +60,6 @@ where
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let func_id = env.func_id().try_into()?;
         let mut env = env.buf_in_buf_out();

@@ -35,7 +35,7 @@
 use frame_support::{
     ensure,
     traits::{tokens::fungibles, Contains, Get},
-    weights::constants::WEIGHT_PER_SECOND,
+    weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use sp_runtime::traits::{Bounded, Zero};
 use sp_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
@@ -128,7 +128,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
             } => {
                 if let Some(units_per_second) = T::get_units_per_second(asset_location.clone()) {
                     let amount = units_per_second.saturating_mul(weight as u128)
-                        / (WEIGHT_PER_SECOND.ref_time() as u128);
+                        / (WEIGHT_REF_TIME_PER_SECOND as u128);
                     if amount == 0 {
                         return Ok(payment);
                     }
@@ -171,7 +171,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
         {
             let weight = weight.min(self.weight);
             let amount = units_per_second.saturating_mul(weight as u128)
-                / (WEIGHT_PER_SECOND.ref_time() as u128);
+                / (WEIGHT_REF_TIME_PER_SECOND as u128);
 
             self.weight = self.weight.saturating_sub(weight);
             self.consumed = self.consumed.saturating_sub(amount);

@@ -30,7 +30,7 @@ use dapps_staking_chain_extension_types::{
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
-    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
+    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 use pallet_dapps_staking::{RewardDestination, WeightInfo};
 use sp_std::marker::PhantomData;
@@ -100,7 +100,6 @@ where
     fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let func_id = env.func_id().try_into()?;
         let mut env = env.buf_in_buf_out();

@@ -21,7 +21,6 @@
 use crate::*;
 use codec::HasCompact;
 use frame_support::traits::Currency;
-use pallet_contracts::chain_extension::UncheckedFrom;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
 use sp_std::fmt::Debug;
@@ -36,7 +35,6 @@ impl<I, T> SyncVM<T::AccountId> for WASM<I, T>
 where
     I: Get<VmId>,
     T: pallet_contracts::Config + frame_system::Config,
-    T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
     <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 {
     fn id() -> VmId {
