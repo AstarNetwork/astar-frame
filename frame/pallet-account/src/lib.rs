@@ -20,9 +20,17 @@
 //!
 //! ## Overview
 //!
+//! An accout abstraction pallet make possible to derive new blockchain based
+//! account for your existed external owned account (seed phrase based). The onchain
+//! account could be drived to multiple address spaces: H160 and SS58. For example,
+//! it makes possible predictable interaction between substrate native account and
+//! EVM smart contracts.
+//!
 //! ## Interface
 //!
 //! ### Dispatchable Function
+//!
+//! * proxy() - make proxy call with derived account as origin
 //!
 //!
 //! ### Other
@@ -31,11 +39,53 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
+use frame_support::weights::Weight;
+use sp_core::RuntimeDebug;
+
+pub use pallet::*;
+
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
+/// A method to derive new account from existed one
+pub trait AccountDeriving<AccountId> {
+    /// Derive new account from existed one
+    fn derive(&self, source: &AccountId) -> AccountId;
+}
+
+/// Use simple salt and Blake2 hash for account deriving.
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo, RuntimeDebug)]
+pub struct SimpleSalt(pub u32);
+
+impl<AccountId: AsRef<[u8]> + From<[u8; 32]>> AccountDeriving<AccountId> for SimpleSalt {
+    fn derive(&self, source: &AccountId) -> AccountId {
+        let salted_source = [source.as_ref(), &self.encode()[..]].concat();
+        sp_core::blake2_256(&salted_source).into()
+    }
+}
+
+pub trait WeightInfo {
+    fn call_as() -> Weight;
+}
+
+impl WeightInfo for () {
+    fn call_as() -> Weight {
+        Default::default()
+    }
+}
+
 #[frame_support::pallet]
 #[allow(clippy::module_inception)]
 pub mod pallet {
     use crate::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::{
+        dispatch::{Dispatchable, GetDispatchInfo},
+        traits::IsSubType,
+    };
     use frame_system::pallet_prelude::*;
 
     #[pallet::pallet]
@@ -44,8 +94,19 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
+        /// Supported account deriving types.
+        type DerivingType: Parameter + AccountDeriving<Self::AccountId>;
+        /// The overarching call type.
+        type RuntimeCall: Parameter
+            + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+            + GetDispatchInfo
+            + From<frame_system::Call<Self>>
+            + IsSubType<Call<Self>>
+            + IsType<<Self as frame_system::Config>::RuntimeCall>;
         /// General event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::error]
@@ -54,37 +115,47 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
+        CallExecuted {
+            account: T::AccountId,
+            result: DispatchResult,
+        },
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-		/// Dispatch the given `call` from an account that the sender is authorised.
-		///
-		/// The dispatch origin for this call must be _Signed_.
-		///
-		/// Parameters:
-		/// - `derived`: The account will make a call on behalf of.
-		/// - `call`: The call to be made by the `derived` account.
-		#[pallet::weight({
+        /// Dispatch the given `call` from an account that the sender is authorised.
+        ///
+        /// The dispatch origin for this call must be _Signed_.
+        ///
+        /// Parameters:
+        /// - `deriving`: Account deriving method to be used for the call.
+        /// - `call`: The call to be made by the `derived` account.
+        #[pallet::weight({
 			let di = call.get_dispatch_info();
-			(T::WeightInfo::call_as(T::MaxAccounts::get())
+			(T::WeightInfo::call_as()
 				 // AccountData for inner call origin accountdata.
 				.saturating_add(T::DbWeight::get().reads_writes(1, 1))
 				.saturating_add(di.weight),
 			di.class)
 		})]
-		pub fn call_as(
-			origin: OriginFor<T>,
-			derived: AccountIdLookupOf<T>,
-			call: Box<<T as Config>::RuntimeCall>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			let derived = T::Lookup::lookup(real)?;
+        #[pallet::call_index(0)]
+        pub fn call_as(
+            origin: OriginFor<T>,
+            deriving: T::DerivingType,
+            call: Box<<T as Config>::RuntimeCall>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
 
-			Self::do_call_as(derived, *call);
+            let account = deriving.derive(&who);
+            let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(account.clone()).into();
+            let e = call.dispatch(origin);
+
+            Self::deposit_event(Event::CallExecuted {
+                account,
+                result: e.map(|_| ()).map_err(|e| e.error),
+            });
 
             Ok(())
-		}
-
+        }
     }
 }
