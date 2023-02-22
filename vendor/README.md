@@ -5,11 +5,11 @@ This directory contatins packages from third-party vendors reused in Astar Netwo
 ### Why not fork?
 
 As a way to protect code from **unexpected changes** and **release from third-party project
-internal dependencies** a dedicated folder used instead of repository fork.
+internal dependencies** a directory used instead of repository fork.
 
-In case of internal packages the porter persion will have no intention to just scroll down
-repository commit history and adjust final result to the repo. Copy/paste the code risk is
-still exist, but in this case all changes will be clearly viewed in PR created before merge.
+When porting changes from the external vendor projects into astar-frame repo,
+changes will be visible as part of the difference introduced by PR. This ensures we don't
+introduce any unintentional changes without being aware of them.
 
 ## Package list
 
