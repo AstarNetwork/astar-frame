@@ -63,6 +63,7 @@ jobs:
     - name: Run all tests & Generate report
       uses: actions-rs/tarpaulin@v0.1
       with:
+        version: 0.22.0
         args: '--all-features --exclude-files vendor/*'
         out-type: Xml
 
