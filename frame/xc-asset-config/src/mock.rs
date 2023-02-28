@@ -101,11 +101,6 @@ impl pallet_balances::Config for Test {
 
 type AssetId = u128;
 
-impl pallet_xc_asset_config::XcAssetChanged<Test> for () {
-    fn xc_asset_registered(_asset_id: AssetId) {}
-    fn xc_asset_unregistered(_asset_id: AssetId) {}
-}
-
 impl pallet_xc_asset_config::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type AssetId = AssetId;
