@@ -11,6 +11,7 @@ members = [
 	"frame/pallet-xcm",
 	"frame/pallet-xvm",
 	"frame/xc-asset-config",
+	"frame/contracts-migration",
 	"primitives/xcm",
 	"precompiles/assets-erc20",
 	"precompiles/dapps-staking",
