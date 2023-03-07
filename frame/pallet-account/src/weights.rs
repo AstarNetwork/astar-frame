@@ -16,23 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Error, Event, *};
-use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use frame_support::weights::Weight;
 
-#[test]
-pub fn is_ok() {
-    ExternalityBuilder::build().execute_with(|| {
-        let call: RuntimeCall = pallet_balances::Call::transfer {
-            dest: BOB,
-            value: 10,
-        }
-        .into();
+pub trait WeightInfo {
+    fn proxy_call() -> Weight;
+    fn new_origin() -> Weight;
+}
 
-        assert_ok!(Account::proxy_call(
-            RuntimeOrigin::signed(ALICE).into(),
-            0,
-            Box::new(call),
-        ));
-    })
+impl WeightInfo for () {
+    fn proxy_call() -> Weight {
+        Default::default()
+    }
+    fn new_origin() -> Weight {
+        Default::default()
+    }
 }
