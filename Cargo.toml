@@ -1,7 +1,6 @@
 [workspace]
 members = [
 	"chain-extensions/dapps-staking",
-	# "chain-extensions/rmrk",
 	"chain-extensions/xvm",
 	"chain-extensions/types/*",
 	"frame/block-reward",
@@ -26,3 +25,40 @@ members = [
 	"vendor/rpc/txpool",
 	"vendor/runtime/evm_tracer",
 ]
+
+[workspace.package]
+authors = ["Stake Technologies <devops@stake.co.jp>"]
+edition = "2021"
+homepage = "https://astar.network"
+repository = "https://github.com/AstarNetwork/astar-frame"
+
+[workspace.dependencies]
+# General deps
+log = "0.4.16"
+num-traits = { version = "0.2", default-features = false }
+serde = { version = "1.0.136" }
+
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+scale-info = { version = "2.3.0", default-features = false }
+
+# Substrate
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', branch = 'polkadot-v0.9.37', default-features = false }
+
+# Extern pallets
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-contracts-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+# Local deps
+dapps-staking-chain-extension-types = { path = "./chain-extensions/types/dapps-staking", default-features = false }
+pallet-dapps-staking = { path = "./frame/dapps-staking", default-features = false }
+pallet-xvm = { path = "./frame/pallet-xvm", default-features = false }
+xvm-chain-extension-types = { path = "./chain-extensions/types/xvm", default-features = false }
