@@ -7,33 +7,33 @@ version = "0.4.3"
 
 [dependencies]
 # There's a problem with --all-features when this is moved under dev-deps
-evm = { version = "0.37.0", optional = true }
-impl-trait-for-tuples = "0.2.2"
-log = "0.4.16"
-num_enum = { version = "0.5.3", default-features = false }
-sha3 = { version = "0.10.1", default-features = false }
-similar-asserts = { version = "1.1.0", optional = true }
+evm = { workspace = true, optional = true }
+impl-trait-for-tuples = { workspace = true }
+log = { workspace = true }
+num_enum = { workspace = true, default-features = false }
+sha3 = { workspace = true, default-features = false }
+similar-asserts = { workspace = true, optional = true }
 
-precompile-utils-macro = { path = "macro" }
+precompile-utils-macro = { workspace = true }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+codec = { workspace = true, package = "parity-scale-codec" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # Frontier
-fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false }
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false, features = ["forbid-evm-reentrancy"] }
+fp-evm = { workspace = true }
+pallet-evm = { workspace = true }
 
 # Polkadot / XCM
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37", default-features = false }
+xcm = { workspace = true }
 
 [dev-dependencies]
-hex-literal = "0.3.1"
+hex-literal = { workspace = true }
 
 [features]
 default = ["std"]

@@ -1,12 +1,12 @@
 [package]
 name = "pallet-precompile-dapps-staking"
 version = "3.6.3"
-authors = ["Stake Technologies <devops@stake.co.jp>"]
-edition = "2021"
 license = "Apache-2.0"
-homepage = "https://astar.network"
-repository = "https://github.com/AstarNetwork/astar-frame"
 description = "dApps Staking EVM precompiles"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 codec = { workspace = true, package = "parity-scale-codec" }

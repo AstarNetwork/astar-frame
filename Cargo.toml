@@ -46,6 +46,12 @@ num_enum = { version = "0.5.3" }
 slices = "0.2.0"
 derive_more = { version = "0.99" }
 sha3 = "0.10.1"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0" }
+similar-asserts = { version = "1.1.0" }
+
+evm = { version = "0.37.0" }
 
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 scale-info = { version = "2.3.0", default-features = false }
@@ -91,8 +97,13 @@ pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polka
 # Local deps
 pallet-dapps-staking = { path = "./frame/dapps-staking", default-features = false }
 pallet-xvm = { path = "./frame/pallet-xvm", default-features = false }
+pallet-xcm = { path = "./frame/pallet-xcm", default-features = false }
+pallet-xc-asset-config = { path = "./frame/xc-asset-config", default-features = false }
 
 dapps-staking-chain-extension-types = { path = "./chain-extensions/types/dapps-staking", default-features = false }
 xvm-chain-extension-types = { path = "./chain-extensions/types/xvm", default-features = false }
 
+pallet-evm-precompile-assets-erc20 = { path = "./precompiles/assets-erc20" }
+
 precompile-utils = { path = "./precompiles/utils", default-features = false }
+precompile-utils-macro = { path = "./precompiles/utils/macro" }
