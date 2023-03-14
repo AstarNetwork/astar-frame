@@ -8,20 +8,20 @@ repository = "https://github.com/PureStake/moonbeam/"
 version = "0.1.0"
 
 [dependencies]
-environmental = { version = "1.1.2", default-features = false }
-ethereum = { version = "0.14.0", default-features = false, features = ["with-codec"] }
-ethereum-types = { version = "0.14", default-features = false }
-hex = { version = "0.4", optional = true, features = ["serde"] }
-serde = { version = "1.0", optional = true, features = ["derive"] }
-serde_json = { version = "1.0", optional = true }
+environmental = { workspace = true, default-features = false }
+ethereum = { workspace = true, default-features = false, features = ["with-codec"] }
+ethereum-types = { workspace = true, default-features = false }
+hex = { workspace = true, optional = true, features = ["serde"] }
+serde = { workspace = true, optional = true, features = ["derive"] }
+serde_json = { workspace = true, optional = true }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+codec = { workspace = true, package = "parity-scale-codec" }
+sp-api = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 [features]
 default = ["std"]

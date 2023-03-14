@@ -10,23 +10,23 @@ version = "0.1.0"
 [dependencies]
 
 # Moonbeam
-evm-tracing-events = { path = "../../primitives/evm-tracing-events", default-features = false, features = ["evm-tracing"] }
-moonbeam-primitives-ext = { path = "../ext", default-features = false }
+evm-tracing-events = { workspace = true, default-features = false, features = ["evm-tracing"] }
+moonbeam-primitives-ext = { workspace = true, default-features = false }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+codec = { workspace = true, package = "parity-scale-codec" }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # Frontier
-ethereum-types = { version = "0.14", default-features = false }
-evm = { version = "0.37.0", default-features = false, features = ["with-codec"] }
-evm-gasometer = { version = "0.37.0", default-features = false }
-evm-runtime = { version = "0.37.0", default-features = false }
-fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false }
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false, features = ["forbid-evm-reentrancy"] }
+ethereum-types = { workspace = true, default-features = false }
+evm = { workspace = true, default-features = false, features = ["with-codec"] }
+evm-gasometer = { workspace = true, default-features = false }
+evm-runtime = { workspace = true, default-features = false }
+fp-evm = { workspace = true }
+pallet-evm = { workspace = true }
 
 [features]
 default = ["std"]
