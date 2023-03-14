@@ -201,6 +201,18 @@ pub mod pallet {
     pub(crate) type PreApprovedDevelopers<T: Config> =
         StorageMap<_, Twox64Concat, T::AccountId, (), ValueQuery>;
 
+    //
+    #[pallet::storage]
+    #[pallet::getter(fn delegates)]
+    pub(crate) type Delegates<T: Config> = StorageDoubleMap<
+        _, 
+        Blake2_128Concat, 
+        T::SmartContract, 
+        Blake2_128Concat,
+        T::AccountId,
+        T::AccountId
+    >; 
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
