@@ -326,7 +326,10 @@ fn set_reward_destination() {
             bond_stake_and_verify(TestAccount::Bobo, TEST_CONTRACT, 100 * AST);
 
             // change destinations and verfiy it was successful
-            set_reward_destination_verify(TestAccount::Bobo.into(), RewardDestination::FreeBalance);
+            set_reward_destination_verify(
+                TestAccount::Bobo.into(), 
+                RewardDestination::FreeBalance
+            );
             set_reward_destination_verify(
                 TestAccount::Bobo.into(),
                 RewardDestination::StakeBalance,

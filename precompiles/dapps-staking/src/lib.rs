@@ -306,9 +306,9 @@ where
 
         // Transform raw value into dapps staking enum
         let reward_destination = if reward_destination_raw == 0 {
-            RewardDestination::FreeBalance
+            RewardDestination::<R::AccountId>::FreeBalance
         } else if reward_destination_raw == 1 {
-            RewardDestination::StakeBalance
+            RewardDestination::<R::AccountId>::StakeBalance
         } else {
             return Err(error("Unexpected reward destination value."));
         };

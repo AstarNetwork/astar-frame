@@ -541,40 +541,48 @@ where
 /// In order to make staking more competitive, majority of stakers will want to
 /// automatically restake anything they earn.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum RewardDestination {
+pub enum RewardDestination<AccountId> {
     /// Rewards are transferred to stakers free balance without any further action.
     FreeBalance,
     /// Rewards are transferred to stakers balance and are immediately re-staked
     /// on the contract from which the reward was received.
     StakeBalance,
+
+    Delegate(AccountId),
 }
 
-impl Default for RewardDestination {
+impl<AccountId> Default for RewardDestination<AccountId>{
     fn default() -> Self {
-        RewardDestination::StakeBalance
+        Self::StakeBalance
     }
 }
 
 /// Contains information about account's locked & unbonding balances.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> {
+pub struct AccountLedger<
+    Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen, 
+    RD: Default + Clone + MaxEncodedLen
+> {
     /// Total balance locked.
     #[codec(compact)]
     pub locked: Balance,
     /// Information about unbonding chunks.
     unbonding_info: UnbondingInfo<Balance>,
     /// Instruction on how to handle reward payout
-    reward_destination: RewardDestination,
+    reward_destination: RD,
 }
 
-impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> AccountLedger<Balance> {
+impl<
+    Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen, 
+    RD: Default + Clone + MaxEncodedLen
+> AccountLedger<Balance, RD> {
     /// `true` if ledger is empty (no locked funds, no unbonding chunks), `false` otherwise.
     pub fn is_empty(&self) -> bool {
         self.locked.is_zero() && self.unbonding_info.is_empty()
     }
 
     /// Configured reward destination
-    pub fn reward_destination(&self) -> RewardDestination {
-        self.reward_destination
+    pub fn reward_destination(&self) -> RD {
+        self.reward_destination.clone()
     }
 }

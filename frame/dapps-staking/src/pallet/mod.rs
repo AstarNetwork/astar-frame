@@ -126,7 +126,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn ledger)]
     pub type Ledger<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, AccountLedger<BalanceOf<T>>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::AccountId, AccountLedger<BalanceOf<T>, RewardDestination<T::AccountId>>, ValueQuery>;
 
     /// The current era index.
     #[pallet::storage]
@@ -226,7 +226,7 @@ pub mod pallet {
         /// Maintenance mode has been enabled or disabled
         MaintenanceMode(bool),
         /// Reward handling modified
-        RewardDestination(T::AccountId, RewardDestination),
+        RewardDestination(T::AccountId, RewardDestination::<T::AccountId>),
         /// Nomination part has been transfered from one contract to another.
         ///
         /// \(staker account, origin smart contract, amount, target smart contract\)
@@ -748,7 +748,7 @@ pub mod pallet {
             let mut ledger = Self::ledger(&staker);
 
             let should_restake_reward = Self::should_restake_reward(
-                ledger.reward_destination,
+                ledger.reward_destination.clone(),
                 dapp_info.state,
                 staker_info.latest_staked_value(),
             );
@@ -897,7 +897,7 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
-            reward_destination: RewardDestination,
+            reward_destination: RewardDestination::<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
@@ -907,7 +907,7 @@ pub mod pallet {
 
             // this is done directly instead of using update_ledger helper
             // because there's no need to interact with the Currency locks
-            ledger.reward_destination = reward_destination;
+            ledger.reward_destination = reward_destination.clone();
             Ledger::<T>::insert(&staker, ledger);
 
             Self::deposit_event(Event::<T>::RewardDestination(staker, reward_destination));
@@ -1144,7 +1144,7 @@ pub mod pallet {
 
         /// Update the ledger for a staker. This will also update the stash lock.
         /// This lock will lock the entire funds except paying for further transactions.
-        fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
+        fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>, RewardDestination<T::AccountId>>) {
             if ledger.is_empty() {
                 Ledger::<T>::remove(&staker);
                 T::Currency::remove_lock(STAKING_ID, staker);
@@ -1228,7 +1228,7 @@ pub mod pallet {
         /// Returns available staking balance for the potential staker
         fn available_staking_balance(
             staker: &T::AccountId,
-            ledger: &AccountLedger<BalanceOf<T>>,
+            ledger: &AccountLedger<BalanceOf<T>, RewardDestination<T::AccountId>>,
         ) -> BalanceOf<T> {
             // Ensure that staker has enough balance to bond & stake.
             let free_balance =
@@ -1246,11 +1246,11 @@ pub mod pallet {
 
         /// `true` if all the conditions for restaking the reward have been met, `false` otherwise
         pub(crate) fn should_restake_reward(
-            reward_destination: RewardDestination,
+            reward_destination: RewardDestination::<T::AccountId>,
             dapp_state: DAppState,
             latest_staked_value: BalanceOf<T>,
         ) -> bool {
-            reward_destination == RewardDestination::StakeBalance
+            reward_destination == RewardDestination::<T::AccountId>::StakeBalance
                 && dapp_state == DAppState::Registered
                 && latest_staked_value > Zero::zero()
         }

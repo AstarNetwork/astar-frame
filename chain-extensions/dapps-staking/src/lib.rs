@@ -315,9 +315,9 @@ where
 
                 // Transform raw value into dapps staking enum
                 let reward_destination = if reward_destination_raw == 0 {
-                    RewardDestination::FreeBalance
+                    RewardDestination::<T::AccountId>::FreeBalance
                 } else if reward_destination_raw == 1 {
-                    RewardDestination::StakeBalance
+                    RewardDestination::<T::AccountId>::StakeBalance
                 } else {
                     let error = DSError::RewardDestinationValueOutOfBounds;
                     return Ok(RetVal::Converging(error as u32));

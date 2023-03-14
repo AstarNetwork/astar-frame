@@ -18,7 +18,7 @@ pub(crate) struct MemorySnapshot {
     staker_info: StakerInfo<Balance>,
     contract_info: ContractStakeInfo<Balance>,
     free_balance: Balance,
-    ledger: AccountLedger<Balance>,
+    ledger: AccountLedger<Balance, RewardDestination<AccountId>>,
 }
 
 impl MemorySnapshot {
@@ -673,7 +673,7 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
 // change reward destination and verify the update
 pub(crate) fn assert_set_reward_destination(
     account_id: AccountId,
-    reward_destination: RewardDestination,
+    reward_destination: RewardDestination<AccountId>,
 ) {
     assert_ok!(DappsStaking::set_reward_destination(
         RuntimeOrigin::signed(account_id),
