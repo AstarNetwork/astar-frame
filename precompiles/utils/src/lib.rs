@@ -1,5 +1,9 @@
+// This file is part of Astar.
+
 // Copyright 2019-2022 PureStake Inc.
-// Copyright 2022      Stake Technologies
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // This file is part of Utils package, originally developed by Purestake Inc.
 // Utils package used in Astar Network in terms of GPLv3.
 //
@@ -165,20 +169,20 @@ pub struct RuntimeHelper<Runtime>(PhantomData<Runtime>);
 impl<Runtime> RuntimeHelper<Runtime>
 where
     Runtime: pallet_evm::Config,
-    Runtime::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 {
     /// Try to dispatch a Substrate call.
     /// Return an error if there are not enough gas, or if the call fails.
     /// If successful returns the used gas using the Runtime GasWeightMapping.
     pub fn try_dispatch<Call>(
         handle: &mut impl PrecompileHandleExt,
-        origin: <Runtime::Call as Dispatchable>::Origin,
+        origin: <Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin,
         call: Call,
     ) -> EvmResult<()>
     where
-        Runtime::Call: From<Call>,
+        Runtime::RuntimeCall: From<Call>,
     {
-        let call = Runtime::Call::from(call);
+        let call = Runtime::RuntimeCall::from(call);
         let dispatch_info = call.get_dispatch_info();
 
         // Make sure there is enough gas.
@@ -216,14 +220,14 @@ where
     /// Cost of a Substrate DB write in gas.
     pub fn db_write_gas_cost() -> u64 {
         <Runtime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(
-            <Runtime as frame_system::Config>::DbWeight::get().write,
+            <Runtime as frame_system::Config>::DbWeight::get().writes(1),
         )
     }
 
     /// Cost of a Substrate DB read in gas.
     pub fn db_read_gas_cost() -> u64 {
         <Runtime as pallet_evm::Config>::GasWeightMapping::weight_to_gas(
-            <Runtime as frame_system::Config>::DbWeight::get().read,
+            <Runtime as frame_system::Config>::DbWeight::get().reads(1),
         )
     }
 }
@@ -241,13 +245,13 @@ pub enum FunctionModifier {
 }
 
 pub trait PrecompileHandleExt: PrecompileHandle {
+    #[must_use]
     /// Record cost of a log manually.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult;
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult;
 
     #[must_use]
@@ -297,80 +301,18 @@ pub fn log_costs(topics: usize, data_len: usize) -> EvmResult<u64> {
         })
 }
 
-// Compute the cost of doing a subcall.
-// Some parameters cannot be known in advance, so we estimate the worst possible cost.
-pub fn call_cost(value: U256, config: &evm::Config) -> u64 {
-    // Copied from EVM code since not public.
-    pub const G_CALLVALUE: u64 = 9000;
-    pub const G_NEWACCOUNT: u64 = 25000;
-
-    fn address_access_cost(is_cold: bool, regular_value: u64, config: &evm::Config) -> u64 {
-        if config.increase_state_access_gas {
-            if is_cold {
-                config.gas_account_access_cold
-            } else {
-                config.gas_storage_read_warm
-            }
-        } else {
-            regular_value
-        }
-    }
-
-    fn xfer_cost(is_call_or_callcode: bool, transfers_value: bool) -> u64 {
-        if is_call_or_callcode && transfers_value {
-            G_CALLVALUE
-        } else {
-            0
-        }
-    }
-
-    fn new_cost(
-        is_call_or_staticcall: bool,
-        new_account: bool,
-        transfers_value: bool,
-        config: &evm::Config,
-    ) -> u64 {
-        let eip161 = !config.empty_considered_exists;
-        if is_call_or_staticcall {
-            if eip161 {
-                if transfers_value && new_account {
-                    G_NEWACCOUNT
-                } else {
-                    0
-                }
-            } else if new_account {
-                G_NEWACCOUNT
-            } else {
-                0
-            }
-        } else {
-            0
-        }
-    }
-
-    let transfers_value = value != U256::default();
-    let is_cold = true;
-    let is_call_or_callcode = true;
-    let is_call_or_staticcall = true;
-    let new_account = true;
-
-    address_access_cost(is_cold, config.gas_call, config)
-        + xfer_cost(is_call_or_callcode, transfers_value)
-        + new_cost(is_call_or_staticcall, new_account, transfers_value, config)
-}
-
 impl<T: PrecompileHandle> PrecompileHandleExt for T {
+    #[must_use]
     /// Record cost of a log manualy.
     /// This can be useful to record log costs early when their content have static size.
-    #[must_use]
     fn record_log_costs_manual(&mut self, topics: usize, data_len: usize) -> EvmResult {
         self.record_cost(log_costs(topics, data_len)?)?;
 
         Ok(())
     }
 
-    /// Record cost of logs.
     #[must_use]
+    /// Record cost of logs.
     fn record_log_costs(&mut self, logs: &[&Log]) -> EvmResult {
         for log in logs {
             self.record_log_costs_manual(log.topics.len(), log.data.len())?;

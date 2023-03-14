@@ -1,5 +1,26 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 use super::*;
-use frame_support::assert_ok;
+use frame_support::{
+    assert_ok,
+    traits::{Everything, Nothing},
+};
 use sp_runtime::traits::Zero;
 use xcm_executor::traits::Convert;
 
@@ -15,7 +36,7 @@ const GENERAL_INDEX: MultiLocation = MultiLocation {
     parents: 2,
     interior: Junctions::X1(GeneralIndex(20)),
 };
-const RELAY_ASSET: AssetId = AssetId::max_value();
+const RELAY_ASSET: AssetId = AssetId::MAX;
 
 /// Helper struct used for testing `AssetLocationIdConverter`
 struct AssetLocationMapper;
@@ -54,7 +75,7 @@ impl ExecutionPaymentRate for ExecutionPayment {
 
 /// Execution fee for the specified weight, using provided `units_per_second`
 fn execution_fee(weight: Weight, units_per_second: u128) -> u128 {
-    units_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128)
+    units_per_second * (weight as u128) / (WEIGHT_REF_TIME_PER_SECOND as u128)
 }
 
 #[test]
@@ -62,7 +83,7 @@ fn asset_location_to_id() {
     // Test cases where the MultiLocation is valid
     assert_eq!(
         AssetLocationIdConverter::<AssetId, AssetLocationMapper>::convert_ref(PARENT),
-        Ok(u128::max_value())
+        Ok(u128::MAX)
     );
     assert_eq!(
         AssetLocationIdConverter::<AssetId, AssetLocationMapper>::convert_ref(PARACHAIN),
@@ -84,7 +105,7 @@ fn asset_location_to_id() {
 fn asset_id_to_location() {
     // Test cases where the AssetId is valid
     assert_eq!(
-        AssetLocationIdConverter::<AssetId, AssetLocationMapper>::reverse_ref(u128::max_value()),
+        AssetLocationIdConverter::<AssetId, AssetLocationMapper>::reverse_ref(u128::MAX),
         Ok(PARENT)
     );
     assert_eq!(
@@ -403,4 +424,156 @@ fn reserve_asset_filter_for_unsupported_asset_multi_location() {
         &multi_asset,
         &origin
     ));
+}
+
+/// Returns valid XCM sequence for bypassing `AllowPaidExecWithDescendOriginFrom`
+fn desc_origin_barrier_valid_sequence() -> Xcm<()> {
+    Xcm::<()>(vec![
+        DescendOrigin(X1(Junction::Parachain(1234))),
+        WithdrawAsset((Here, 100).into()),
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Unlimited,
+        },
+    ])
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_works() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        150_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    // Still works even if there are follow-up instructions
+    valid_message = desc_origin_barrier_valid_sequence();
+    valid_message.0.push(SetErrorHandler(Default::default()));
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_weight_correction_works() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    // Ensure that `Limited` gets adjusted to the provided enforced_weight_limit
+    let enforced_weight_limit = 3_u64;
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    if let BuyExecution {
+        weight_limit,
+        fees: _,
+    } = valid_message.0[2].clone()
+    {
+        assert_eq!(weight_limit, WeightLimit::Limited(enforced_weight_limit))
+    } else {
+        panic!("3rd instruction should be BuyExecution!");
+    }
+
+    // Ensure that we use `BuyExecution` with `Unlimited` weight limit
+    let _ = std::mem::replace(
+        &mut valid_message.0[2],
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Limited(enforced_weight_limit + 7),
+        },
+    );
+
+    // Ensure that `Unlimited` gets adjusted to the provided max weight limit
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Ok(()));
+
+    if let BuyExecution {
+        weight_limit,
+        fees: _,
+    } = valid_message.0[2].clone()
+    {
+        assert_eq!(weight_limit, WeightLimit::Limited(enforced_weight_limit))
+    } else {
+        panic!("3rd instruction should be BuyExecution!");
+    }
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_unsupported_origin_fails() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Nothing>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_with_invalid_message_fails() {
+    let mut invalid_message = Xcm::<()>(vec![WithdrawAsset((Here, 100).into())]);
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut invalid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+
+    // Should still fail, even if correct sequence follows next
+    invalid_message
+        .0
+        .append(&mut desc_origin_barrier_valid_sequence().0);
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut invalid_message,
+        100_u64,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
+}
+
+#[test]
+fn allow_paid_exec_with_descend_origin_too_small_weight_fails() {
+    let mut valid_message = desc_origin_barrier_valid_sequence();
+    let enforced_weight_limit = 29_u64;
+
+    // Ensure that we use `BuyExecution` with `Limited` weight but with insufficient weight.
+    // This means that not enough execution time (weight) is being bought compared to the
+    // weight of whole sequence.
+    let _ = std::mem::replace(
+        &mut valid_message.0[2],
+        BuyExecution {
+            fees: (Here, 100).into(),
+            weight_limit: WeightLimit::Limited(enforced_weight_limit - 7),
+        },
+    );
+
+    let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
+        &Here.into(),
+        &mut valid_message,
+        enforced_weight_limit,
+        &mut 0_u64,
+    );
+    assert_eq!(res, Err(()));
 }

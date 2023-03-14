@@ -1,17 +1,26 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+// You should have received a copy of the PolyForm-Noncommercial license with this crate.
+// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+
 use crate::{self as pallet_dapps_staking, weights};
 
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
+    weights::Weight,
     PalletId,
 };
 use sp_core::{H160, H256};
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, ConstU32, IdentityLookup},
 };
 
 pub(crate) type AccountId = u64;
@@ -31,6 +40,7 @@ pub(crate) const MINIMUM_REMAINING_AMOUNT: Balance = 1;
 pub(crate) const MAX_UNLOCKING_CHUNKS: u32 = 4;
 pub(crate) const UNBONDING_PERIOD: EraIndex = 3;
 pub(crate) const MAX_ERA_STAKE_VALUES: u32 = 8;
+pub(crate) const REWARD_RETENTION_PERIOD: u32 = 2;
 
 // Do note that this needs to at least be 3 for tests to be valid. It can be greater but not smaller.
 pub(crate) const BLOCKS_PER_ERA: BlockNumber = 3;
@@ -41,38 +51,39 @@ pub(crate) const STAKER_BLOCK_REWARD: Balance = 531911;
 pub(crate) const DAPP_BLOCK_REWARD: Balance = 773333;
 
 construct_runtime!(
-    pub enum TestRuntime where
+    pub struct TestRuntime
+    where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        DappsStaking: pallet_dapps_staking::{Pallet, Call, Storage, Event<T>},
+        System: frame_system,
+        Balances: pallet_balances,
+        Timestamp: pallet_timestamp,
+        DappsStaking: pallet_dapps_staking,
     }
 );
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
-        frame_system::limits::BlockWeights::simple_max(1024);
+        frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
 }
 
 impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type Index = u64;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -96,7 +107,7 @@ impl pallet_balances::Config for TestRuntime {
     type MaxReserves = ();
     type ReserveIdentifier = [u8; 8];
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -127,7 +138,7 @@ parameter_types! {
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type BlockPerEra = BlockPerEra;
     type RegisterDeposit = RegisterDeposit;
@@ -140,9 +151,12 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
+    type UnregisteredDappRewardRetention = ConstU32<REWARD_RETENTION_PERIOD>;
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum MockSmartContract<AccountId> {
     Evm(sp_core::H160),
     Wasm(AccountId),
@@ -151,15 +165,6 @@ pub enum MockSmartContract<AccountId> {
 impl<AccountId> Default for MockSmartContract<AccountId> {
     fn default() -> Self {
         MockSmartContract::Evm(H160::repeat_byte(0x01))
-    }
-}
-
-impl<AccountId> pallet_dapps_staking::IsContract for MockSmartContract<AccountId> {
-    fn is_valid(&self) -> bool {
-        match self {
-            MockSmartContract::Wasm(_account) => false,
-            MockSmartContract::Evm(_account) => true,
-        }
     }
 }
 
@@ -255,7 +260,7 @@ pub fn dapps_staking_events() -> Vec<crate::Event<TestRuntime>> {
         .into_iter()
         .map(|r| r.event)
         .filter_map(|e| {
-            if let Event::DappsStaking(inner) = e {
+            if let RuntimeEvent::DappsStaking(inner) = e {
                 Some(inner)
             } else {
                 None

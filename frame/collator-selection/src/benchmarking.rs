@@ -1,4 +1,6 @@
-// Copyright (C) 2021 Parity Technologies (UK) Ltd.
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,9 +46,9 @@ macro_rules! whitelist {
     };
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -126,11 +128,11 @@ benchmarks! {
     }
 
     set_desired_candidates {
-        let max: u32 = 999;
+        let max: u32 = 148;
         let origin = T::UpdateOrigin::successful_origin();
     }: {
         assert_ok!(
-            <CollatorSelection<T>>::set_desired_candidates(origin, max.clone())
+            <CollatorSelection<T>>::set_desired_candidates(origin, max)
         );
     }
     verify {
@@ -142,7 +144,7 @@ benchmarks! {
         let origin = T::UpdateOrigin::successful_origin();
     }: {
         assert_ok!(
-            <CollatorSelection<T>>::set_candidacy_bond(origin, bond.clone())
+            <CollatorSelection<T>>::set_candidacy_bond(origin, bond)
         );
     }
     verify {
@@ -162,7 +164,7 @@ benchmarks! {
 
         let caller: T::AccountId = whitelisted_caller();
         let bond: BalanceOf<T> = T::Currency::minimum_balance() * 2u32.into();
-        T::Currency::make_free_balance_be(&caller, bond.clone());
+        T::Currency::make_free_balance_be(&caller, bond);
 
         <session::Pallet<T>>::set_keys(
             RawOrigin::Signed(caller.clone()).into(),

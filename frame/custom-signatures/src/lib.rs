@@ -1,3 +1,20 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// 	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -11,12 +28,9 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::{
+        dispatch::{Dispatchable, GetDispatchInfo},
         pallet_prelude::*,
-        traits::{
-            Currency, ExistenceRequirement, Get, OnUnbalanced, UnfilteredDispatchable,
-            WithdrawReasons,
-        },
-        weights::GetDispatchInfo,
+        traits::{Currency, ExistenceRequirement, Get, OnUnbalanced, WithdrawReasons},
     };
     use frame_system::{ensure_none, pallet_prelude::*};
     use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -32,10 +46,12 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// A signable call.
-        type Call: Parameter + UnfilteredDispatchable<Origin = Self::Origin> + GetDispatchInfo;
+        type RuntimeCall: Parameter
+            + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+            + GetDispatchInfo;
 
         /// User defined signature type.
         type Signature: Parameter + Verify<Signer = Self::Signer> + TryFrom<Vec<u8>>;
@@ -77,7 +93,7 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
         /// A call just executed. \[result\]
         Executed(T::AccountId, DispatchResult),
@@ -89,15 +105,19 @@ pub mod pallet {
         /// - O(1).
         /// - Limited storage reads.
         /// - One DB write (event).
-        /// - Weight of derivative `call` execution + 10,000.
+        /// - Weight of derivative `call` execution + read/write + 10_000.
         /// # </weight>
+        #[pallet::call_index(0)]
         #[pallet::weight({
             let dispatch_info = call.get_dispatch_info();
-            (dispatch_info.weight.saturating_add(10_000), dispatch_info.class)
+            (dispatch_info.weight.saturating_add(T::DbWeight::get().reads(1))
+                                 .saturating_add(T::DbWeight::get().writes(1))
+                                 .saturating_add(Weight::from_ref_time(10_000)),
+             dispatch_info.class)
         })]
         pub fn call(
             origin: OriginFor<T>,
-            call: Box<<T as Config>::Call>,
+            call: Box<<T as Config>::RuntimeCall>,
             signer: T::AccountId,
             signature: Vec<u8>,
             #[pallet::compact] nonce: T::Index,
@@ -133,7 +153,7 @@ pub mod pallet {
 
             // Dispatch call
             let new_origin = frame_system::RawOrigin::Signed(signer.clone()).into();
-            let res = call.dispatch_bypass_filter(new_origin).map(|_| ());
+            let res = call.dispatch(new_origin).map(|_| ());
             Self::deposit_event(Event::Executed(signer, res.map_err(|e| e.error)));
 
             // Fee already charged
@@ -144,7 +164,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Verify custom signature and returns `true` if correct.
         pub fn valid_signature(
-            call: &Box<<T as Config>::Call>,
+            call: &Box<<T as Config>::RuntimeCall>,
             signer: &T::AccountId,
             signature: &T::Signature,
             nonce: &T::Index,

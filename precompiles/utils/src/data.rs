@@ -1,5 +1,9 @@
+// This file is part of Astar.
+
 // Copyright 2019-2022 PureStake Inc.
-// Copyright 2022      Stake Technologies
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // This file is part of Utils package, originally developed by Purestake Inc.
 // Utils package used in Astar Network in terms of GPLv3.
 //
@@ -75,9 +79,9 @@ impl From<&str> for Bytes {
     }
 }
 
-impl Into<Vec<u8>> for Bytes {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<Bytes> for Vec<u8> {
+    fn from(b: Bytes) -> Vec<u8> {
+        b.0
     }
 }
 

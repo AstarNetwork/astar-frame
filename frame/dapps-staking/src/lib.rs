@@ -1,3 +1,11 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+// You should have received a copy of the PolyForm-Noncommercial license with this crate.
+// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+
 //! # Dapps Staking Pallet
 //!
 //! - [`Config`]
@@ -31,11 +39,10 @@
 //! - `claim_staker` - claims staker reward for a single era
 //! - `claim_dapp` - claims dapp rewards for the specified era
 //! - `force_new_era` - forces new era on the start of the next block
-//! - `developer_pre_approval` - adds developer account to the pre-approved developers
-//! - `enable_developer_pre_approval` - enables or disables developer pre-approval check for dApp registration
 //! - `maintenance_mode` - enables or disables pallet maintenance mode
 //! - `set_reward_destination` - sets reward destination for the staker rewards
 //! - `set_contract_stake_info` - root-only call to set storage value (used for fixing corrupted data)
+//! - `burn_stale_reward` - root-only call to burn unclaimed, stale rewards from unregistered contracts
 //!
 //! User is encouraged to refer to specific function implementations for more comprehensive documentation.
 //!
@@ -49,7 +56,7 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, HasCompact};
+use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::traits::Currency;
 use frame_system::{self as system};
 use scale_info::TypeInfo;
@@ -82,14 +89,26 @@ pub type BalanceOf<T> =
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
 
-/// Simple trait used to check whether the underlying struct represents a valid smart contract on-chain.
-pub trait IsContract: Default {
-    /// Used to check whether this smart contract is valid on-chain or not.
-    fn is_valid(&self) -> bool;
-}
+// This represents the max assumed vector length that any storage item should have.
+// In particular, this relates to `UnbondingInfo` and `StakerInfo`.
+// In structs which are bound in size, `MaxEncodedLen` can just be derived but that's not the case for standard `vec`.
+// To fix this 100% correctly, we'd need to do one of the following:
+//
+// - Use `BoundedVec` instead of `Vec` and do storage migration
+// - Introduce a new type `S: Get<u32>` into the aforementioned structs and use it to inject max allowed size,
+//   thus allowing us to correctly calculate max encoded len
+//
+// The issue with first approach is that it requires storage migration which we want to avoid
+// unless it's really necessary. The issue with second approach is that it makes code much more
+// difficult to work with since all of it will be ridden with injections of the `S` type.
+//
+// Since dApps staking has been stable for long time and there are plans to redesign & refactor it,
+// doing neither of the above makes sense, timewise. So we use an assumption that vec length
+// won't go over the following constant.
+const MAX_ASSUMED_VEC_LEN: u32 = 10;
 
 /// DApp State descriptor
-#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 enum DAppState {
     /// Contract is registered and active.
     Registered,
@@ -98,7 +117,7 @@ enum DAppState {
     Unregistered(EraIndex),
 }
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct DAppInfo<AccountId> {
     /// Developer (owner) account
     developer: AccountId,
@@ -114,10 +133,15 @@ impl<AccountId> DAppInfo<AccountId> {
             state: DAppState::Registered,
         }
     }
+
+    /// `true` if dApp has been unregistered, `false` otherwise
+    fn is_unregistered(&self) -> bool {
+        matches!(self.state, DAppState::Unregistered(_))
+    }
 }
 
 /// Mode of era-forcing.
-#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum Forcing {
     /// Not forcing anything - just let whatever happen.
@@ -135,8 +159,8 @@ impl Default for Forcing {
 }
 
 /// A record of rewards allocated for stakers and dapps
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct RewardInfo<Balance: HasCompact> {
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct RewardInfo<Balance: HasCompact + MaxEncodedLen> {
     /// Total amount of rewards for stakers in an era
     #[codec(compact)]
     pub stakers: Balance,
@@ -146,8 +170,8 @@ pub struct RewardInfo<Balance: HasCompact> {
 }
 
 /// A record for total rewards and total amount staked for an era
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct EraInfo<Balance: HasCompact> {
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct EraInfo<Balance: HasCompact + MaxEncodedLen> {
     /// Total amount of earned rewards for an era
     pub rewards: RewardInfo<Balance>,
     /// Total staked amount in an era
@@ -161,8 +185,8 @@ pub struct EraInfo<Balance: HasCompact> {
 /// Used to split total EraPayout among contracts.
 /// Each tuple (contract, era) has this structure.
 /// This will be used to reward contracts developer and his stakers.
-#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct ContractStakeInfo<Balance: HasCompact> {
+#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct ContractStakeInfo<Balance: HasCompact + MaxEncodedLen> {
     /// Total staked amount.
     #[codec(compact)]
     pub total: Balance,
@@ -175,23 +199,24 @@ pub struct ContractStakeInfo<Balance: HasCompact> {
 
 /// Storage value representing the current Dapps staking pallet storage version.
 /// Used by `on_runtime_upgrade` to determine whether a storage migration is needed or not.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum Version {
     V1_0_0,
     V2_0_0,
     V3_0_0,
+    V4_0_0,
 }
 
 impl Default for Version {
     fn default() -> Self {
-        Version::V3_0_0
+        Version::V4_0_0
     }
 }
 
 /// Used to represent how much was staked in a particular era.
 /// E.g. `{staked: 1000, era: 5}` means that in era `5`, staked amount was 1000.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct EraStake<Balance: AtLeast32BitUnsigned + Copy> {
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct EraStake<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
     /// Staked amount in era
     #[codec(compact)]
     staked: Balance,
@@ -200,7 +225,7 @@ pub struct EraStake<Balance: AtLeast32BitUnsigned + Copy> {
     era: EraIndex,
 }
 
-impl<Balance: AtLeast32BitUnsigned + Copy> EraStake<Balance> {
+impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> EraStake<Balance> {
     /// Create a new instance of `EraStake` with given values
     fn new(staked: Balance, era: EraIndex) -> Self {
         Self { staked, era }
@@ -235,12 +260,24 @@ impl<Balance: AtLeast32BitUnsigned + Copy> EraStake<Balance> {
 /// **NOTE:** It is important to understand that staker **DID NOT** claim any rewards during this period.
 ///
 #[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy> {
+pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
     // Size of this list would be limited by a configurable constant
     stakes: Vec<EraStake<Balance>>,
 }
 
-impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
+impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> MaxEncodedLen for StakerInfo<Balance> {
+    // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
+    fn max_encoded_len() -> usize {
+        codec::Compact(MAX_ASSUMED_VEC_LEN)
+            .encoded_size()
+            .saturating_add(
+                (MAX_ASSUMED_VEC_LEN as usize)
+                    .saturating_mul(EraStake::<Balance>::max_encoded_len()),
+            )
+    }
+}
+
+impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> StakerInfo<Balance> {
     /// `true` if no active stakes and unclaimed eras exist, `false` otherwise
     fn is_empty(&self) -> bool {
         self.stakes.is_empty()
@@ -267,7 +304,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     fn stake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
         if let Some(era_stake) = self.stakes.last_mut() {
             if era_stake.era > current_era {
-                return Err("Unexpected era".into());
+                return Err("Unexpected era");
             }
 
             let new_stake_value = era_stake.staked.saturating_add(value);
@@ -307,7 +344,7 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
     fn unstake(&mut self, current_era: EraIndex, value: Balance) -> Result<(), &str> {
         if let Some(era_stake) = self.stakes.last_mut() {
             if era_stake.era > current_era {
-                return Err("Unexpected era".into());
+                return Err("Unexpected era");
             }
 
             let new_stake_value = era_stake.staked.saturating_sub(value);
@@ -387,8 +424,10 @@ impl<Balance: AtLeast32BitUnsigned + Copy> StakerInfo<Balance> {
 
 /// Represents an balance amount undergoing the unbonding process.
 /// Since unbonding takes time, it's important to keep track of when and how much was unbonded.
-#[derive(Clone, Copy, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct UnlockingChunk<Balance> {
+#[derive(
+    Clone, Copy, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+)]
+pub struct UnlockingChunk<Balance: MaxEncodedLen> {
     /// Amount being unlocked
     #[codec(compact)]
     amount: Balance,
@@ -399,7 +438,7 @@ pub struct UnlockingChunk<Balance> {
 
 impl<Balance> UnlockingChunk<Balance>
 where
-    Balance: Add<Output = Balance> + Copy,
+    Balance: Add<Output = Balance> + Copy + MaxEncodedLen,
 {
     // Adds the specified amount to this chunk
     fn add_amount(&mut self, amount: Balance) {
@@ -410,14 +449,28 @@ where
 /// Contains unlocking chunks.
 /// This is a convenience struct that provides various utility methods to help with unbonding handling.
 #[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy> {
+pub struct UnbondingInfo<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> {
     // Vector of unlocking chunks. Sorted in ascending order in respect to unlock_era.
     unlocking_chunks: Vec<UnlockingChunk<Balance>>,
 }
 
+impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> MaxEncodedLen
+    for UnbondingInfo<Balance>
+{
+    // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
+    fn max_encoded_len() -> usize {
+        codec::Compact(MAX_ASSUMED_VEC_LEN)
+            .encoded_size()
+            .saturating_add(
+                (MAX_ASSUMED_VEC_LEN as usize)
+                    .saturating_mul(UnlockingChunk::<Balance>::max_encoded_len()),
+            )
+    }
+}
+
 impl<Balance> UnbondingInfo<Balance>
 where
-    Balance: AtLeast32BitUnsigned + Default + Copy,
+    Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen,
 {
     /// Returns total number of unlocking chunks.
     fn len(&self) -> u32 {
@@ -487,7 +540,7 @@ where
 /// Instruction on how to handle reward payout for stakers.
 /// In order to make staking more competitive, majority of stakers will want to
 /// automatically restake anything they earn.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum RewardDestination {
     /// Rewards are transferred to stakers free balance without any further action.
     FreeBalance,
@@ -503,8 +556,8 @@ impl Default for RewardDestination {
 }
 
 /// Contains information about account's locked & unbonding balances.
-#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
+#[derive(Clone, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> {
     /// Total balance locked.
     #[codec(compact)]
     pub locked: Balance,
@@ -514,7 +567,7 @@ pub struct AccountLedger<Balance: AtLeast32BitUnsigned + Default + Copy> {
     reward_destination: RewardDestination,
 }
 
-impl<Balance: AtLeast32BitUnsigned + Default + Copy> AccountLedger<Balance> {
+impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> AccountLedger<Balance> {
     /// `true` if ledger is empty (no locked funds, no unbonding chunks), `false` otherwise.
     pub fn is_empty(&self) -> bool {
         self.locked.is_zero() && self.unbonding_info.is_empty()

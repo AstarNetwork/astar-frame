@@ -1,3 +1,11 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+// You should have received a copy of the PolyForm-Noncommercial license with this crate.
+// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+
 //! Dapps staking FRAME Pallet.
 
 use super::*;
@@ -17,11 +25,12 @@ use sp_runtime::{
     traits::{AccountIdConversion, Saturating, Zero},
     Perbill,
 };
-use sp_std::convert::From;
+use sp_std::{convert::From, mem};
 
 const STAKING_ID: LockIdentifier = *b"dapstake";
 
 #[frame_support::pallet]
+#[allow(clippy::module_inception)]
 pub mod pallet {
     use super::*;
 
@@ -31,7 +40,6 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(crate) trait Store)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     // Negative imbalance type of this pallet.
@@ -46,7 +54,7 @@ pub mod pallet {
             + ReservableCurrency<Self::AccountId>;
 
         /// Describes smart contract in the context required by dapps staking.
-        type SmartContract: IsContract + Parameter + Member;
+        type SmartContract: Default + Parameter + Member + MaxEncodedLen;
 
         /// Number of blocks per era.
         #[pallet::constant]
@@ -94,8 +102,15 @@ pub mod pallet {
         #[pallet::constant]
         type MaxEraStakeValues: Get<u32>;
 
+        /// Number of eras that need to pass until dApp rewards for the unregistered contracts can be burned.
+        /// Developer can still claim rewards after this period has passed, iff it hasn't been burned yet.
+        ///
+        /// For example, if retention is set to `2` and current era is `10`, it means that all unclaimed rewards bellow era `8` can be burned.
+        #[pallet::constant]
+        type UnregisteredDappRewardRetention: Get<u32>;
+
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -103,6 +118,7 @@ pub mod pallet {
 
     /// Denotes whether pallet is disabled (in maintenance mode) or not
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn pallet_disabled)]
     pub type PalletDisabled<T: Config> = StorageValue<_, bool, ValueQuery>;
 
@@ -114,6 +130,7 @@ pub mod pallet {
 
     /// The current era index.
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn current_era)]
     pub type CurrentEra<T> = StorageValue<_, EraIndex, ValueQuery>;
 
@@ -129,11 +146,13 @@ pub mod pallet {
 
     /// Mode of era forcing.
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn force_era)]
     pub type ForceEra<T> = StorageValue<_, Forcing, ValueQuery, ForceEraOnEmpty>;
 
     /// Stores the block number of when the next era starts
     #[pallet::storage]
+    #[pallet::whitelist_storage]
     #[pallet::getter(fn next_era_starting_block)]
     pub type NextEraStartingBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
@@ -184,6 +203,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn storage_version)]
     pub(crate) type StorageVersion<T> = StorageValue<_, Version, ValueQuery>;
+
 
     #[pallet::type_value]
     pub(crate) fn PreApprovalOnEmpty() -> bool {
@@ -245,6 +265,10 @@ pub mod pallet {
             BalanceOf<T>,
             T::SmartContract,
         ),
+        /// Stale, unclaimed reward from an unregistered contract has been burned.
+        ///
+        /// \(developer account, smart contract, era, amount burned\)
+        StaleRewardBurned(T::AccountId, T::SmartContract, EraIndex, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -275,8 +299,6 @@ pub mod pallet {
         NothingToWithdraw,
         /// The contract is already registered by other account
         AlreadyRegisteredContract,
-        /// User attempts to register with address which is not contract
-        ContractIsNotValid,
         /// This account was already used to register contract
         AlreadyUsedDeveloperAccount,
         /// Smart contract not owned by the account id.
@@ -295,10 +317,6 @@ pub mod pallet {
         /// Too many active `EraStake` values for (staker, contract) pairing.
         /// Claim existing rewards to fix this problem.
         TooManyEraStakeValues,
-        /// To register a contract, pre-approval is needed for this address
-        RequiredContractPreApproval,
-        /// Developer's account is already part of pre-approved list
-        AlreadyPreApprovedDeveloper,
         /// Account is not actively staking
         NotActiveStaker,
         /// Transfering nomination to the same contract
@@ -354,13 +372,15 @@ pub mod pallet {
         /// Depending on the pallet configuration/state it is possible that developer needs to be whitelisted prior to registration.
         ///
         /// As part of this call, `RegisterDeposit` will be reserved from devs account.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
+            developer: T::AccountId,
             contract_id: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
-            let developer = ensure_signed(origin)?;
+            ensure_root(origin)?;
 
             ensure!(
                 !RegisteredDevelopers::<T>::contains_key(&developer),
@@ -370,14 +390,6 @@ pub mod pallet {
                 !RegisteredDapps::<T>::contains_key(&contract_id),
                 Error::<T>::AlreadyRegisteredContract,
             );
-            ensure!(contract_id.is_valid(), Error::<T>::ContractIsNotValid);
-
-            if Self::pre_approval_is_enabled() {
-                ensure!(
-                    PreApprovedDevelopers::<T>::contains_key(&developer),
-                    Error::<T>::RequiredContractPreApproval,
-                );
-            }
 
             T::Currency::reserve(&developer, T::RegisterDeposit::get())?;
 
@@ -395,6 +407,7 @@ pub mod pallet {
         /// Deposit is returned to the developer but existing stakers should manually call `withdraw_from_unregistered` if they wish to to unstake.
         ///
         /// **Warning**: After this action ,contract can not be registered for dapps staking again.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::unregister())]
         pub fn unregister(
             origin: OriginFor<T>,
@@ -425,6 +438,7 @@ pub mod pallet {
         /// Withdraw locked funds from a contract that was unregistered.
         ///
         /// Funds don't need to undergo the unbonding period - they are returned immediately to the staker's free balance.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::withdraw_from_unregistered())]
         pub fn withdraw_from_unregistered(
             origin: OriginFor<T>,
@@ -485,6 +499,7 @@ pub mod pallet {
         /// unless account already has bonded value equal or more than 'minimum_balance'.
         ///
         /// The dispatch origin for this call must be _Signed_ by the staker's account.
+        #[pallet::call_index(3)]
         #[pallet::weight(T::WeightInfo::bond_and_stake())]
         pub fn bond_and_stake(
             origin: OriginFor<T>,
@@ -551,6 +566,7 @@ pub mod pallet {
         ///
         /// In case remaining staked balance on contract is below minimum staking amount,
         /// entire stake for that contract will be unstaked.
+        #[pallet::call_index(4)]
         #[pallet::weight(T::WeightInfo::unbond_and_unstake())]
         pub fn unbond_and_unstake(
             origin: OriginFor<T>,
@@ -614,6 +630,7 @@ pub mod pallet {
         ///
         /// If there are unbonding chunks which will be fully unbonded in future eras,
         /// they will remain and can be withdrawn later.
+        #[pallet::call_index(5)]
         #[pallet::weight(T::WeightInfo::withdraw_unbonded())]
         pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
@@ -649,6 +666,7 @@ pub mod pallet {
         /// Minor difference is that there is no unbonding period so this call won't
         /// check whether max number of unbonding chunks is exceeded.
         ///
+        #[pallet::call_index(6)]
         #[pallet::weight(T::WeightInfo::nomination_transfer())]
         pub fn nomination_transfer(
             origin: OriginFor<T>,
@@ -723,6 +741,7 @@ pub mod pallet {
         ///
         /// The rewards are always added to the staker's free balance (account) but depending on the reward destination configuration,
         /// they might be immediately re-staked.
+        #[pallet::call_index(7)]
         #[pallet::weight(T::WeightInfo::claim_staker_with_restake().max(T::WeightInfo::claim_staker_without_restake()))]
         pub fn claim_staker(
             origin: OriginFor<T>,
@@ -824,6 +843,7 @@ pub mod pallet {
         /// Claim earned dapp rewards for the specified era.
         ///
         /// Call must ensure that the specified era is eligible for reward payout and that it hasn't already been paid out for the dapp.
+        #[pallet::call_index(8)]
         #[pallet::weight(T::WeightInfo::claim_dapp())]
         pub fn claim_dapp(
             origin: OriginFor<T>,
@@ -836,28 +856,10 @@ pub mod pallet {
             let dapp_info =
                 RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
 
-            let current_era = Self::current_era();
-            if let DAppState::Unregistered(unregister_era) = dapp_info.state {
-                ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
-            }
-            ensure!(era < current_era, Error::<T>::EraOutOfBounds);
-
             let mut contract_stake_info =
                 Self::contract_stake_info(&contract_id, era).unwrap_or_default();
-            ensure!(
-                !contract_stake_info.contract_reward_claimed,
-                Error::<T>::AlreadyClaimedInThisEra,
-            );
-            ensure!(
-                contract_stake_info.total > Zero::zero(),
-                Error::<T>::NotStakedContract,
-            );
 
-            let reward_and_stake =
-                Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
-
-            // Calculate the contract reward for this era.
-            let (dapp_reward, _) = Self::dev_stakers_split(&contract_stake_info, &reward_and_stake);
+            let dapp_reward = Self::calculate_dapp_reward(&contract_stake_info, &dapp_info, era)?;
 
             // Withdraw reward funds from the dapps staking
             let reward_imbalance = T::Currency::withdraw(
@@ -869,7 +871,7 @@ pub mod pallet {
 
             T::Currency::resolve_creating(&dapp_info.developer, reward_imbalance);
             Self::deposit_event(Event::<T>::Reward(
-                dapp_info.developer.clone(),
+                dapp_info.developer,
                 contract_id.clone(),
                 era,
                 dapp_reward,
@@ -885,6 +887,7 @@ pub mod pallet {
         /// Force a new era at the start of the next block.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(9)]
         #[pallet::weight(T::WeightInfo::force_new_era())]
         pub fn force_new_era(origin: OriginFor<T>) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
@@ -893,44 +896,10 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Adds developer account to the list of whitelisted dev accounts which can register their dapp for dApp staking.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::developer_pre_approval())]
-        pub fn developer_pre_approval(
-            origin: OriginFor<T>,
-            developer: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-
-            ensure!(
-                !PreApprovedDevelopers::<T>::contains_key(&developer),
-                Error::<T>::AlreadyPreApprovedDeveloper
-            );
-            PreApprovedDevelopers::<T>::insert(developer, ());
-
-            Ok(().into())
-        }
-
-        /// Enable or disable _pre-approval_ check.
-        /// If disabled, dApp registration is fully permisionless.
-        ///
-        /// The dispatch origin must be Root.
-        #[pallet::weight(T::WeightInfo::enable_developer_pre_approval())]
-        pub fn enable_developer_pre_approval(
-            origin: OriginFor<T>,
-            enabled: bool,
-        ) -> DispatchResultWithPostInfo {
-            Self::ensure_pallet_enabled()?;
-            ensure_root(origin)?;
-            PreApprovalIsEnabled::<T>::put(enabled);
-            Ok(().into())
-        }
-
         /// `true` will disable pallet, enabling maintenance mode. `false` will do the opposite.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(10)]
         #[pallet::weight(T::WeightInfo::maintenance_mode())]
         pub fn maintenance_mode(
             origin: OriginFor<T>,
@@ -953,6 +922,7 @@ pub mod pallet {
         ///
         /// User must be an active staker in order to use this call.
         /// This will apply to all existing unclaimed rewards.
+        #[pallet::call_index(11)]
         #[pallet::weight(T::WeightInfo::set_reward_destination())]
         pub fn set_reward_destination(
             origin: OriginFor<T>,
@@ -977,6 +947,7 @@ pub mod pallet {
         /// The purpose of this call is only for fixing one of the issues detected with dapps-staking.
         ///
         /// The dispatch origin must be Root.
+        #[pallet::call_index(12)]
         #[pallet::weight(T::DbWeight::get().writes(1))]
         pub fn set_contract_stake_info(
             origin: OriginFor<T>,
@@ -990,9 +961,93 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        /// Used to burn unclaimed & stale rewards from an unregistered contract.
+        #[pallet::call_index(13)]
+        #[pallet::weight(T::WeightInfo::claim_dapp())]
+        pub fn burn_stale_reward(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+            #[pallet::compact] era: EraIndex,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            ensure_root(origin)?;
+
+            let dapp_info =
+                RegisteredDapps::<T>::get(&contract_id).ok_or(Error::<T>::NotOperatedContract)?;
+            ensure!(
+                dapp_info.is_unregistered(),
+                Error::<T>::NotUnregisteredContract
+            );
+
+            let current_era = Self::current_era();
+
+            let burn_era_limit =
+                current_era.saturating_sub(T::UnregisteredDappRewardRetention::get());
+            ensure!(era < burn_era_limit, Error::<T>::EraOutOfBounds);
+
+            let mut contract_stake_info =
+                Self::contract_stake_info(&contract_id, era).unwrap_or_default();
+
+            let dapp_reward = Self::calculate_dapp_reward(&contract_stake_info, &dapp_info, era)?;
+
+            // Withdraw reward funds from the dapps staking pot and burn them
+            let imbalance_to_burn = T::Currency::withdraw(
+                &Self::account_id(),
+                dapp_reward,
+                WithdrawReasons::TRANSFER,
+                ExistenceRequirement::AllowDeath,
+            )?;
+            mem::drop(imbalance_to_burn);
+
+            // mark entry as `claimed` but it means it's just handled (want to avoid rename since pallet will soon be redesigned).
+            contract_stake_info.contract_reward_claimed = true;
+            ContractEraStake::<T>::insert(&contract_id, era, contract_stake_info);
+
+            Self::deposit_event(Event::<T>::StaleRewardBurned(
+                dapp_info.developer,
+                contract_id.clone(),
+                era,
+                dapp_reward,
+            ));
+
+            Ok(().into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
+        /// Calculate the dApp reward for the specified era.
+        /// If successfull, returns reward amount.
+        /// In case reward cannot be claimed or was already claimed, an error is raised.
+        fn calculate_dapp_reward(
+            contract_stake_info: &ContractStakeInfo<BalanceOf<T>>,
+            dapp_info: &DAppInfo<T::AccountId>,
+            era: EraIndex,
+        ) -> Result<BalanceOf<T>, Error<T>> {
+            let current_era = Self::current_era();
+            if let DAppState::Unregistered(unregister_era) = dapp_info.state {
+                ensure!(era < unregister_era, Error::<T>::NotOperatedContract);
+            }
+            ensure!(era < current_era, Error::<T>::EraOutOfBounds);
+
+            ensure!(
+                !contract_stake_info.contract_reward_claimed,
+                Error::<T>::AlreadyClaimedInThisEra,
+            );
+            ensure!(
+                contract_stake_info.total > Zero::zero(),
+                Error::<T>::NotStakedContract,
+            );
+
+            let reward_and_stake =
+                Self::general_era_info(era).ok_or(Error::<T>::UnknownEraReward)?;
+
+            // Calculate the contract reward for this era.
+            let (dapp_reward, _) = Self::dev_stakers_split(&contract_stake_info, &reward_and_stake);
+
+            Ok(dapp_reward)
+        }
+
         /// An utility method used to stake specified amount on an arbitrary contract.
         ///
         /// `StakerInfo` and `ContractStakeInfo` are provided and all checks are made to ensure that it's possible to
@@ -1041,7 +1096,7 @@ pub mod pallet {
             // Increment ledger and total staker value for contract.
             staking_info.total = staking_info.total.saturating_add(value);
 
-            return Ok(());
+            Ok(())
         }
 
         /// An utility method used to unstake specified amount from an arbitrary contract.
@@ -1099,7 +1154,7 @@ pub mod pallet {
                 Error::<T>::TooManyEraStakeValues
             );
 
-            return Ok(value_to_unstake);
+            Ok(value_to_unstake)
         }
 
         /// Get AccountId assigned to the pallet.
@@ -1121,9 +1176,9 @@ pub mod pallet {
         fn update_ledger(staker: &T::AccountId, ledger: AccountLedger<BalanceOf<T>>) {
             if ledger.is_empty() {
                 Ledger::<T>::remove(&staker);
-                T::Currency::remove_lock(STAKING_ID, &staker);
+                T::Currency::remove_lock(STAKING_ID, staker);
             } else {
-                T::Currency::set_lock(STAKING_ID, &staker, ledger.locked, WithdrawReasons::all());
+                T::Currency::set_lock(STAKING_ID, staker, ledger.locked, WithdrawReasons::all());
                 Ledger::<T>::insert(staker, ledger);
             }
         }
@@ -1156,8 +1211,8 @@ pub mod pallet {
                 era + 1,
                 EraInfo {
                     rewards: Default::default(),
-                    staked: era_info.staked.clone(),
-                    locked: era_info.locked.clone(),
+                    staked: era_info.staked,
+                    locked: era_info.locked,
                 },
             );
 
@@ -1171,10 +1226,10 @@ pub mod pallet {
         /// This is the most primitive solution since it scales with number of dApps.
         /// It is possible to provide a hybrid solution which allows laziness but also prevents
         /// a situation where we don't have access to the required data.
-        fn rotate_staking_info(current_era: EraIndex) -> u64 {
+        fn rotate_staking_info(current_era: EraIndex) -> Weight {
             let next_era = current_era + 1;
 
-            let mut consumed_weight = 0;
+            let mut consumed_weight = Weight::zero();
 
             for (contract_id, dapp_info) in RegisteredDapps::<T>::iter() {
                 // Ignore dapp if it was unregistered
@@ -1206,7 +1261,7 @@ pub mod pallet {
         ) -> BalanceOf<T> {
             // Ensure that staker has enough balance to bond & stake.
             let free_balance =
-                T::Currency::free_balance(&staker).saturating_sub(T::MinimumRemainingAmount::get());
+                T::Currency::free_balance(staker).saturating_sub(T::MinimumRemainingAmount::get());
 
             // Remove already locked funds from the free balance
             free_balance.saturating_sub(ledger.locked)

@@ -1,3 +1,11 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+// You should have received a copy of the PolyForm-Noncommercial license with this crate.
+// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
@@ -18,16 +26,14 @@ const DAPP_BLOCK_REWARD: u32 = 9876u32;
 /// Also initializes the first block which should start a new era.
 fn initialize<T: Config>() {
     // Remove everything from storage.
-    Ledger::<T>::remove_all(None);
-    RegisteredDevelopers::<T>::remove_all(None);
-    RegisteredDapps::<T>::remove_all(None);
-    PreApprovedDevelopers::<T>::remove_all(None);
-    GeneralEraInfo::<T>::remove_all(None);
-    ContractEraStake::<T>::remove_all(None);
-    GeneralStakerInfo::<T>::remove_all(None);
+    let _ = Ledger::<T>::clear(u32::MAX, None);
+    let _ = RegisteredDevelopers::<T>::clear(u32::MAX, None);
+    let _ = RegisteredDapps::<T>::clear(u32::MAX, None);
+    let _ = GeneralEraInfo::<T>::clear(u32::MAX, None);
+    let _ = ContractEraStake::<T>::clear(u32::MAX, None);
+    let _ = GeneralStakerInfo::<T>::clear(u32::MAX, None);
     CurrentEra::<T>::kill();
     BlockRewardAccumulator::<T>::kill();
-    PreApprovalIsEnabled::<T>::kill();
 
     // Initialize the first block.
     payout_block_rewards::<T>();
@@ -55,7 +61,7 @@ fn payout_block_rewards<T: Config>() {
 }
 
 /// Assert that the last event equals the provided one.
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
@@ -80,7 +86,8 @@ fn register_contract<T: Config>(
     let smart_contract = smart_contract::<T>(index);
     T::Currency::make_free_balance_be(&developer, BalanceOf::<T>::max_value());
     DappsStaking::<T>::register(
-        RawOrigin::Signed(developer.clone()).into(),
+        RawOrigin::Root.into(),
+        developer.clone(),
         smart_contract.clone(),
     )?;
 
@@ -107,7 +114,7 @@ fn prepare_bond_and_stake<T: Config>(
         DappsStaking::<T>::bond_and_stake(
             RawOrigin::Signed(staker_acc).into(),
             contract_id.clone(),
-            stake_balance.clone(),
+            stake_balance,
         )?;
     }
 
@@ -121,7 +128,7 @@ benchmarks! {
         let developer_id = whitelisted_caller();
         let contract_id = T::SmartContract::default();
         T::Currency::make_free_balance_be(&developer_id, BalanceOf::<T>::max_value());
-    }: _(RawOrigin::Signed(developer_id.clone()), contract_id.clone())
+    }: _(RawOrigin::Root, developer_id.clone(), contract_id.clone())
     verify {
         assert_last_event::<T>(Event::<T>::NewContract(developer_id, contract_id).into());
     }
@@ -143,26 +150,12 @@ benchmarks! {
         let staker = stakers[0].clone();
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
         DappsStaking::<T>::unregister(RawOrigin::Root.into(), contract_id.clone())?;
     }: _(RawOrigin::Signed(staker.clone()), contract_id.clone())
     verify {
         let staker_info = DappsStaking::<T>::staker_info(&staker, &contract_id);
         assert!(staker_info.latest_staked_value().is_zero());
-    }
-
-    enable_developer_pre_approval {
-        let pre_approval_enabled = true;
-    }: _(RawOrigin::Root, pre_approval_enabled)
-    verify {
-        assert!(PreApprovalIsEnabled::<T>::get());
-    }
-
-    developer_pre_approval {
-        let pre_approved_id: T::AccountId = account("pre_approved", 100, SEED);
-    }: _(RawOrigin::Root, pre_approved_id.clone())
-    verify {
-        assert!(PreApprovedDevelopers::<T>::contains_key(&pre_approved_id));
     }
 
     bond_and_stake {
@@ -175,7 +168,7 @@ benchmarks! {
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
         let amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount.clone())
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount)
     verify {
         assert_last_event::<T>(Event::<T>::BondAndStake(staker, contract_id, amount).into());
     }
@@ -190,9 +183,9 @@ benchmarks! {
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
         let amount = BalanceOf::<T>::max_value() / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), amount)?;
 
-    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount.clone())
+    }: _(RawOrigin::Signed(staker.clone()), contract_id.clone(), amount)
     verify {
         assert_last_event::<T>(Event::<T>::UnbondAndUnstake(staker, contract_id, amount).into());
     }
@@ -208,8 +201,8 @@ benchmarks! {
         let stake_amount = BalanceOf::<T>::max_value() / 2u32.into();
         let unstake_amount = stake_amount / 2u32.into();
 
-        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount.clone())?;
-        DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), unstake_amount.clone())?;
+        DappsStaking::<T>::bond_and_stake(RawOrigin::Signed(staker.clone()).into(), contract_id.clone(), stake_amount)?;
+        DappsStaking::<T>::unbond_and_unstake(RawOrigin::Signed(staker.clone()).into(), contract_id, unstake_amount)?;
 
         let current_era = DappsStaking::<T>::current_era();
         advance_to_era::<T>(current_era + 1 + T::UnbondingPeriod::get());

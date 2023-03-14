@@ -1,3 +1,21 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 // Copyright 2019-2022 PureStake Inc.
 // Copyright 2022      Stake Technologies
 // This file is part of AssetsERC20 package, originally developed by Purestake Inc.
@@ -70,6 +88,9 @@ pub enum Action {
     Name = "name()",
     Symbol = "symbol()",
     Decimals = "decimals()",
+    MinimumBalance = "minimumBalance()",
+    Mint = "mint(address,uint256)",
+    Burn = "burn(address,uint256)",
 }
 
 /// This trait ensure we can convert EVM address to AssetIds
@@ -87,7 +108,7 @@ pub trait AddressToAssetId<AssetId> {
 /// 1024-2047 Precompiles that are not in Ethereum Mainnet but are neither Astar specific
 /// 2048-4095 Astar specific precompiles
 /// Asset precompiles can only fall between
-/// 	0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+///     0xFFFFFFFF00000000000000000000000000000000 - 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 /// The precompile for AssetId X, where X is a u128 (i.e.16 bytes), if 0XFFFFFFFF + Bytes(AssetId)
 /// In order to route the address to Erc20AssetsPrecompile<R>, we first check whether the AssetId
 /// exists in pallet-assets
@@ -100,16 +121,22 @@ pub struct Erc20AssetsPrecompileSet<Runtime, Instance: 'static = ()>(
     PhantomData<(Runtime, Instance)>,
 );
 
+impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<Runtime, Instance> PrecompileSet for Erc20AssetsPrecompileSet<Runtime, Instance>
 where
     Instance: 'static,
     Runtime: pallet_assets::Config<Instance> + pallet_evm::Config + frame_system::Config,
-    Runtime::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
-    <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
+    Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    Runtime::RuntimeCall: From<pallet_assets::Call<Runtime, Instance>>,
+    <Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
     Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
-    <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: OriginTrait,
 {
     fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<EvmResult<PrecompileOutput>> {
         let address = handle.code_address();
@@ -125,15 +152,18 @@ where
                     };
 
                     if let Err(err) = handle.check_function_modifier(match selector {
-                        Action::Approve | Action::Transfer | Action::TransferFrom => {
-                            FunctionModifier::NonPayable
-                        }
+                        Action::Approve
+                        | Action::Transfer
+                        | Action::TransferFrom
+                        | Action::Mint
+                        | Action::Burn => FunctionModifier::NonPayable,
                         _ => FunctionModifier::View,
                     }) {
                         return Some(Err(err));
                     }
 
                     match selector {
+                        // XC20
                         Action::TotalSupply => Self::total_supply(asset_id, handle),
                         Action::BalanceOf => Self::balance_of(asset_id, handle),
                         Action::Allowance => Self::allowance(asset_id, handle),
@@ -143,6 +173,10 @@ where
                         Action::Name => Self::name(asset_id, handle),
                         Action::Symbol => Self::symbol(asset_id, handle),
                         Action::Decimals => Self::decimals(asset_id, handle),
+                        // XC20+
+                        Action::MinimumBalance => Self::minimum_balance(asset_id, handle),
+                        Action::Mint => Self::mint(asset_id, handle),
+                        Action::Burn => Self::burn(asset_id, handle),
                     }
                 };
                 return Some(result);
@@ -167,22 +201,16 @@ where
     }
 }
 
-impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance> {
-    pub fn new() -> Self {
-        Self(PhantomData)
-    }
-}
-
 impl<Runtime, Instance> Erc20AssetsPrecompileSet<Runtime, Instance>
 where
     Instance: 'static,
     Runtime: pallet_assets::Config<Instance> + pallet_evm::Config + frame_system::Config,
-    Runtime::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    Runtime::Call: From<pallet_assets::Call<Runtime, Instance>>,
-    <Runtime::Call as Dispatchable>::Origin: From<Option<Runtime::AccountId>>,
+    Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    Runtime::RuntimeCall: From<pallet_assets::Call<Runtime, Instance>>,
+    <Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
     BalanceOf<Runtime, Instance>: TryFrom<U256> + Into<U256> + EvmData,
     Runtime: AddressToAssetId<AssetIdOf<Runtime, Instance>>,
-    <<Runtime as frame_system::Config>::Call as Dispatchable>::Origin: OriginTrait,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: OriginTrait,
 {
     fn total_supply(
         asset_id: AssetIdOf<Runtime, Instance>,
@@ -271,7 +299,7 @@ where
                     handle,
                     Some(origin.clone()).into(),
                     pallet_assets::Call::<Runtime, Instance>::cancel_approval {
-                        id: asset_id,
+                        id: asset_id.into(),
                         delegate: Runtime::Lookup::unlookup(spender.clone()),
                     },
                 )?;
@@ -281,7 +309,7 @@ where
                 handle,
                 Some(origin).into(),
                 pallet_assets::Call::<Runtime, Instance>::approve_transfer {
-                    id: asset_id,
+                    id: asset_id.into(),
                     delegate: Runtime::Lookup::unlookup(spender),
                     amount,
                 },
@@ -322,7 +350,7 @@ where
                 handle,
                 Some(origin).into(),
                 pallet_assets::Call::<Runtime, Instance>::transfer {
-                    id: asset_id,
+                    id: asset_id.into(),
                     target: Runtime::Lookup::unlookup(to),
                     amount,
                 },
@@ -357,7 +385,7 @@ where
         {
             let caller: Runtime::AccountId =
                 Runtime::AddressMapping::into_account_id(handle.context().caller);
-            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from.clone());
+            let from: Runtime::AccountId = Runtime::AddressMapping::into_account_id(from);
             let to: Runtime::AccountId = Runtime::AddressMapping::into_account_id(to);
 
             // If caller is "from", it can spend as much as it wants from its own balance.
@@ -367,7 +395,7 @@ where
                     handle,
                     Some(caller).into(),
                     pallet_assets::Call::<Runtime, Instance>::transfer_approved {
-                        id: asset_id,
+                        id: asset_id.into(),
                         owner: Runtime::Lookup::unlookup(from),
                         destination: Runtime::Lookup::unlookup(to),
                         amount,
@@ -379,7 +407,7 @@ where
                     handle,
                     Some(from).into(),
                     pallet_assets::Call::<Runtime, Instance>::transfer {
-                        id: asset_id,
+                        id: asset_id.into(),
                         target: Runtime::Lookup::unlookup(to),
                         amount,
                     },
@@ -448,5 +476,71 @@ where
                 ))
                 .build(),
         ))
+    }
+
+    fn minimum_balance(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        handle.record_cost(RuntimeHelper::<Runtime>::db_read_gas_cost())?;
+
+        let min_balance: U256 =
+            pallet_assets::Pallet::<Runtime, Instance>::minimum_balance(asset_id).into();
+
+        Ok(succeed(EvmDataWriter::new().write(min_balance).build()))
+    }
+
+    fn mint(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let beneficiary: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let beneficiary = Runtime::AddressMapping::into_account_id(beneficiary);
+
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::mint {
+                id: asset_id.into(),
+                beneficiary: Runtime::Lookup::unlookup(beneficiary),
+                amount,
+            },
+        )?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn burn(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let who: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let who = Runtime::AddressMapping::into_account_id(who);
+
+        // Dispatch call (if enough gas).
+        RuntimeHelper::<Runtime>::try_dispatch(
+            handle,
+            Some(origin).into(),
+            pallet_assets::Call::<Runtime, Instance>::burn {
+                id: asset_id.into(),
+                who: Runtime::Lookup::unlookup(who),
+                amount,
+            },
+        )?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 }

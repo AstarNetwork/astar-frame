@@ -1,3 +1,21 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 //! # Block Reward Distribution Pallet
 //!
 //! - [`Config`]
@@ -114,7 +132,7 @@ pub mod pallet {
         type RewardAmount: Get<BalanceOf<Self>>;
 
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -139,17 +157,9 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
+    #[cfg_attr(feature = "std", derive(Default))]
     pub struct GenesisConfig {
         pub reward_config: RewardDistributionConfig,
-    }
-
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                reward_config: Default::default(),
-            }
-        }
     }
 
     #[pallet::genesis_build]
@@ -171,6 +181,7 @@ pub mod pallet {
         ///
         /// Emits `DistributionConfigurationChanged` with config embeded into event itself.
         ///
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::set_configuration())]
         pub fn set_configuration(
             origin: OriginFor<T>,

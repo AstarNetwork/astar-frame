@@ -1,10 +1,28 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 use super::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
-    weights::RuntimeDbWeight,
+    weights::{RuntimeDbWeight, Weight},
     PalletId,
 };
 use pallet_dapps_staking::weights;
@@ -16,7 +34,7 @@ use sp_core::{H160, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, ConstU32, IdentityLookup},
     AccountId32,
 };
 extern crate alloc;
@@ -129,7 +147,7 @@ pub const WRITE_WEIGHT: u64 = 7;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub BlockWeights: frame_system::limits::BlockWeights =
-        frame_system::limits::BlockWeights::simple_max(1024);
+        frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
     pub const TestWeights: RuntimeDbWeight = RuntimeDbWeight {
         read: READ_WEIGHT,
         write: WRITE_WEIGHT,
@@ -140,16 +158,16 @@ impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type Index = u64;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId32;
     type Lookup = IdentityLookup<AccountId32>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = TestWeights;
     type Version = ();
@@ -171,7 +189,7 @@ impl pallet_balances::Config for TestRuntime {
     type ReserveIdentifier = [u8; 4];
     type MaxLocks = ();
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -204,16 +222,18 @@ where
 
 parameter_types! {
     pub PrecompilesValue: DappPrecompile<TestRuntime> = DappPrecompile(Default::default());
+    pub WeightPerGas: Weight = Weight::from_ref_time(1);
 }
 
 impl pallet_evm::Config for TestRuntime {
     type FeeCalculator = ();
-    type GasWeightMapping = ();
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+    type WeightPerGas = WeightPerGas;
     type CallOrigin = EnsureAddressRoot<AccountId32>;
     type WithdrawOrigin = EnsureAddressNever<AccountId32>;
     type AddressMapping = TestAccount;
     type Currency = Balances;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Runner = pallet_evm::runner::stack::Runner<Self>;
     type PrecompilesType = DappPrecompile<TestRuntime>;
     type PrecompilesValue = PrecompilesValue;
@@ -234,7 +254,9 @@ impl pallet_timestamp::Config for TestRuntime {
     type WeightInfo = ();
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum MockSmartContract<AccountId32> {
     Evm(sp_core::H160),
     Wasm(AccountId32),
@@ -243,15 +265,6 @@ pub enum MockSmartContract<AccountId32> {
 impl<AccountId32> Default for MockSmartContract<AccountId32> {
     fn default() -> Self {
         MockSmartContract::Evm(H160::repeat_byte(0x00))
-    }
-}
-
-impl<AccountId32> pallet_dapps_staking::IsContract for MockSmartContract<AccountId32> {
-    fn is_valid(&self) -> bool {
-        match self {
-            MockSmartContract::Wasm(_account) => false,
-            MockSmartContract::Evm(_account) => true,
-        }
     }
 }
 
@@ -268,7 +281,7 @@ parameter_types! {
 }
 
 impl pallet_dapps_staking::Config for TestRuntime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type BlockPerEra = BlockPerEra;
     type RegisterDeposit = RegisterDeposit;
@@ -281,6 +294,7 @@ impl pallet_dapps_staking::Config for TestRuntime {
     type MaxUnlockingChunks = MaxUnlockingChunks;
     type UnbondingPeriod = UnbondingPeriod;
     type MaxEraStakeValues = MaxEraStakeValues;
+    type UnregisteredDappRewardRetention = ConstU32<2>;
 }
 
 pub struct ExternalityBuilder {
@@ -317,16 +331,17 @@ impl ExternalityBuilder {
 }
 
 construct_runtime!(
-    pub enum TestRuntime where
+    pub struct TestRuntime
+    where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Evm: pallet_evm::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        DappsStaking: pallet_dapps_staking::{Pallet, Call, Storage, Event<T>},
+        System: frame_system,
+        Balances: pallet_balances,
+        Evm: pallet_evm,
+        Timestamp: pallet_timestamp,
+        DappsStaking: pallet_dapps_staking,
     }
 );
 

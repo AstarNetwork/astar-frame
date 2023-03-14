@@ -1,10 +1,30 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 //! Testing utilities.
 
 use super::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-    construct_runtime, pallet_prelude::Weight, parameter_types, traits::Everything,
+    construct_runtime, parameter_types,
+    traits::{AsEnsureOriginWithArg, Everything},
+    weights::Weight,
 };
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
@@ -13,15 +33,19 @@ use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
-use sp_core::{H160, H256};
+use sp_core::{ConstU32, H160, H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
-use sp_std::borrow::Borrow;
+use sp_std::{borrow::Borrow, cell::RefCell};
 
 use xcm::prelude::XcmVersion;
-use xcm_builder::{FixedWeightBounds, LocationInverter, SignedToAccountId32};
+use xcm_builder::{
+    test_utils::TransactAsset, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, LocationInverter, SignedToAccountId32,
+    TakeWeightCredit,
+};
 use xcm_executor::XcmExecutor;
 
 pub type AccountId = TestAccount;
@@ -132,16 +156,16 @@ parameter_types! {
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type DbWeight = ();
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type Index = u64;
     type BlockNumber = BlockNumber;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type Version = ();
     type PalletInfo = PalletInfo;
@@ -201,7 +225,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
     type MaxLocks = ();
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -220,7 +244,7 @@ parameter_types! {
 }
 
 impl pallet_assets::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type AssetId = AssetId;
     type Currency = Balances;
@@ -233,7 +257,11 @@ impl pallet_assets::Config for Runtime {
     type StringLimit = AssetsStringLimit;
     type Freezer = ();
     type Extra = ();
+    type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
     type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+    type RemoveItemsLimit = ConstU32<0>;
+    type AssetIdParameter = AssetId;
+    type CallbackHandle = ();
 }
 
 pub struct AssetIdConverter<AssetId>(PhantomData<AssetId>);
@@ -260,16 +288,18 @@ where
 parameter_types! {
     pub const PrecompilesValue: TestPrecompileSet<Runtime> =
         TestPrecompileSet(PhantomData);
+    pub WeightPerGas: Weight = Weight::from_ref_time(1);
 }
 
 impl pallet_evm::Config for Runtime {
     type FeeCalculator = ();
-    type GasWeightMapping = ();
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+    type WeightPerGas = WeightPerGas;
     type CallOrigin = EnsureAddressRoot<AccountId>;
     type WithdrawOrigin = EnsureAddressNever<AccountId>;
     type AddressMapping = AccountId;
     type Currency = Balances;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Runner = pallet_evm::runner::stack::Runner<Self>;
     type PrecompilesType = TestPrecompileSet<Self>;
     type PrecompilesValue = PrecompilesValue;
@@ -284,25 +314,44 @@ parameter_types! {
     pub const RelayLocation: MultiLocation = Here.into();
     pub const AnyNetwork: NetworkId = NetworkId::Any;
     pub Ancestry: MultiLocation = Here.into();
-    pub UnitWeightCost: Weight = 1_000;
+    pub UnitWeightCost: u64 = 1_000;
 }
 
 parameter_types! {
-    pub const BaseXcmWeight: Weight = 1_000;
+    pub const BaseXcmWeight: u64 = 1_000;
     pub const MaxInstructions: u32 = 100;
+}
+
+pub type Barrier = (
+    TakeWeightCredit,
+    AllowTopLevelPaidExecutionFrom<Everything>,
+    AllowKnownQueryResponses<XcmPallet>,
+    AllowSubscriptionsFrom<Everything>,
+);
+
+pub struct LocalAssetTransactor;
+
+impl TransactAsset for LocalAssetTransactor {
+    fn transfer_asset(
+        _asset: &MultiAsset,
+        _from: &MultiLocation,
+        _to: &MultiLocation,
+    ) -> Result<xcm_executor::Assets, XcmError> {
+        Ok(xcm_executor::Assets::new())
+    }
 }
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-    type Call = Call;
-    type XcmSender = ();
-    type AssetTransactor = ();
+    type RuntimeCall = RuntimeCall;
+    type XcmSender = StoringRouter;
+    type AssetTransactor = LocalAssetTransactor;
     type OriginConverter = ();
     type IsReserve = ();
     type IsTeleporter = ();
     type LocationInverter = LocationInverter<Ancestry>;
-    type Barrier = ();
-    type Weigher = FixedWeightBounds<BaseXcmWeight, Call, MaxInstructions>;
+    type Barrier = Barrier;
+    type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type Trader = ();
     type ResponseHandler = XcmPallet;
     type AssetTrap = XcmPallet;
@@ -314,21 +363,45 @@ parameter_types! {
     pub static AdvertisedXcmVersion: XcmVersion = 2;
 }
 
-pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, AnyNetwork>;
+pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
+
+thread_local! {
+    pub static SENT_XCM: RefCell<Vec<(MultiLocation, Xcm<()>)>> = RefCell::new(Vec::new());
+}
+
+pub(crate) fn _sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
+    SENT_XCM.with(|q| (*q.borrow()).clone())
+}
+
+pub(crate) fn take_sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
+    SENT_XCM.with(|q| {
+        let mut r = Vec::new();
+        std::mem::swap(&mut r, &mut *q.borrow_mut());
+        r
+    })
+}
+
+pub struct StoringRouter;
+impl SendXcm for StoringRouter {
+    fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+        SENT_XCM.with(|q| q.borrow_mut().push((dest.into(), msg)));
+        Ok(())
+    }
+}
 
 impl pallet_xcm::Config for Runtime {
-    type Event = Event;
-    type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-    type XcmRouter = ();
-    type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+    type RuntimeEvent = RuntimeEvent;
+    type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+    type XcmRouter = StoringRouter;
+    type ExecuteXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmExecuteFilter = Everything;
     type XcmExecutor = XcmExecutor<XcmConfig>;
     type XcmTeleportFilter = Everything;
     type XcmReserveTransferFilter = Everything;
-    type Weigher = FixedWeightBounds<BaseXcmWeight, Call, MaxInstructions>;
+    type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type LocationInverter = LocationInverter<Ancestry>;
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
     type AdvertisedXcmVersion = AdvertisedXcmVersion;
 }
@@ -340,12 +413,12 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
-        Evm: pallet_evm::{Pallet, Config, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        XcmPallet: pallet_xcm::{Pallet, Call, Storage, Event<T>, Origin, Config},
+        System: frame_system,
+        Balances: pallet_balances,
+        Assets: pallet_assets,
+        Evm: pallet_evm,
+        Timestamp: pallet_timestamp,
+        XcmPallet: pallet_xcm,
     }
 );
 

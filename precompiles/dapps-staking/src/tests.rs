@@ -1,10 +1,30 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
+extern crate alloc;
 use crate::{
     mock::{
         advance_to_era, initialize_first_block, precompile_address, DappsStaking, EraIndex,
-        ExternalityBuilder, Origin, TestAccount, AST, UNBONDING_PERIOD, *,
+        ExternalityBuilder, RuntimeOrigin, TestAccount, AST, UNBONDING_PERIOD, *,
     },
     *,
 };
+use fp_evm::ExitError;
 use frame_support::assert_ok;
 use pallet_dapps_staking::RewardDestination;
 use precompile_utils::testing::*;
@@ -111,14 +131,25 @@ fn read_era_staked_is_ok() {
 }
 
 #[test]
-fn register_is_ok() {
+fn register_via_precompile_fails() {
     ExternalityBuilder::default()
         .with_balances(vec![(TestAccount::Alex.into(), 200 * AST)])
         .build()
         .execute_with(|| {
             initialize_first_block();
 
-            register_and_verify(TestAccount::Alex, TEST_CONTRACT);
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alex,
+                    precompile_address(),
+                    EvmDataWriter::new_with_selector(Action::Register)
+                        .write(Address(TEST_CONTRACT.clone()))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_error(ExitError::Other(alloc::borrow::Cow::Borrowed(
+                    "register via evm precompile is not allowed",
+                )));
         });
 }
 
@@ -324,7 +355,7 @@ fn withdraw_from_unregistered() {
 
             let contract_id =
                 decode_smart_contract_from_array(TEST_CONTRACT.clone().to_fixed_bytes()).unwrap();
-            assert_ok!(DappsStaking::unregister(Origin::root(), contract_id));
+            assert_ok!(DappsStaking::unregister(RuntimeOrigin::root(), contract_id));
 
             withdraw_from_unregistered_verify(TestAccount::Bobo.into(), TEST_CONTRACT);
         });
@@ -368,16 +399,14 @@ fn nomination_transfer() {
 
 /// helper function to register and verify if registration is valid
 fn register_and_verify(developer: TestAccount, contract: H160) {
-    precompiles()
-        .prepare_test(
-            developer.clone(),
-            precompile_address(),
-            EvmDataWriter::new_with_selector(Action::Register)
-                .write(Address(contract.clone()))
-                .build(),
-        )
-        .expect_no_logs()
-        .execute_returns(EvmDataWriter::new().write(true).build());
+    let smart_contract =
+        decode_smart_contract_from_array(contract.clone().to_fixed_bytes()).unwrap();
+    DappsStaking::register(
+        RuntimeOrigin::root(),
+        developer.clone().into(),
+        smart_contract,
+    )
+    .unwrap();
 
     // check the storage after the register
     let dev_account_id: AccountId32 = developer.into();

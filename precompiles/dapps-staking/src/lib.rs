@@ -1,3 +1,21 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 //! Astar dApps staking interface.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -13,7 +31,7 @@ use frame_support::{
 use pallet_dapps_staking::RewardDestination;
 use pallet_evm::{AddressMapping, Precompile};
 use precompile_utils::{
-    revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
+    error, revert, succeed, Address, Bytes, EvmData, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
 use sp_core::H160;
@@ -46,9 +64,9 @@ impl<R> DappsStakingWrapper<R>
 where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
     BalanceOf<R>: EvmData,
-    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
-    R::Call: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    R::Call: From<pallet_dapps_staking::Call<R>>,
+    <R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
+    R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    R::RuntimeCall: From<pallet_dapps_staking::Call<R>>,
     R::AccountId: From<[u8; 32]>,
 {
     /// Fetch current era from CurrentEra storage map
@@ -97,7 +115,7 @@ where
         // parse input parameters for pallet-dapps-staking call
         let mut input = handle.read_input()?;
         input.expect_arguments(1)?;
-        let era: u32 = input.read::<u32>()?.into();
+        let era: u32 = input.read::<u32>()?;
 
         // call pallet-dapps-staking
         let reward_and_stake = pallet_dapps_staking::GeneralEraInfo::<R>::get(era);
@@ -175,22 +193,10 @@ where
     }
 
     /// Register contract with the dapp-staking pallet
-    fn register(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
-        let mut input = handle.read_input()?;
-        input.expect_arguments(1)?;
-
-        // parse contract's address
-        let contract_h160 = input.read::<Address>()?.0;
-        let contract_id = Self::decode_smart_contract(contract_h160)?;
-        log::trace!(target: "ds-precompile", "register {:?}", contract_id);
-
-        // Build call with origin.
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::register { contract_id }.into();
-
-        RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
-
-        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    /// Register is root origin only. This should always fail when called via evm precompile.
+    fn register(_: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        // register is root-origin call. it should always fail when called via evm precompiles.
+        Err(error("register via evm precompile is not allowed"))
     }
 
     /// Lock up and stake balance of the origin account.
@@ -209,7 +215,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::bond_and_stake { contract_id, value }.into();
+        let call = pallet_dapps_staking::Call::<R>::bond_and_stake { contract_id, value };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -231,8 +237,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_dapps_staking::Call::<R>::unbond_and_unstake { contract_id, value }.into();
+        let call = pallet_dapps_staking::Call::<R>::unbond_and_unstake { contract_id, value };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -243,7 +248,7 @@ where
     fn withdraw_unbonded(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::withdraw_unbonded {}.into();
+        let call = pallet_dapps_staking::Call::<R>::withdraw_unbonded {};
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -260,12 +265,12 @@ where
         let contract_id = Self::decode_smart_contract(contract_h160)?;
 
         // parse era
-        let era: u32 = input.read::<u32>()?.into();
+        let era: u32 = input.read::<u32>()?;
         log::trace!(target: "ds-precompile", "claim_dapp {:?}, era {:?}", contract_id, era);
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::claim_dapp { contract_id, era }.into();
+        let call = pallet_dapps_staking::Call::<R>::claim_dapp { contract_id, era };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -284,7 +289,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_dapps_staking::Call::<R>::claim_staker { contract_id }.into();
+        let call = pallet_dapps_staking::Call::<R>::claim_staker { contract_id };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -305,17 +310,14 @@ where
         } else if reward_destination_raw == 1 {
             RewardDestination::StakeBalance
         } else {
-            return Err(precompile_utils::error(
-                "Unexpected reward destination value.",
-            ));
+            return Err(error("Unexpected reward destination value."));
         };
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         log::trace!(target: "ds-precompile", "set_reward_destination {:?} {:?}", origin, reward_destination);
 
-        let call =
-            pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination }.into();
+        let call = pallet_dapps_staking::Call::<R>::set_reward_destination { reward_destination };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -335,8 +337,7 @@ where
 
         // Build call with origin.
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_dapps_staking::Call::<R>::withdraw_from_unregistered { contract_id }.into();
+        let call = pallet_dapps_staking::Call::<R>::withdraw_from_unregistered { contract_id };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -367,8 +368,7 @@ where
             origin_contract_id,
             value,
             target_contract_id,
-        }
-        .into();
+        };
 
         RuntimeHelper::<R>::try_dispatch(handle, Some(origin).into(), call)?;
 
@@ -445,10 +445,10 @@ pub enum Action {
 impl<R> Precompile for DappsStakingWrapper<R>
 where
     R: pallet_evm::Config + pallet_dapps_staking::Config,
-    R::Call: From<pallet_dapps_staking::Call<R>>
+    R::RuntimeCall: From<pallet_dapps_staking::Call<R>>
         + Dispatchable<PostInfo = PostDispatchInfo>
         + GetDispatchInfo,
-    <R::Call as Dispatchable>::Origin: From<Option<R::AccountId>>,
+    <R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
     BalanceOf<R>: EvmData,
     R::AccountId: From<[u8; 32]>,
 {
@@ -470,15 +470,13 @@ where
 
         match selector {
             // read storage
-            Action::ReadCurrentEra => return Self::read_current_era(handle),
-            Action::ReadUnbondingPeriod => return Self::read_unbonding_period(handle),
-            Action::ReadEraReward => return Self::read_era_reward(handle),
-            Action::ReadEraStaked => return Self::read_era_staked(handle),
-            Action::ReadStakedAmount => return Self::read_staked_amount(handle),
-            Action::ReadStakedAmountOnContract => {
-                return Self::read_staked_amount_on_contract(handle)
-            }
-            Action::ReadContractStake => return Self::read_contract_stake(handle),
+            Action::ReadCurrentEra => Self::read_current_era(handle),
+            Action::ReadUnbondingPeriod => Self::read_unbonding_period(handle),
+            Action::ReadEraReward => Self::read_era_reward(handle),
+            Action::ReadEraStaked => Self::read_era_staked(handle),
+            Action::ReadStakedAmount => Self::read_staked_amount(handle),
+            Action::ReadStakedAmountOnContract => Self::read_staked_amount_on_contract(handle),
+            Action::ReadContractStake => Self::read_contract_stake(handle),
             // Dispatchables
             Action::Register => Self::register(handle),
             Action::BondAndStake => Self::bond_and_stake(handle),

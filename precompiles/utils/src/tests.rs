@@ -1,5 +1,9 @@
+// This file is part of Astar.
+
 // Copyright 2019-2022 PureStake Inc.
-// Copyright 2022      Stake Technologies
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // This file is part of Utils package, originally developed by Purestake Inc.
 // Utils package used in Astar Network in terms of GPLv3.
 //
@@ -20,6 +24,7 @@ use super::*;
 use crate::data::xcm::{network_id_from_bytes, network_id_to_bytes};
 use hex_literal::hex;
 use sp_core::{H256, U256};
+use sp_runtime::WeakBoundedVec;
 use sp_std::convert::TryInto;
 use xcm::latest::{Junction, Junctions, NetworkId};
 
@@ -874,8 +879,12 @@ fn network_id_decoder_works() {
     );
 
     assert_eq!(
-        network_id_from_bytes(network_id_to_bytes(NetworkId::Named(b"myname".to_vec()))),
-        Ok(NetworkId::Named(b"myname".to_vec()))
+        network_id_from_bytes(network_id_to_bytes(NetworkId::Named(
+            WeakBoundedVec::try_from(b"myname".to_vec()).unwrap()
+        ))),
+        Ok(NetworkId::Named(
+            WeakBoundedVec::try_from(b"myname".to_vec()).unwrap()
+        ))
     );
 
     assert_eq!(

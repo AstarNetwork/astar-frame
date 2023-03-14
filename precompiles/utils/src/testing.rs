@@ -1,5 +1,9 @@
+// This file is part of Astar.
+
 // Copyright 2019-2022 PureStake Inc.
-// Copyright 2022      Stake Technologies
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // This file is part of Utils package, originally developed by Purestake Inc.
 // Utils package used in Astar Network in terms of GPLv3.
 //
@@ -15,7 +19,6 @@
 
 // You should have received a copy of the GNU General Public License
 // along with Utils.  If not, see <http://www.gnu.org/licenses/>.
-
 use super::*;
 use core::assert_matches::assert_matches;
 use fp_evm::{
@@ -72,6 +75,68 @@ impl MockHandle {
     }
 }
 
+// Compute the cost of doing a subcall.
+// Some parameters cannot be known in advance, so we estimate the worst possible cost.
+pub fn call_cost(value: U256, config: &evm::Config) -> u64 {
+    // Copied from EVM code since not public.
+    pub const G_CALLVALUE: u64 = 9000;
+    pub const G_NEWACCOUNT: u64 = 25000;
+
+    fn address_access_cost(is_cold: bool, regular_value: u64, config: &evm::Config) -> u64 {
+        if config.increase_state_access_gas {
+            if is_cold {
+                config.gas_account_access_cold
+            } else {
+                config.gas_storage_read_warm
+            }
+        } else {
+            regular_value
+        }
+    }
+
+    fn xfer_cost(is_call_or_callcode: bool, transfers_value: bool) -> u64 {
+        if is_call_or_callcode && transfers_value {
+            G_CALLVALUE
+        } else {
+            0
+        }
+    }
+
+    fn new_cost(
+        is_call_or_staticcall: bool,
+        new_account: bool,
+        transfers_value: bool,
+        config: &evm::Config,
+    ) -> u64 {
+        let eip161 = !config.empty_considered_exists;
+        if is_call_or_staticcall {
+            if eip161 {
+                if transfers_value && new_account {
+                    G_NEWACCOUNT
+                } else {
+                    0
+                }
+            } else if new_account {
+                G_NEWACCOUNT
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    }
+
+    let transfers_value = value != U256::default();
+    let is_cold = true;
+    let is_call_or_callcode = true;
+    let is_call_or_staticcall = true;
+    let new_account = true;
+
+    address_access_cost(is_cold, config.gas_call, config)
+        + xfer_cost(is_call_or_callcode, transfers_value)
+        + new_cost(is_call_or_staticcall, new_account, transfers_value, config)
+}
+
 impl PrecompileHandle for MockHandle {
     /// Perform subcall in provided context.
     /// Precompile specifies in which context the subcall is executed.
@@ -85,10 +150,7 @@ impl PrecompileHandle for MockHandle {
         context: &Context,
     ) -> (ExitReason, Vec<u8>) {
         if self
-            .record_cost(super::call_cost(
-                context.apparent_value,
-                &evm::Config::london(),
-            ))
+            .record_cost(call_cost(context.apparent_value, &evm::Config::london()))
             .is_err()
         {
             return (ExitReason::Error(ExitError::OutOfGas), vec![]);
@@ -194,7 +256,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
     ) -> Self {
         let to = to.into();
         let mut handle = MockHandle::new(
-            to.clone(),
+            to,
             Context {
                 address: to,
                 caller: from.into(),
@@ -243,7 +305,7 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
 
     pub fn expect_log(mut self, log: Log) -> Self {
         self.expected_logs = Some({
-            let mut logs = self.expected_logs.unwrap_or_else(Vec::new);
+            let mut logs = self.expected_logs.unwrap_or_default();
             logs.push(PrettyLog(log));
             logs
         });

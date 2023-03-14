@@ -1,3 +1,21 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
+
 //! # Cross-chain Asset Config Pallet
 //!
 //! ## Overview
@@ -49,7 +67,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
     use crate::weights::WeightInfo;
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, traits::EnsureOrigin};
     use frame_system::pallet_prelude::*;
     use parity_scale_codec::HasCompact;
     use sp_std::boxed::Box;
@@ -66,6 +84,12 @@ pub mod pallet {
 
         /// Will be called by pallet when asset Id has been unregistered
         fn xc_asset_unregistered(asset_id: T::AssetId);
+    }
+
+    /// Implementation that does nothing
+    impl<T: Config> XcAssetChanged<T> for () {
+        fn xc_asset_registered(_: T::AssetId) {}
+        fn xc_asset_unregistered(_: T::AssetId) {}
     }
 
     /// Defines conversion between asset Id and cross-chain asset location
@@ -85,7 +109,7 @@ pub mod pallet {
 
     impl<T: Config> XcAssetLocation<T::AssetId> for Pallet<T> {
         fn get_xc_asset_location(asset_id: T::AssetId) -> Option<MultiLocation> {
-            AssetIdToLocation::<T>::get(asset_id).map_or(None, |x| x.try_into().ok())
+            AssetIdToLocation::<T>::get(asset_id).and_then(|x| x.try_into().ok())
         }
 
         fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
@@ -101,7 +125,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The Asset Id. This will be used to create the asset and to associate it with
         /// a AssetLocation
@@ -109,6 +133,11 @@ pub mod pallet {
 
         /// Callback handling for cross-chain asset registration or unregistration.
         type XcAssetChanged: XcAssetChanged<Self>;
+
+        /// The required origin for managing cross-chain asset configuration
+        ///
+        /// Should most likely be root.
+        type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
         type WeightInfo: WeightInfo;
     }
@@ -181,13 +210,14 @@ pub mod pallet {
         /// Register new asset location to asset Id mapping.
         ///
         /// This makes the asset eligible for XCM interaction.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::register_asset_location())]
         pub fn register_asset_location(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             // Ensure such an assetId does not exist
             ensure!(
@@ -198,7 +228,7 @@ pub mod pallet {
             let asset_location = *asset_location;
 
             AssetIdToLocation::<T>::insert(&asset_id, asset_location.clone());
-            AssetLocationToId::<T>::insert(&asset_location, asset_id.clone());
+            AssetLocationToId::<T>::insert(&asset_location, asset_id);
 
             T::XcAssetChanged::xc_asset_registered(asset_id);
 
@@ -211,13 +241,14 @@ pub mod pallet {
 
         /// Change the amount of units we are charging per execution second
         /// for a given AssetLocation.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::set_asset_units_per_second())]
         pub fn set_asset_units_per_second(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] units_per_second: u128,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location = *asset_location;
 
@@ -237,13 +268,14 @@ pub mod pallet {
 
         /// Change the xcm type mapping for a given asset Id.
         /// The new asset type will inherit old `units per second` value.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::change_existing_asset_location())]
         pub fn change_existing_asset_location(
             origin: OriginFor<T>,
             new_asset_location: Box<VersionedMultiLocation>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let new_asset_location = *new_asset_location;
 
@@ -252,7 +284,7 @@ pub mod pallet {
 
             // Insert new asset type info
             AssetIdToLocation::<T>::insert(&asset_id, new_asset_location.clone());
-            AssetLocationToId::<T>::insert(&new_asset_location, asset_id.clone());
+            AssetLocationToId::<T>::insert(&new_asset_location, asset_id);
 
             // Remove previous asset type info
             AssetLocationToId::<T>::remove(&previous_asset_location);
@@ -273,12 +305,13 @@ pub mod pallet {
         /// Removes asset from the set of supported payment assets.
         ///
         /// The asset can still be interacted with via XCM but it cannot be used to pay for execution time.
+        #[pallet::call_index(3)]
         #[pallet::weight(T::WeightInfo::remove_payment_asset())]
         pub fn remove_payment_asset(
             origin: OriginFor<T>,
             asset_location: Box<VersionedMultiLocation>,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location = *asset_location;
 
@@ -289,12 +322,13 @@ pub mod pallet {
         }
 
         /// Removes all information related to asset, removing it from XCM support.
+        #[pallet::call_index(4)]
         #[pallet::weight(T::WeightInfo::remove_asset())]
         pub fn remove_asset(
             origin: OriginFor<T>,
             #[pallet::compact] asset_id: T::AssetId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let asset_location =
                 AssetIdToLocation::<T>::get(&asset_id).ok_or(Error::<T>::AssetDoesNotExist)?;
