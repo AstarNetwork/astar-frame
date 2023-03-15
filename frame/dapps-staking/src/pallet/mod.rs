@@ -34,6 +34,8 @@ const STAKING_ID: LockIdentifier = *b"dapstake";
 pub mod pallet {
     use super::*;
 
+    const MAX_DELEGATION_CHAIN_DEPTH: u32 = 3;
+
     /// The balance type of this pallet.
     pub type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -204,6 +206,20 @@ pub mod pallet {
     #[pallet::getter(fn storage_version)]
     pub(crate) type StorageVersion<T> = StorageValue<_, Version, ValueQuery>;
 
+    /// Reward delegation chain.
+    #[pallet::storage]
+    #[pallet::getter(fn delegation)]
+    pub type DelegationChain<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId, // rewarded staker account
+        Blake2_128Concat,
+        T::SmartContract,
+        T::AccountId, // account to delegate reward to
+        OptionQuery,
+    >;
+    
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -292,6 +308,8 @@ pub mod pallet {
         NotActiveStaker,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
+        /// reward delegation to itself
+        SelfDelegation,
     }
 
     #[pallet::hooks]
@@ -984,6 +1002,22 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        #[pallet::call_index(14)]
+        #[pallet::weight(0)] // TODO manage weight here
+        pub fn set_delegate_reward_account(
+            origin: OriginFor<T>,
+            contract_id: T::SmartContract,
+            delegate: T::AccountId
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let staker = ensure_signed(origin)?;
+            ensure!(staker != delegate, Error::<T>::SelfDelegation);
+
+            DelegationChain::<T>::insert(&staker, contract_id, delegate);
+            
+            Ok(().into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -1253,6 +1287,31 @@ pub mod pallet {
             reward_destination == RewardDestination::StakeBalance
                 && dapp_state == DAppState::Registered
                 && latest_staked_value > Zero::zero()
+        }
+
+        pub(crate) fn delegate_reward_to(
+            staker: &T::AccountId,
+            contract_id: &T::SmartContract,
+            reward_destination: RewardDestination,
+            dapp_state: DAppState,
+            latest_staked_value: BalanceOf<T>,
+        ) -> Option<T::AccountId> {
+            if reward_destination == RewardDestination::Delegate 
+                && dapp_state == DAppState::Registered
+                && latest_staked_value > Zero::zero() {
+
+                let mut i = 0;
+                let mut curr = Self::delegation(staker, contract_id.clone());
+                while i < MAX_DELEGATION_CHAIN_DEPTH && curr.is_some() {
+                    i += 1;
+                    let next = Self::delegation(curr.as_ref().unwrap(), contract_id.clone());
+                    if next.is_none() { 
+                        return curr; 
+                    }
+                    curr = next;
+                }
+                curr
+            } else { None }
         }
 
         /// Calculate reward split between developer and stakers.

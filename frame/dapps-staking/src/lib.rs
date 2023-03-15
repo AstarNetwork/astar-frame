@@ -547,6 +547,8 @@ pub enum RewardDestination {
     /// Rewards are transferred to stakers balance and are immediately re-staked
     /// on the contract from which the reward was received.
     StakeBalance,
+
+    Delegate,
 }
 
 impl Default for RewardDestination {
@@ -578,3 +580,4 @@ impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> AccountLedg
         self.reward_destination
     }
 }
+

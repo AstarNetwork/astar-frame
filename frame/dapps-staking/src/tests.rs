@@ -2318,3 +2318,34 @@ fn burn_stale_reward_negative_checks() {
         );
     })
 }
+
+#[test]
+fn delegation_basic_test() {
+    ExternalityBuilder::build().execute_with(|| {
+
+        initialize_first_block();
+
+        let developer = 1;
+        let staker = 2;
+        let delegate_to = 4;
+        let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
+
+        // stake some tokens
+        let start_era = DappsStaking::current_era();
+        assert_register(developer, &contract_id);
+        let stake_value = 100;
+        assert_bond_and_stake(staker, &contract_id, stake_value);
+
+        assert_ok!(DappsStaking::set_delegate_reward_account(
+            RuntimeOrigin::signed(staker), 
+            contract_id,
+            delegate_to,
+        ));
+
+        // disable reward restaking
+        advance_to_era(start_era + 1);
+   
+        assert_set_reward_destination(staker, RewardDestination::Delegate);
+
+    })
+}

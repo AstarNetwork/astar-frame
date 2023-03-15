@@ -305,12 +305,11 @@ where
         let reward_destination_raw = input.read::<u8>()?;
 
         // Transform raw value into dapps staking enum
-        let reward_destination = if reward_destination_raw == 0 {
-            RewardDestination::FreeBalance
-        } else if reward_destination_raw == 1 {
-            RewardDestination::StakeBalance
-        } else {
-            return Err(error("Unexpected reward destination value."));
+        let reward_destination = match reward_destination_raw {
+            0 => RewardDestination::FreeBalance,
+            1 => RewardDestination::StakeBalance,
+            2 => RewardDestination::Delegate,
+            _ => return Err(error("Unexpected reward destination value.")),
         };
 
         // Build call with origin.
