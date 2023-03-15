@@ -292,6 +292,9 @@ pub mod pallet {
         NotActiveStaker,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
+        /// When a staker delegates rewards to themselves using RewardDestination::Delegated instead
+        /// of RewardDestination::FreeBalance
+        CircularRewardDelegation,
     }
 
     #[pallet::hooks]
@@ -747,8 +750,9 @@ pub mod pallet {
 
             let mut ledger = Self::ledger(&staker);
 
+            let reward_destination = ledger.reward_destination.clone();
             let should_restake_reward = Self::should_restake_reward(
-                ledger.reward_destination.clone(),
+                reward_destination.clone(),
                 dapp_info.state,
                 staker_info.latest_staked_value(),
             );
@@ -798,10 +802,17 @@ pub mod pallet {
                     staker_reward,
                 ));
             }
+            
+            let deposit_reward_to = Self::delegate_reward_to(
+                reward_destination,
+                dapp_info.state,
+                staker_info.latest_staked_value(),
+            )
+            .unwrap_or(staker.clone());
 
-            T::Currency::resolve_creating(&staker, reward_imbalance);
+            T::Currency::resolve_creating(&deposit_reward_to, reward_imbalance);
             Self::update_staker_info(&staker, &contract_id, staker_info);
-            Self::deposit_event(Event::<T>::Reward(staker, contract_id, era, staker_reward));
+            Self::deposit_event(Event::<T>::Reward(deposit_reward_to, contract_id, era, staker_reward));
 
             Ok(Some(if should_restake_reward {
                 T::WeightInfo::claim_staker_with_restake()
@@ -904,6 +915,10 @@ pub mod pallet {
             let mut ledger = Self::ledger(&staker);
 
             ensure!(!ledger.is_empty(), Error::<T>::NotActiveStaker);
+
+            if let RewardDestination::Delegate(delegated_account) = reward_destination.clone() {
+                ensure!(delegated_account != staker, Error::<T>::CircularRewardDelegation);
+            }
 
             // this is done directly instead of using update_ledger helper
             // because there's no need to interact with the Currency locks
@@ -1253,6 +1268,20 @@ pub mod pallet {
             reward_destination == RewardDestination::<T::AccountId>::StakeBalance
                 && dapp_state == DAppState::Registered
                 && latest_staked_value > Zero::zero()
+        }
+
+        pub(crate) fn delegate_reward_to(
+            reward_destination: RewardDestination::<T::AccountId>,
+            dapp_state: DAppState,
+            latest_staked_value: BalanceOf<T>,
+        ) -> Option<T::AccountId> {
+            if let RewardDestination::<T::AccountId>::Delegate(delegate) = reward_destination {
+                if dapp_state == DAppState::Registered && latest_staked_value > Zero::zero() {
+                    // TODO: maybe check if delegate account exists ?
+                    Some(delegate)
+                }
+                else { None }
+            } else { None }
         }
 
         /// Calculate reward split between developer and stakers.

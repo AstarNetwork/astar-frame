@@ -1771,6 +1771,7 @@ fn claim_after_unregister_is_ok() {
 #[test]
 fn claim_only_payout_is_ok() {
     ExternalityBuilder::build().execute_with(|| {
+
         initialize_first_block();
 
         let developer = 1;

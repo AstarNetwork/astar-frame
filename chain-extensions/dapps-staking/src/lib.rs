@@ -314,14 +314,16 @@ where
                 env.charge_weight(base_weight)?;
 
                 // Transform raw value into dapps staking enum
-                let reward_destination = if reward_destination_raw == 0 {
-                    RewardDestination::<T::AccountId>::FreeBalance
-                } else if reward_destination_raw == 1 {
-                    RewardDestination::<T::AccountId>::StakeBalance
-                } else {
-                    let error = DSError::RewardDestinationValueOutOfBounds;
-                    return Ok(RetVal::Converging(error as u32));
-                };
+                let reward_destination = match reward_destination_raw {
+                    0 => RewardDestination::<T::AccountId>::FreeBalance,
+                    1 => RewardDestination::<T::AccountId>::StakeBalance,
+                    2 => {
+                        let delegate: T::AccountId = env.read_as()?;
+
+                        RewardDestination::<T::AccountId>::Delegate(delegate)
+                    },
+                    _ => return Ok(RetVal::Converging(DSError::RewardDestinationValueOutOfBounds as u32))
+                } 
 
                 let caller = env.ext().address().clone();
                 let call_result = pallet_dapps_staking::Pallet::<T>::set_reward_destination(
