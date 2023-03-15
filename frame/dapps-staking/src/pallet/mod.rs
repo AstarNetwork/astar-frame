@@ -34,7 +34,7 @@ const STAKING_ID: LockIdentifier = *b"dapstake";
 pub mod pallet {
     use super::*;
     /// Very rudimentary way to ensure the delegation chain is acyclic
-    const MAX_DELEGATION_CHAIN_DEPTH: u32 = 3;
+    pub const MAX_DELEGATION_CHAIN_DEPTH: u32 = 2;
 
     /// The balance type of this pallet.
     pub type BalanceOf<T> =
@@ -313,7 +313,7 @@ pub mod pallet {
         NotActiveStaker,
         /// Transfering nomination to the same contract
         NominationTransferToSameContract,
-        /// reward delegation to itself
+        /// Reward delegation to itself, FreeBalance could be used instead
         SelfDelegation,
         /// Self::delegation() did not yield a value
         DelegationNotFound,
@@ -823,14 +823,15 @@ pub mod pallet {
                     staker_reward,
                 ));
             }
-
+            // choose between delegated and staker account for reward
             let reward_to = Self::delegate_reward_to(
                 &staker,
                 &contract_id,
                 ledger.reward_destination,
                 dapp_info.state,
                 staker_info.latest_staked_value(),
-            ).unwrap_or(staker.clone());
+            )
+            .unwrap_or(staker.clone());
 
             T::Currency::resolve_creating(&reward_to, reward_imbalance);
             Self::update_staker_info(&staker, &contract_id, staker_info);
@@ -1051,7 +1052,6 @@ pub mod pallet {
             Self::ensure_pallet_enabled()?;
             let staker = ensure_signed(origin)?;
 
-//            ensure!(RegisteredDapps::<T>::get(&contract_id).is_some(), Error::<T>::NotOperatedContract);
             ensure!(Self::delegation(&staker, &contract_id).is_some(), Error::<T>::DelegationNotFound);
 
             DelegationChain::<T>::remove(&staker, &contract_id);
@@ -1063,7 +1063,6 @@ pub mod pallet {
 
             Ok(().into())
         }
-
     }
 
     impl<T: Config> Pallet<T> {
@@ -1346,8 +1345,11 @@ pub mod pallet {
                 && dapp_state == DAppState::Registered
                 && latest_staked_value > Zero::zero() {
 
-                let mut i = 0;
+                let mut i = 1;
                 let mut curr = Self::delegation(staker, contract_id.clone());
+                // this is a very rudimentary way to avoif falling into
+                // infinite loop whenever cyclic delegations are formed
+                // if MAX_DELEGATION_CHAIN_DEPTH is exceeded, the last delegated account is returned 
                 while i < MAX_DELEGATION_CHAIN_DEPTH && curr.is_some() {
                     i += 1;
                     let next = Self::delegation(curr.as_ref().unwrap(), contract_id.clone());
