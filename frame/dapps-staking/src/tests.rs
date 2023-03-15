@@ -2328,6 +2328,7 @@ fn delegation_basic_test() {
         let developer = 1;
         let staker = 2;
         let delegate_to = 4;
+        let delegate_to_2 = 5;
         let contract_id = MockSmartContract::Evm(H160::repeat_byte(0x01));
 
         // stake some tokens
@@ -2342,10 +2343,38 @@ fn delegation_basic_test() {
             delegate_to,
         ));
 
-        // disable reward restaking
+        System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::RewardDelegated(
+            staker,
+            contract_id,
+            delegate_to,
+        )));
+
+        assert_ok!(DappsStaking::set_delegate_reward_account(
+            RuntimeOrigin::signed(delegate_to), 
+            contract_id,
+            delegate_to_2,
+        ));
+
+        println!("BEFORE: staker balance {:?}, delegated_to balance  {:?}, delegated_to_2 balance  {:?}",
+            <TestRuntime as Config>::Currency::free_balance(&staker),
+            <TestRuntime as Config>::Currency::free_balance(&delegate_to),
+            <TestRuntime as Config>::Currency::free_balance(&delegate_to_2),
+        );
+
         advance_to_era(start_era + 1);
    
+//        assert_set_reward_destination(staker, RewardDestination::FreeBalance);
         assert_set_reward_destination(staker, RewardDestination::Delegate);
 
+        assert_ok!(DappsStaking::claim_staker(
+            RuntimeOrigin::signed(staker), 
+            contract_id,
+        ));
+
+        println!("AFTER: staker balance {:?}, delegated_to balance  {:?}, delegated_to_2 balance  {:?}",
+            <TestRuntime as Config>::Currency::free_balance(&staker),
+            <TestRuntime as Config>::Currency::free_balance(&delegate_to),
+            <TestRuntime as Config>::Currency::free_balance(&delegate_to_2),
+        );
     })
 }
