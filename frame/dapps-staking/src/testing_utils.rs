@@ -18,7 +18,7 @@ pub(crate) struct MemorySnapshot {
     staker_info: StakerInfo<Balance>,
     contract_info: ContractStakeInfo<Balance>,
     free_balance: Balance,
-    ledger: AccountLedger<Balance, RewardDestination<AccountId>>,
+    ledger: AccountLedger<Balance>,
 }
 
 impl MemorySnapshot {
@@ -673,7 +673,7 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
 // change reward destination and verify the update
 pub(crate) fn assert_set_reward_destination(
     account_id: AccountId,
-    reward_destination: RewardDestination<AccountId>,
+    reward_destination: RewardDestination,
 ) {
     assert_ok!(DappsStaking::set_reward_destination(
         RuntimeOrigin::signed(account_id),
@@ -725,4 +725,32 @@ pub(crate) fn assert_burn_stale_reward(
         issuance_before_claim - calculated_reward,
         issuance_after_claim
     );
+}
+
+pub(crate) fn assert_delegated_reward(
+    init_staker_state: MemorySnapshot,
+    init_state_claim_era: MemorySnapshot,
+    init_delegate_state: MemorySnapshot,
+    final_delegate_state: MemorySnapshot,
+) {
+        
+    let (_, stakers_joint_reward) =
+        DappsStaking::dev_stakers_split(&init_state_claim_era.contract_info, &init_state_claim_era.era_info);
+
+    let (_claim_era, staked) = init_staker_state.staker_info.clone().claim();
+
+    let calculated_reward =
+        Perbill::from_rational(staked, init_staker_state.contract_info.total)
+            * stakers_joint_reward;
+
+    assert_eq!(calculated_reward, final_delegate_state.free_balance - init_delegate_state.free_balance);
+
+
+        // println!("!!!!!!!!!!! init_staker_state {:?}, init_delegate_state  {:?}, final_staker_state  {:?}, final_delegate_state  {:?}",
+        //     init_staker_state.free_balance,
+        //     init_delegate_state.free_balance,
+        //     final_staker_state.free_balance,
+        //     final_delegate_state.free_balance,
+        // );
+        // println!("reward: {:?}", stakers_joint_reward);
 }
