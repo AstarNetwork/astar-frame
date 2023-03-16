@@ -34,7 +34,7 @@ repository = "https://github.com/AstarNetwork/astar-frame"
 
 [workspace.dependencies]
 # General deps
-# (runtime)
+# (wasm)
 environmental = { version = "1.1.2", default-features = false }
 sha3 = { version = "0.10.1", default-features = false }
 num_enum = { version = "0.5.3", default-features = false }
@@ -42,7 +42,7 @@ log = { version = "0.4.16", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 rand = { version = "0.8.5", default-features = false }
 
-# (client)
+# (native)
 futures = { version = "0.3.1" }
 rlp = "0.5"
 tokio = { version = "1.10" }
@@ -60,16 +60,16 @@ quote = "1.0"
 syn = { version = "1.0" }
 
 # Encoding
-# (runtime)
+# (wasm)
 parity-scale-codec = { version = "3.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
-# (client)
+# (native)
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = { version = "1.0" }
 
 # EVM & Ethereum
-# (runtime)
+# (wasm)
 evm = { version = "0.37.0", default-features = false }
 ethereum-types = { version = "0.14", default-features = false }
 ethereum = { version = "0.14.0", default-features = false }
@@ -77,11 +77,11 @@ evm-gasometer = { version = "0.37.0", default-features = false }
 evm-runtime = { version = "0.37.0", default-features = false }
 
 # jsonrpsee
-# (runtime)
+# (wasm)
 jsonrpsee = { version = "0.16.2", default-features = false }
 
 # Substrate
-# (runtime)
+# (wasm)
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
@@ -96,7 +96,7 @@ frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', bran
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
-# (client)
+# (native)
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -109,7 +109,7 @@ sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 # Substrate pallets
-# (runtime)
+# (wasm)
 pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 pallet-contracts-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
@@ -120,21 +120,21 @@ pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "polka
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 # Polkadot
-# (runtime)
+# (wasm)
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37", default-features = false }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37", default-features = false }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37", default-features = false }
 
-# (client)
+# (native)
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37" }
 
 # Frontier
-# (runtime)
+# (wasm)
 fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false }
 pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false, features = ["forbid-evm-reentrancy"] }
 
-# (client)
+# (native)
 fp-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37" }
 fc-rpc-core = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37" }
 fc-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37" }
@@ -142,7 +142,7 @@ fc-consensus = { git = "https://github.com/AstarNetwork/frontier", branch = "pol
 fc-db = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37" }
 
 # Local deps
-# (runtime)
+# (wasm)
 pallet-dapps-staking = { path = "./frame/dapps-staking", default-features = false }
 pallet-xvm = { path = "./frame/pallet-xvm", default-features = false }
 pallet-xcm = { path = "./frame/pallet-xcm", default-features = false }
@@ -155,11 +155,11 @@ pallet-evm-precompile-assets-erc20 = { path = "./precompiles/assets-erc20", defa
 precompile-utils = { path = "./precompiles/utils", default-features = false }
 
 # Moonbeam EVM Tracing
-# (runtime)
+# (wasm)
 evm-tracing-events = { path = "./vendor/primitives/evm-tracing-events", default-features = false }
 moonbeam-primitives-ext = { path = "./vendor/runtime/ext", default-features = false }
 
-# (client)
+# (native)
 moonbeam-rpc-primitives-txpool = { path = "./vendor/primitives/txpool" }
 moonbeam-rpc-primitives-debug = { path = "./vendor/primitives/debug" }
 moonbeam-client-evm-tracing = { path = "./vendor/evm-tracing" }
