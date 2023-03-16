@@ -9,19 +9,21 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-codec = { workspace = true, package = "parity-scale-codec" }
+log = { workspace = true }
+num_enum = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-log = { workspace = true }
-num_enum = { workspace = true, default-features = false }
-precompile-utils = { workspace = true }
-scale-info = { workspace = true, features = ["derive"] }
+
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # Astar
 pallet-dapps-staking = { workspace = true }
+precompile-utils = { workspace = true, default-features = false }
 
 # Frontier
 fp-evm = { workspace = true }
@@ -35,12 +37,11 @@ precompile-utils = { workspace = true, features = ["testing"] }
 serde = { workspace = true }
 sha3 = { workspace = true }
 sp-io = { workspace = true }
-sp-runtime = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"scale-info/std",
 	"sp-std/std",
 	"sp-core/std",

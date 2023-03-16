@@ -10,7 +10,7 @@ repository.workspace = true
 [dependencies]
 
 # third-party dependencies
-log = { workspace = true, default-features = false }
+log = { workspace = true }
 
 # Substrate dependencies
 frame-support = { workspace = true }

@@ -2,24 +2,26 @@
 name = "precompile-utils"
 authors = ["StakeTechnologies", "PureStake"]
 description = "Utils to write EVM precompiles."
-edition = "2021"
 version = "0.4.3"
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 # There's a problem with --all-features when this is moved under dev-deps
-evm = { workspace = true, optional = true }
+evm = { workspace = true, features = ["std"], optional = true }
 impl-trait-for-tuples = { workspace = true }
 log = { workspace = true }
-num_enum = { workspace = true, default-features = false }
-sha3 = { workspace = true, default-features = false }
+num_enum = { workspace = true }
+sha3 = { workspace = true }
 similar-asserts = { workspace = true, optional = true }
 
-precompile-utils-macro = { workspace = true }
+precompile-utils-macro = { path = "macro" }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec" }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
@@ -39,7 +41,7 @@ hex-literal = { workspace = true }
 default = ["std"]
 std = [
 	"evm/std",
-	"codec/std",
+	"parity-scale-codec/std",
 	"fp-evm/std",
 	"frame-support/std",
 	"frame-system/std",

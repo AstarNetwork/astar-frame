@@ -9,24 +9,27 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-codec = { workspace = true, features = ["derive"], package = "parity-scale-codec" }
+parity-scale-codec = { workspace = true }
+serde = { workspace = true }
+
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-scale-info = { workspace = true, features = ["derive"] }
+scale-info = { workspace = true }
 sp-arithmetic = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 frame-benchmarking = { workspace = true, optional = true }
-pallet-balances = { workspace = true, optional = true }
-pallet-timestamp = { workspace = true, optional = true }
-serde = { workspace = true, optional = true }
-sp-core = { workspace = true, optional = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true }
+pallet-timestamp = { workspace = true }
+sp-core = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"sp-core/std",
 	"scale-info/std",
 	"sp-std/std",
@@ -41,6 +44,5 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
-	"sp-core",
 ]
 try-runtime = ["frame-support/try-runtime"]

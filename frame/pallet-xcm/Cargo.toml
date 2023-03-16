@@ -1,14 +1,16 @@
 [package]
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2021"
+authors = ["Parity Technologies <admin@parity.io>", "Stake Technologies <devops@stake.co.jp>"]
 name = "pallet-xcm"
 version = "0.9.28"
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
-codec = { workspace = true, package = "parity-scale-codec", features = ["derive"] }
-log = { workspace = true, default-features = false }
-scale-info = { workspace = true, features = ["derive"] }
-serde = { workspace = true, optional = true, features = ["derive"] }
+log = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -29,7 +31,7 @@ xcm-builder = { workspace = true }
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"scale-info/std",
 	"serde",
 	"sp-std/std",

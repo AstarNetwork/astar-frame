@@ -7,15 +7,15 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-log = { workspace = true, default-features = false }
+log = { workspace = true }
 serde = { workspace = true, optional = true }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", features = ["derive"] }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
-sp-io = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
@@ -35,7 +35,7 @@ default = ["std"]
 std = [
 	"frame-support/std",
 	"frame-system/std",
-	"codec/std",
+	"parity-scale-codec/std",
 	"scale-info/std",
 	"serde",
 	"sp-io/std",

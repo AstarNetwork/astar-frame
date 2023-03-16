@@ -14,13 +14,13 @@
 
 use crate as custom_signatures;
 use assert_matches::assert_matches;
-use codec::Encode;
 use custom_signatures::*;
 use frame_support::{
     traits::Contains,
     {assert_err, assert_ok, parameter_types},
 };
 use hex_literal::hex;
+use parity_scale_codec::Encode;
 use sp_core::{ecdsa, Pair};
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_keyring::AccountKeyring as Keyring;

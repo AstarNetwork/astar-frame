@@ -21,8 +21,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use codec::{Decode, Encode};
 use fp_evm::{PrecompileHandle, PrecompileOutput};
+use parity_scale_codec::{Decode, Encode};
 
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},

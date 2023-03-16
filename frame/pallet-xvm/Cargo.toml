@@ -8,14 +8,14 @@ repository.workspace = true
 
 [dependencies]
 impl-trait-for-tuples = { workspace = true }
-log = { workspace = true, default-features = false }
+log = { workspace = true }
 serde = { workspace = true, optional = true }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", features = ["derive"] }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -29,6 +29,8 @@ pallet-evm = { workspace = true, optional = true }
 # Substrate WASM VM support
 pallet-contracts = { workspace = true, optional = true }
 
+[dev-dependencies]
+
 [features]
 default = ["std"]
 evm = [
@@ -38,7 +40,7 @@ wasm = [
 	"pallet-contracts",
 ]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-contracts/std",

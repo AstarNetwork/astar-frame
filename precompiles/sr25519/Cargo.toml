@@ -9,11 +9,11 @@ repository.workspace = true
 
 [dependencies]
 log = { workspace = true }
-num_enum = { workspace = true, default-features = false }
-precompile-utils = { workspace = true }
+num_enum = { workspace = true }
+precompile-utils = { workspace = true, default-features = false }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", features = ["max-encoded-len"] }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-std = { workspace = true }
@@ -39,7 +39,7 @@ sp-runtime = { workspace = true }
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"fp-evm/std",
 	"pallet-evm/std",
 	"precompile-utils/std",

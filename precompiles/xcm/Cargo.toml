@@ -9,16 +9,16 @@ repository.workspace = true
 
 [dependencies]
 log = { workspace = true }
-num_enum = { workspace = true, default-features = false }
+num_enum = { workspace = true }
 pallet-evm-precompile-assets-erc20 = { workspace = true }
 pallet-xcm = { workspace = true }
 precompile-utils = { workspace = true }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", features = ["max-encoded-len"] }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-assets = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-std = { workspace = true }
@@ -47,7 +47,7 @@ xcm-builder = { workspace = true }
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"fp-evm/std",
 	"frame-support/std",
 	"frame-system/std",

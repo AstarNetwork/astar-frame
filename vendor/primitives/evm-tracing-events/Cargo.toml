@@ -8,23 +8,23 @@ repository = "https://github.com/PureStake/moonbeam/"
 version = "0.1.0"
 
 [dependencies]
-environmental = { workspace = true, default-features = false }
+environmental = { workspace = true }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec" }
+parity-scale-codec = { workspace = true }
 sp-runtime-interface = { workspace = true }
 
 # Ethereum
-ethereum = { workspace = true, default-features = false, features = ["with-codec"] }
-ethereum-types = { workspace = true, default-features = false }
-evm = { workspace = true, default-features = false, features = ["with-codec"] }
-evm-gasometer = { workspace = true, default-features = false }
-evm-runtime = { workspace = true, default-features = false }
+ethereum = { workspace = true, features = ["with-codec"] }
+ethereum-types = { workspace = true }
+evm = { workspace = true, features = ["with-codec"] }
+evm-gasometer = { workspace = true }
+evm-runtime = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"environmental/std",
 	"ethereum-types/std",
 	"ethereum/std",

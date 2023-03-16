@@ -31,9 +31,9 @@ use frame_support::{
     WeakBoundedVec,
 };
 
-use codec::{Decode, Encode, FullCodec};
 use frame_system::pallet_prelude::*;
 use pallet_contracts::Determinism;
+use parity_scale_codec::{Decode, Encode, FullCodec};
 use sp_runtime::Saturating;
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;

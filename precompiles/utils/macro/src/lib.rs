@@ -108,6 +108,7 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
                 if let Lit::Str(lit_str) = lit {
                     let digest = Keccak256::digest(lit_str.value().as_bytes());
                     let selector = u32::from_be_bytes([digest[0], digest[1], digest[2], digest[3]]);
+
                     ident_expressions.push(variant.ident);
                     variant_expressions.push(Expr::Lit(ExprLit {
                         lit: Lit::Verbatim(Literal::u32_suffixed(selector)),
