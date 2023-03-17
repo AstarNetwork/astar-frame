@@ -17,8 +17,8 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use scale::MaxEncodedLen;
-use scale::{Decode, Encode};
+use parity_scale_codec::MaxEncodedLen;
+use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{DispatchError, ModuleError};
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]

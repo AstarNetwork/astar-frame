@@ -21,7 +21,6 @@
 pub mod weights;
 
 use assets_chain_extension_types::{select_origin, Origin, Outcome};
-use codec::Encode;
 use frame_support::traits::fungibles::InspectMetadata;
 use frame_support::traits::tokens::fungibles::approvals::Inspect;
 use frame_system::RawOrigin;
@@ -29,6 +28,7 @@ use pallet_assets::WeightInfo;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
+use parity_scale_codec::Encode;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
