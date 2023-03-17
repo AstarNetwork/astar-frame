@@ -37,12 +37,12 @@
 
 use super::*;
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{AsEnsureOriginWithArg, Everything},
     weights::Weight,
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 
 use frame_system::EnsureRoot;
 use pallet_evm::{AddressMapping, EnsureAddressNever, EnsureAddressRoot};

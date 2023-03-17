@@ -17,7 +17,7 @@
 
 //! Ethereum prefixed signatures compatibility instances.
 
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use sp_core::ecdsa;
 use sp_io::{crypto::secp256k1_ecdsa_recover_compressed, hashing::keccak_256};
 use sp_runtime::traits::{IdentifyAccount, Lazy, Verify};

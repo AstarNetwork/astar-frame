@@ -56,9 +56,9 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::traits::Currency;
 use frame_system::{self as system};
+use parity_scale_codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
     traits::{AtLeast32BitUnsigned, Zero},
@@ -268,7 +268,7 @@ pub struct StakerInfo<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> {
 impl<Balance: AtLeast32BitUnsigned + Copy + MaxEncodedLen> MaxEncodedLen for StakerInfo<Balance> {
     // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
     fn max_encoded_len() -> usize {
-        codec::Compact(MAX_ASSUMED_VEC_LEN)
+        parity_scale_codec::Compact(MAX_ASSUMED_VEC_LEN)
             .encoded_size()
             .saturating_add(
                 (MAX_ASSUMED_VEC_LEN as usize)
@@ -459,7 +459,7 @@ impl<Balance: AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen> MaxEncodedL
 {
     // This is just an assumption, will be calculated properly in the future. See the comment for `MAX_ASSUMED_VEC_LEN`.
     fn max_encoded_len() -> usize {
-        codec::Compact(MAX_ASSUMED_VEC_LEN)
+        parity_scale_codec::Compact(MAX_ASSUMED_VEC_LEN)
             .encoded_size()
             .saturating_add(
                 (MAX_ASSUMED_VEC_LEN as usize)

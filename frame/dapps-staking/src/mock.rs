@@ -16,7 +16,7 @@ use frame_support::{
 };
 use sp_core::{H160, H256};
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,

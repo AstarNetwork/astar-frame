@@ -17,8 +17,8 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
 use frame_support::pallet_prelude::MaxEncodedLen;
+use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{DispatchError, ModuleError};
 
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]

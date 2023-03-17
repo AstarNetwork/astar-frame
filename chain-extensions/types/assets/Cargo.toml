@@ -1,26 +1,26 @@
 [package]
 name = "assets-chain-extension-types"
 version = "0.1.0"
-authors = ["Stake Technologies <devops@stake.co.jp>"]
-edition = "2021"
 license = "Apache-2.0"
-homepage = "https://astar.network"
-repository = "https://github.com/AstarNetwork/astar-frame"
-description = "Types definitions forassets chain-extension"
+description = "Types definitions for assets chain-extension"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
 
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-system = { workspace = true }
+pallet-contracts = { workspace = true }
+sp-runtime = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
 	"scale-info/std",
-	"scale/std",
+	"parity-scale-codec/std",
 	"pallet-contracts/std",
 	"sp-runtime/std",
 	"frame-system/std",
