@@ -80,6 +80,12 @@ pub struct XvmCallOk {
     consumed_weight: u64,
 }
 
+impl XvmCallOk {
+    pub fn output(&self) -> &Vec<u8> {
+        &self.output
+    }
+}
+
 /// Denotes an successful XVM call execution
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct XvmCallError {
@@ -88,6 +94,12 @@ pub struct XvmCallError {
     error: XvmError,
     /// Total consumed weight. This is in context of Substrate (1 unit of weight ~ 1 ps of execution time)
     consumed_weight: u64,
+}
+
+impl XvmCallError {
+    pub fn error(&self) -> &XvmError {
+        &self.error
+    }
 }
 
 /// Result for executing X-VM calls

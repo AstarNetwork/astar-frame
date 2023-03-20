@@ -62,6 +62,26 @@ pub mod pallet {
         XvmQuery { result: Result<Vec<u8>, XvmError> },
     }
 
+    impl<T: Config> Pallet<T> {
+        pub fn xvm_bare_call(
+            // origin: OriginFor<T>,
+            context: XvmContext,
+            from: T::AccountId,
+            to: Vec<u8>,
+            input: Vec<u8>,
+        ) -> XvmResult {
+            // let from = ensure_signed(origin)?;
+            let result = T::SyncVM::xvm_call(context, from, to, input);
+
+            log::trace!(
+                target: "xvm::pallet::xvm_bare_call",
+                "Execution result: {:?}", result
+            );
+
+            result
+        }
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]

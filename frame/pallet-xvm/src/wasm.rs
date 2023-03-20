@@ -24,8 +24,8 @@ use frame_support::traits::Currency;
 use pallet_contracts::weights::WeightInfo;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
+use sp_runtime::traits::StaticLookup;
 use sp_std::fmt::Debug;
-
 pub struct WASM<I, T>(sp_std::marker::PhantomData<(I, T)>);
 
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
@@ -57,6 +57,10 @@ where
             consumed_weight: PLACEHOLDER_WEIGHT,
         })?;
 
+        let dest = T::Lookup::lookup(dest).map_err(|error| XvmCallError {
+            error: XvmError::ExecutionError(Into::<&str>::into(error).into()),
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
         let call_result = pallet_contracts::Pallet::<T>::bare_call(
             from, // no need to check origin, we consider it signed here
             dest, // no need to lookup since it's already `AccountId`

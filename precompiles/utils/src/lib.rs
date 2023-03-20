@@ -199,10 +199,11 @@ where
         // However while Substrate handle checking weight while not making the sender pay for it,
         // the EVM doesn't. It seems this safer to always record the costs to avoid unmetered
         // computations.
-        let used_weight = call
+        let result = call
             .dispatch(origin)
-            .map_err(|e| revert(alloc::format!("Dispatched call failed with error: {:?}", e)))?
-            .actual_weight;
+            .map_err(|e| revert(alloc::format!("Dispatched call failed with error: {:?}", e)))?;
+
+        let used_weight = result.actual_weight;
 
         let used_gas =
             Runtime::GasWeightMapping::weight_to_gas(used_weight.unwrap_or(dispatch_info.weight));

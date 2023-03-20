@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use codec::Decode;
+use codec::{Decode, Encode};
 use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
@@ -95,18 +95,45 @@ where
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
 
+        let from = R::AddressMapping::into_account_id(handle.context().caller);
+        match &pallet_xvm::Pallet::<R>::xvm_bare_call(context, from, call_to, call_input) {
+            result @ Ok(success) => Ok(succeed(
+                EvmDataWriter::new()
+                    .write(true)
+                    .write(pallet_xvm::consumed_weight(&result))
+                    .write(success.output().clone()) // FIXME redundant clone
+                    .build(),
+            )),
+
+            result @ Err(failure) => {
+                let mut error_buffer = Vec::new();
+                failure.error().encode_to(&mut error_buffer);
+
+                Ok(succeed(
+                    EvmDataWriter::new()
+                        .write(false)
+                        .write(pallet_xvm::consumed_weight(&result))
+                        .write(error_buffer)
+                        .build()
+                ))
+            }
+        }
+
         // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xvm::Call::<R>::xvm_call {
-            context,
-            to: call_to,
-            input: call_input,
-        };
+        // let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
+        // let call = pallet_xvm::Call::<R>::xvm_call {
+        //     context,
+        //     to: call_to,
+        //     input: call_input,
+        // };
 
         // Dispatch a call.
         // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
-        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+        // let result = RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
 
-        Ok(succeed(EvmDataWriter::new().write(true).build()))
+        // Ok(succeed(EvmDataWriter::new()
+        //     .write(true)
+        //     // .write() TODO write output
+        //     .build()))
     }
 }
