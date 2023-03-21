@@ -30,7 +30,6 @@ use sp_std::prelude::*;
 
 use precompile_utils::{
     revert, succeed, Bytes, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
-    RuntimeHelper,
 };
 
 #[cfg(test)]
