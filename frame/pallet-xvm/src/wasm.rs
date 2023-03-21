@@ -19,9 +19,9 @@
 //! WASM (substrate contracts) support for XVM pallet.
 
 use crate::*;
-use codec::HasCompact;
 use frame_support::traits::Currency;
 use pallet_contracts::weights::WeightInfo;
+use parity_scale_codec::HasCompact;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
 use sp_runtime::traits::StaticLookup;

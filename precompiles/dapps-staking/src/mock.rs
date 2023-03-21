@@ -18,7 +18,6 @@
 
 use super::*;
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{Currency, OnFinalize, OnInitialize},
@@ -29,6 +28,7 @@ use pallet_dapps_staking::weights;
 use pallet_evm::{
     AddressMapping, EnsureAddressNever, EnsureAddressRoot, PrecompileResult, PrecompileSet,
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
 use sp_io::TestExternalities;

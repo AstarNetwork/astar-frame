@@ -8,25 +8,25 @@ repository = "https://github.com/PureStake/moonbeam/"
 version = "0.6.0"
 
 [dependencies]
-jsonrpsee = { version = "0.16.2", default-features = false, features = ["macros", "server"] }
-rlp = "0.5"
-serde = { version = "1.0", features = ["derive"] }
-sha3 = "0.10"
+jsonrpsee = { workspace = true, features = ["macros", "server"] }
+rlp = { workspace = true }
+serde = { workspace = true }
+sha3 = { workspace = true, features = ["std"] }
 
 # Moonbeam
-moonbeam-rpc-core-txpool = { path = "../../rpc-core/txpool" }
-moonbeam-rpc-primitives-txpool = { path = "../../primitives/txpool" }
+moonbeam-rpc-core-txpool = { workspace = true }
+moonbeam-rpc-primitives-txpool = { workspace = true }
 
 # Substrate
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+frame-system = { workspace = true, features = ["std"] }
+sc-transaction-pool = { workspace = true }
+sc-transaction-pool-api = { workspace = true }
+sp-api = { workspace = true, features = ["std"] }
+sp-blockchain = { workspace = true }
+sp-io = { workspace = true, features = ["std"] }
+sp-runtime = { workspace = true, features = ["std"] }
+sp-std = { workspace = true, features = ["std"] }
 
 # Frontier
-ethereum-types = "0.14"
-fc-rpc = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", features = ["rpc-binary-search-estimate"] }
+ethereum-types = { workspace = true, features = ["std"] }
+fc-rpc = { workspace = true, features = ["rpc-binary-search-estimate"] }

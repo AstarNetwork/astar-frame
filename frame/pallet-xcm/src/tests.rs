@@ -838,7 +838,7 @@ fn trapped_assets_can_be_claimed() {
 
 #[test]
 fn fake_latest_versioned_multilocation_works() {
-    use codec::Encode;
+    use parity_scale_codec::Encode;
     let remote = Parachain(1000).into();
     let versioned_remote = LatestVersionedMultiLocation(&remote);
     assert_eq!(

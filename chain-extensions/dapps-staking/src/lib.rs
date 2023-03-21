@@ -22,7 +22,6 @@ use sp_runtime::{
     DispatchError,
 };
 
-use codec::Encode;
 use dapps_staking_chain_extension_types::{
     DSError, DappsStakingAccountInput, DappsStakingEraInput, DappsStakingNominationInput,
     DappsStakingValueInput,
@@ -33,6 +32,7 @@ use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 use pallet_dapps_staking::{RewardDestination, WeightInfo};
+use parity_scale_codec::Encode;
 use sp_std::marker::PhantomData;
 
 type BalanceOf<T> = <<T as pallet_dapps_staking::Config>::Currency as Currency<

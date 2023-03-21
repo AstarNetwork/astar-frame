@@ -31,8 +31,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use frame_support::weights::Weight;
+use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{traits::Member, RuntimeDebug};
 use sp_std::prelude::*;
 
