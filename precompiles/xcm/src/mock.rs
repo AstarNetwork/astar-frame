@@ -43,7 +43,7 @@ use sp_std::{borrow::Borrow, cell::RefCell};
 use xcm::prelude::XcmVersion;
 use xcm_builder::{
     test_utils::TransactAsset, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, LocationInverter, SignedToAccountId32,
+    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, SignedToAccountId32,
     TakeWeightCredit,
 };
 use xcm_executor::XcmExecutor;
@@ -349,7 +349,6 @@ impl xcm_executor::Config for XcmConfig {
     type OriginConverter = ();
     type IsReserve = ();
     type IsTeleporter = ();
-    type LocationInverter = LocationInverter<Ancestry>;
     type Barrier = Barrier;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type Trader = ();
@@ -399,7 +398,6 @@ impl pallet_xcm::Config for Runtime {
     type XcmTeleportFilter = Everything;
     type XcmReserveTransferFilter = Everything;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
-    type LocationInverter = LocationInverter<Ancestry>;
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
     const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;

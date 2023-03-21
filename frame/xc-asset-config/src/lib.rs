@@ -71,7 +71,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use parity_scale_codec::HasCompact;
     use sp_std::boxed::Box;
-    use xcm::{v1::MultiLocation, VersionedMultiLocation};
+    use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
@@ -113,13 +113,13 @@ pub mod pallet {
         }
 
         fn get_asset_id(asset_location: MultiLocation) -> Option<T::AssetId> {
-            AssetLocationToId::<T>::get(asset_location.versioned())
+            AssetLocationToId::<T>::get(asset_location.into_versioned())
         }
     }
 
     impl<T: Config> ExecutionPaymentRate for Pallet<T> {
         fn get_units_per_second(asset_location: MultiLocation) -> Option<u128> {
-            AssetLocationUnitsPerSecond::<T>::get(asset_location.versioned())
+            AssetLocationUnitsPerSecond::<T>::get(asset_location.into_versioned())
         }
     }
 

@@ -97,8 +97,8 @@ pub struct FixedRateOfForeignAsset<T: ExecutionPaymentRate, R: TakeRevenue> {
 impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, R> {
     fn new() -> Self {
         Self {
-            weight: 0,
-            consumed: 0,
+            weight: 0.into(),
+            consumed: Zero::zero(),
             asset_location_and_units_per_second: None,
             _pd: PhantomData,
         }
@@ -106,7 +106,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
 
     fn buy_weight(
         &mut self,
-        weight: u64,
+        weight: Weight,
         payment: xcm_executor::Assets,
     ) -> Result<xcm_executor::Assets, XcmError> {
         log::trace!(
@@ -127,7 +127,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
                 fun: Fungibility::Fungible(_),
             } => {
                 if let Some(units_per_second) = T::get_units_per_second(asset_location.clone()) {
-                    let amount = units_per_second.saturating_mul(weight as u128)
+                    let amount = units_per_second.saturating_mul(weight.ref_time() as u128)
                         / (WEIGHT_REF_TIME_PER_SECOND as u128);
                     if amount == 0 {
                         return Ok(payment);
@@ -170,7 +170,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> WeightTrader for FixedRateOfForeig
             self.asset_location_and_units_per_second.clone()
         {
             let weight = weight.min(self.weight);
-            let amount = units_per_second.saturating_mul(weight as u128)
+            let amount = units_per_second.saturating_mul(weight.ref_time() as u128)
                 / (WEIGHT_REF_TIME_PER_SECOND as u128);
 
             self.weight = self.weight.saturating_sub(weight);
@@ -204,7 +204,7 @@ impl<T: ExecutionPaymentRate, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T
 ///
 pub struct ReserveAssetFilter;
 impl FilterAssetLocation for ReserveAssetFilter {
-    fn filter_asset_location(asset: &MultiAsset, origin: &MultiLocation) -> bool {
+    fn contains(asset: &MultiAsset, origin: &MultiLocation) -> bool {
         // We assume that relay chain and sibling parachain assets are trusted reserves for their assets
         let reserve_location = if let Concrete(location) = &asset.id {
             match (location.parents, location.first_interior()) {
@@ -278,7 +278,7 @@ pub struct AllowPaidExecWithDescendOriginFrom<T>(PhantomData<T>);
 impl<T: Contains<MultiLocation>> ShouldExecute for AllowPaidExecWithDescendOriginFrom<T> {
     fn should_execute<RuntimeCall>(
         origin: &MultiLocation,
-        message: &mut Xcm<RuntimeCall>,
+        message: &mut [Instruction<RuntimeCall>],
         max_weight: Weight,
         _weight_credit: &mut Weight,
     ) -> Result<(), ()> {
@@ -288,13 +288,13 @@ impl<T: Contains<MultiLocation>> ShouldExecute for AllowPaidExecWithDescendOrigi
             origin, message, max_weight, _weight_credit,
         );
         ensure!(T::contains(origin), ());
-        let iter = message.0.iter_mut();
+        let iter = message.iter_mut();
 
         match iter.take(3).collect::<Vec<_>>().as_mut_slice() {
             [DescendOrigin(..), WithdrawAsset(..), BuyExecution {
                 weight_limit: Limited(ref mut limit),
                 ..
-            }] if *limit >= max_weight => {
+            }] if limit.any_gt(max_weight) => {
                 *limit = max_weight;
                 Ok(())
             }

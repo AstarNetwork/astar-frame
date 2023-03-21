@@ -75,7 +75,7 @@ impl ExecutionPaymentRate for ExecutionPayment {
 
 /// Execution fee for the specified weight, using provided `units_per_second`
 fn execution_fee(weight: Weight, units_per_second: u128) -> u128 {
-    units_per_second * (weight as u128) / (WEIGHT_REF_TIME_PER_SECOND as u128)
+    units_per_second * (weight.ref_time() as u128) / (WEIGHT_REF_TIME_PER_SECOND as u128)
 }
 
 #[test]
@@ -565,15 +565,15 @@ fn allow_paid_exec_with_descend_origin_too_small_weight_fails() {
         &mut valid_message.0[2],
         BuyExecution {
             fees: (Here, 100).into(),
-            weight_limit: WeightLimit::Limited(enforced_weight_limit - 7),
+            weight_limit: WeightLimit::Limited((enforced_weight_limit - 7).into()),
         },
     );
 
     let res = AllowPaidExecWithDescendOriginFrom::<Everything>::should_execute(
         &Here.into(),
-        &mut valid_message,
-        enforced_weight_limit,
-        &mut 0_u64,
+        &mut valid_message.0,
+        enforced_weight_limit.into(),
+        &mut Zero::zero(),
     );
     assert_eq!(res, Err(()));
 }

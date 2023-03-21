@@ -28,4 +28,5 @@ introduce any unintentional changes without being aware of them.
 | primitives/evm-tracing-events      | evm-tracing-events             | ${moonbeam}/primitives/rpc/evm-tracing-events |
 | primitives/debug                   | moonbeam-rpc-primitives-debug  | ${moonbeam}/primitives/rpc/debug              |
 | primitives/txpool                  | moonbeam-rpc-primitives-txpool | ${moonbeam}/primitives/rpc/txpool             |
+| pallet-xcm                         | pallet-xcm                     | ${polkadot}/xcm/pallet-xcm                    |
 
