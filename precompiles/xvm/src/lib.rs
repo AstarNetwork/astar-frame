@@ -114,26 +114,9 @@ where
                         .write(false)
                         .write(pallet_xvm::consumed_weight(&result))
                         .write(error_buffer)
-                        .build()
+                        .build(),
                 ))
             }
         }
-
-        // Build call with origin.
-        // let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        // let call = pallet_xvm::Call::<R>::xvm_call {
-        //     context,
-        //     to: call_to,
-        //     input: call_input,
-        // };
-
-        // Dispatch a call.
-        // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
-        // let result = RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
-
-        // Ok(succeed(EvmDataWriter::new()
-        //     .write(true)
-        //     // .write() TODO write output
-        //     .build()))
     }
 }

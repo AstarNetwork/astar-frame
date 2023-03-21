@@ -64,13 +64,11 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn xvm_bare_call(
-            // origin: OriginFor<T>,
             context: XvmContext,
             from: T::AccountId,
             to: Vec<u8>,
             input: Vec<u8>,
         ) -> XvmResult {
-            // let from = ensure_signed(origin)?;
             let result = T::SyncVM::xvm_call(context, from, to, input);
 
             log::trace!(

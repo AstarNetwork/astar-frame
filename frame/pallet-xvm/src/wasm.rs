@@ -63,7 +63,7 @@ where
         })?;
         let call_result = pallet_contracts::Pallet::<T>::bare_call(
             from, // no need to check origin, we consider it signed here
-            dest, // no need to lookup since it's already `AccountId`
+            dest,
             Default::default(),
             gas_limit.into(),
             None,
@@ -83,7 +83,6 @@ where
             .ref_time();
 
         match call_result.result {
-            // FIXME What about `success.flags`?
             Ok(success) => Ok(XvmCallOk {
                 output: success.data,
                 consumed_weight,
