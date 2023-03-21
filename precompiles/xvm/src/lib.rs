@@ -19,12 +19,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use sp_runtime::codec::Encode;
 use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
 use pallet_xvm::XvmContext;
 use parity_scale_codec::Decode;
+use sp_runtime::codec::Encode;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
