@@ -26,6 +26,7 @@ use parity_scale_codec::MaxEncodedLen;
 use parity_scale_codec::{Decode, Encode};
 use sp_core::crypto::Pair;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
 enum Func {
     Verify,
