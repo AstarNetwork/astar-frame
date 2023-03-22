@@ -24,9 +24,10 @@ use pallet_contracts::chain_extension::{
 };
 use parity_scale_codec::MaxEncodedLen;
 use parity_scale_codec::{Decode, Encode};
-use sp_core::crypto::Pair;
+use sp_core::crypto::ByteArray;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
+use sp_io::crypto::{ecdsa_verify, ed25519_verify, sr25519_verify};
 
 enum Func {
     Verify,
@@ -88,12 +89,29 @@ where
 
                 let result = match sig_type {
                     SigType::Sr25519 => {
-                        sp_core::sr25519::Pair::verify_weak(&signature, &msg, &pubkey)
+                        // 64 bytes
+                        let sig = sp_core::sr25519::Signature::from_slice(&signature)
+                            .ok_or(DispatchError::Other("Invalid signature"))?;
+                        let pubkey = sp_core::sr25519::Public::from_slice(&pubkey)
+                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        sr25519_verify(&sig, &msg, &pubkey)
                     }
                     SigType::Ed25519 => {
-                        sp_core::ed25519::Pair::verify_weak(&signature, &msg, &pubkey)
+                        // 64 bytes
+                        let sig = sp_core::ed25519::Signature::from_slice(&signature)
+                            .ok_or(DispatchError::Other("Invalid signature"))?;
+                        let pubkey = sp_core::ed25519::Public::from_slice(&pubkey)
+                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        ed25519_verify(&sig, &msg, &pubkey)
                     }
-                    SigType::Ecdsa => sp_core::ecdsa::Pair::verify_weak(&signature, &msg, &pubkey),
+                    SigType::Ecdsa => {
+                        // 65 bytes
+                        let sig = sp_core::ecdsa::Signature::from_slice(&signature)
+                            .ok_or(DispatchError::Other("Invalid signature"))?;
+                        let pubkey = sp_core::ecdsa::Public::from_slice(&pubkey)
+                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        ecdsa_verify(&sig, &msg, &pubkey)
+                    },
                 };
                 env.write(&result.encode(), false, None)?;
             }
