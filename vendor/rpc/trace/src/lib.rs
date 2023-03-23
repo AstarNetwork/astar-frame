@@ -34,7 +34,7 @@ use tracing::{instrument, Instrument};
 
 use sc_client_api::backend::{Backend, StateBackend, StorageProvider};
 use sc_utils::mpsc::TracingUnboundedSender;
-use sp_api::{ApiExt, BlockId, Core, HeaderT, ProvideRuntimeApi};
+use sp_api::{ApiExt, Core, HeaderT, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{
     Backend as BlockchainBackend, Error as BlockChainError, HeaderBackend, HeaderMetadata,
@@ -42,7 +42,7 @@ use sp_blockchain::{
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
 use ethereum_types::H256;
-use fc_rpc::{frontier_backend_client, OverrideHandle};
+use fc_rpc::OverrideHandle;
 use fp_rpc::EthereumRuntimeRPCApi;
 
 use moonbeam_client_evm_tracing::{
@@ -775,8 +775,6 @@ where
         substrate_hash: H256,
         overrides: Arc<OverrideHandle<B>>,
     ) -> TxsTraceRes {
-        let substrate_block_id = BlockId::Hash(substrate_hash);
-
         // Get Subtrate block data.
         let api = client.runtime_api();
         let block_header = client
@@ -787,31 +785,28 @@ where
                     substrate_hash, e
                 )
             })?
-            .ok_or_else(|| format!("Subtrate block {} don't exist", substrate_block_id))?;
+            .ok_or_else(|| format!("Subtrate block {} don't exist", substrate_hash))?;
 
         let height = *block_header.number();
-        let substrate_parent_id = BlockId::<B>::Hash(*block_header.parent_hash());
+        let substrate_parent_id = *block_header.parent_hash();
 
-        let schema = frontier_backend_client::onchain_storage_schema::<B, C, BE>(
-            client.as_ref(),
-            substrate_block_id,
-        );
+        let schema = fc_storage::onchain_storage_schema(client.as_ref(), substrate_hash);
 
         // Get Ethereum block data.
         let (eth_block, eth_transactions) = match overrides.schemas.get(&schema) {
             Some(schema) => match (
-                schema.current_block(&substrate_block_id),
-                schema.current_transaction_statuses(&substrate_block_id),
+                schema.current_block(substrate_hash),
+                schema.current_transaction_statuses(substrate_hash),
             ) {
                 (Some(a), Some(b)) => (a, b),
                 _ => {
                     return Err(format!(
                         "Failed to get Ethereum block data for Substrate block {}",
-                        substrate_block_id
+                        substrate_hash
                     ))
                 }
             },
-            _ => return Err(format!("No storage override at {:?}", substrate_block_id)),
+            _ => return Err(format!("No storage override at {:?}", substrate_hash)),
         };
 
         let eth_block_hash = eth_block.header.hash();
@@ -834,11 +829,11 @@ where
 
         // Trace the block.
         let f = || -> Result<_, String> {
-            api.initialize_block(&substrate_parent_id, &block_header)
+            api.initialize_block(substrate_parent_id, &block_header)
                 .map_err(|e| format!("Runtime api access error: {:?}", e))?;
 
             let _result = api
-                .trace_block(&substrate_parent_id, extrinsics, eth_tx_hashes)
+                .trace_block(substrate_parent_id, extrinsics, eth_tx_hashes)
                 .map_err(|e| format!("Blockchain error when replaying block {} : {:?}", height, e))?
                 .map_err(|e| {
                     tracing::warn!(

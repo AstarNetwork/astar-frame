@@ -42,7 +42,7 @@ precompile-utils = { workspace = true, features = ["testing"] }
 pallet-balances = { workspace = true }
 pallet-timestamp = { workspace = true }
 sp-runtime = { workspace = true }
-xcm-builder = { workspace = true }
+xcm-builder = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
@@ -62,3 +62,4 @@ std = [
 	"xcm/std",
 	"xcm-executor/std",
 ]
+runtime-benchmarks = []
