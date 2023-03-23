@@ -107,7 +107,7 @@ where
                     EvmDataWriter::new()
                         .write(true)
                         .write(pallet_xvm::consumed_weight(&result))
-                        .write(Bytes(success.output().clone())) // FIXME redundant clone
+                        .write(Bytes(success.output().to_vec())) // TODO redundant clone
                         .build(),
                 ))
             }

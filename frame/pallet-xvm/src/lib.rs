@@ -81,7 +81,7 @@ pub struct XvmCallOk {
 }
 
 impl XvmCallOk {
-    pub fn output(&self) -> &Vec<u8> {
+    pub fn output(&self) -> &[u8] {
         &self.output
     }
 }

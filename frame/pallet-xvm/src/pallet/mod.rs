@@ -63,6 +63,12 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Internal interface for cross-pallet invocation.
+        /// Essentially does the same thing as `xvm_call`, but a bit differently:
+        ///   - It does not verify origin
+        ///   - It does not use `Dispatchable` API (cannot be called from tx)
+        ///   - It does not deposit event upon completion
+        ///   - It returns `XvmResult` letting the caller get return data directly
         pub fn xvm_bare_call(
             context: XvmContext,
             from: T::AccountId,
