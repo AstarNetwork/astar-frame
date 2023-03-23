@@ -37,3 +37,4 @@ std = [
 	"xcm-executor/std",
 	"pallet-xc-asset-config/std",
 ]
+runtime-benchmarks = ["xcm-builder/runtime-benchmarks"]

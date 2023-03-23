@@ -176,7 +176,7 @@ fn reserve_transfer_assets_works() {
 
         let non_native_asset = MultiAsset {
             fun: Fungible(42000),
-            id: xcm::v1::AssetId::from(MultiLocation {
+            id: xcm::v3::AssetId::from(MultiLocation {
                 parents: 0,
                 interior: Here,
             }),
@@ -252,7 +252,7 @@ fn reserve_transfer_currency_works() {
 
         let native_asset = MultiAsset {
             fun: Fungible(42000),
-            id: xcm::v1::AssetId::from(MultiLocation {
+            id: xcm::v3::AssetId::from(MultiLocation {
                 parents: 0,
                 interior: X1(OnlyChild),
             }),

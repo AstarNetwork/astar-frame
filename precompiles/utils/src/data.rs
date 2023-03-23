@@ -28,8 +28,6 @@ use impl_trait_for_tuples::impl_for_tuples;
 use sp_core::{H160, H256, U256};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 
-pub mod xcm;
-
 /// The `address` type of Solidity.
 /// H160 could represent 2 types of data (bytes20 and address) that are not encoded the same way.
 /// To avoid issues writing H160 is thus not supported.

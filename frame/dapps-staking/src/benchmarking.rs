@@ -136,7 +136,7 @@ benchmarks! {
     unregister {
         initialize::<T>();
         let (developer_id, contract_id) = register_contract::<T>(1)?;
-        prepare_bond_and_stake::<T>(2, &contract_id, SEED)?;
+        prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
 
     }: _(RawOrigin::Root, contract_id.clone())
     verify {
@@ -162,7 +162,6 @@ benchmarks! {
         initialize::<T>();
 
         let (_, contract_id) = register_contract::<T>(1)?;
-        prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
@@ -177,7 +176,6 @@ benchmarks! {
         initialize::<T>();
 
         let (_, contract_id) = register_contract::<T>(1)?;
-        prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
@@ -194,7 +192,6 @@ benchmarks! {
         initialize::<T>();
 
         let (_, contract_id) = register_contract::<T>(1)?;
-        prepare_bond_and_stake::<T>(T::MaxNumberOfStakersPerContract::get() - 1, &contract_id, SEED)?;
 
         let staker = whitelisted_caller();
         let _ = T::Currency::make_free_balance_be(&staker, BalanceOf::<T>::max_value());
@@ -229,9 +226,8 @@ benchmarks! {
         initialize::<T>();
         let (_, contract_id) = register_contract::<T>(1)?;
 
-        let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
-        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let stakers = prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
         let staker = stakers[0].clone();
 
         DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::StakeBalance)?;
@@ -248,9 +244,8 @@ benchmarks! {
         initialize::<T>();
         let (_, contract_id) = register_contract::<T>(1)?;
 
-        let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
-        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let stakers = prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
         let staker = stakers[0].clone();
 
         DappsStaking::<T>::set_reward_destination(RawOrigin::Signed(staker.clone()).into(), RewardDestination::FreeBalance)?;
@@ -267,9 +262,8 @@ benchmarks! {
         initialize::<T>();
         let (developer, contract_id) = register_contract::<T>(1)?;
 
-        let number_of_stakers = 3;
         let claim_era = DappsStaking::<T>::current_era();
-        prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
         advance_to_era::<T>(claim_era + 1u32);
 
     }: _(RawOrigin::Signed(developer.clone()), contract_id.clone(), claim_era)
@@ -290,8 +284,7 @@ benchmarks! {
         let option = RewardDestination::FreeBalance;
         let (_, contract_id) = register_contract::<T>(1)?;
 
-        let number_of_stakers = 1;
-        let stakers = prepare_bond_and_stake::<T>(number_of_stakers, &contract_id, SEED)?;
+        let stakers = prepare_bond_and_stake::<T>(1, &contract_id, SEED)?;
         let staker = stakers[0].clone();
     }: _(RawOrigin::Signed(staker.clone()), option)
     verify {
