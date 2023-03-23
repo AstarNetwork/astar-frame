@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"chain-extensions/crypto",
+	"chain-extensions/signing",
 	"chain-extensions/dapps-staking",
 	"chain-extensions/pallet-assets",
 	"chain-extensions/xvm",

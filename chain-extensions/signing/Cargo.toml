@@ -1,8 +1,8 @@
 [package]
-name = "chain-extension-crypto"
+name = "chain-extension-signing"
 version = "1.0.0"
 license = "Apache-2.0"
-description = "chain extension for Substrate native crypto functions"
+description = "chain extension for Substrate native crypto signing functions"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

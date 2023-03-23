@@ -46,20 +46,20 @@ impl TryFrom<u16> for Func {
     }
 }
 
-/// Crypto chain extension.
-pub struct CryptoExtension<T>(PhantomData<T>);
+/// Crypto signing chain extension.
+pub struct SigningExtension<T>(PhantomData<T>);
 
-impl<T> Default for CryptoExtension<T> {
+impl<T> Default for SigningExtension<T> {
     fn default() -> Self {
-        CryptoExtension(PhantomData)
+        SigningExtension(PhantomData)
     }
 }
 
 #[derive(Encode, Decode, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum SigType {
-    Ed25519,
     Sr25519,
+    Ed25519,
     Ecdsa,
 }
 
@@ -68,9 +68,13 @@ pub enum SigType {
 pub enum Outcome {
     /// Success
     Success = 0,
+    /// Invalid signature
+    InvalidSignature = 1,
+    /// Invalid pubkey
+    InvalidPubkey = 2,
 }
 
-impl<T> ChainExtension<T> for CryptoExtension<T>
+impl<T> ChainExtension<T> for SigningExtension<T>
 where
     T: pallet_contracts::Config,
     <T as SysConfig>::AccountId: From<[u8; 32]>,
@@ -90,26 +94,38 @@ where
                 let result = match sig_type {
                     SigType::Sr25519 => {
                         // 64 bytes
-                        let sig = sp_core::sr25519::Signature::from_slice(&signature)
-                            .ok_or(DispatchError::Other("Invalid signature"))?;
-                        let pubkey = sp_core::sr25519::Public::from_slice(&pubkey)
-                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        let sig = match sp_core::sr25519::Signature::from_slice(&signature) {
+                            Some(sig) => sig,
+                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        };
+                        let pubkey = match sp_core::sr25519::Public::from_slice(&pubkey) {
+                            Ok(pubkey) => pubkey,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
+                        };
                         sr25519_verify(&sig, &msg, &pubkey)
                     }
                     SigType::Ed25519 => {
                         // 64 bytes
-                        let sig = sp_core::ed25519::Signature::from_slice(&signature)
-                            .ok_or(DispatchError::Other("Invalid signature"))?;
-                        let pubkey = sp_core::ed25519::Public::from_slice(&pubkey)
-                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        let sig = match sp_core::ed25519::Signature::from_slice(&signature) {
+                            Some(sig) => sig,
+                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        };
+                        let pubkey = match sp_core::ed25519::Public::from_slice(&pubkey) {
+                            Ok(pubkey) => pubkey,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
+                        };
                         ed25519_verify(&sig, &msg, &pubkey)
                     }
                     SigType::Ecdsa => {
                         // 65 bytes
-                        let sig = sp_core::ecdsa::Signature::from_slice(&signature)
-                            .ok_or(DispatchError::Other("Invalid signature"))?;
-                        let pubkey = sp_core::ecdsa::Public::from_slice(&pubkey)
-                            .map_err(|_| return DispatchError::Other("Invalid pubkey"))?;
+                        let sig = match sp_core::ecdsa::Signature::from_slice(&signature) {
+                            Some(sig) => sig,
+                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        };
+                        let pubkey = match sp_core::ecdsa::Public::from_slice(&pubkey) {
+                            Ok(pubkey) => pubkey,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
+                        };
                         ecdsa_verify(&sig, &msg, &pubkey)
                     },
                 };
