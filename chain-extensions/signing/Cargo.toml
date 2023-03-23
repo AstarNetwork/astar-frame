@@ -9,6 +9,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+signing-chain-extension-types = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 log = { workspace = true }

@@ -153,6 +153,7 @@ pallet-xc-asset-config = { path = "./frame/xc-asset-config", default-features = 
 dapps-staking-chain-extension-types = { path = "./chain-extensions/types/dapps-staking", default-features = false }
 xvm-chain-extension-types = { path = "./chain-extensions/types/xvm", default-features = false }
 assets-chain-extension-types = { path = "./chain-extensions/types/assets", default-features = false }
+signing-chain-extension-types = { path = "./chain-extensions/types/signing", default-features = false }
 
 pallet-evm-precompile-assets-erc20 = { path = "./precompiles/assets-erc20", default-features = false }
 precompile-utils = { path = "./precompiles/utils", default-features = false }

@@ -22,12 +22,12 @@ use sp_runtime::DispatchError;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
-use parity_scale_codec::MaxEncodedLen;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::Encode;
 use sp_core::crypto::ByteArray;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use sp_io::crypto::{ecdsa_verify, ed25519_verify, sr25519_verify};
+use signing_chain_extension_types::{Outcome, SigType};
 
 enum Func {
     Verify,
@@ -53,25 +53,6 @@ impl<T> Default for SigningExtension<T> {
     fn default() -> Self {
         SigningExtension(PhantomData)
     }
-}
-
-#[derive(Encode, Decode, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum SigType {
-    Sr25519,
-    Ed25519,
-    Ecdsa,
-}
-
-#[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum Outcome {
-    /// Success
-    Success = 0,
-    /// Invalid signature
-    InvalidSignature = 1,
-    /// Invalid pubkey
-    InvalidPubkey = 2,
 }
 
 impl<T> ChainExtension<T> for SigningExtension<T>
