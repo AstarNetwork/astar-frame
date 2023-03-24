@@ -17,16 +17,13 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use sp_runtime::DispatchError;
-// use sp_core::{ByteArray, Pair};
+use sp_runtime::{DispatchError, traits::Verify};
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 use parity_scale_codec::Encode;
-use sp_core::crypto::ByteArray;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
-use sp_io::crypto::{ecdsa_verify, ed25519_verify, sr25519_verify};
 use signing_chain_extension_types::{Outcome, SigType};
 
 enum Func {
@@ -75,39 +72,42 @@ where
                 let result = match sig_type {
                     SigType::Sr25519 => {
                         // 64 bytes
-                        let sig = match sp_core::sr25519::Signature::from_slice(&signature) {
-                            Some(sig) => sig,
-                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        let sig = match sp_core::sr25519::Signature::try_from(signature.as_slice()) {
+                            Ok(sig) => sig,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
                         };
-                        let pubkey = match sp_core::sr25519::Public::from_slice(&pubkey) {
+                        // 32 bytes
+                        let pubkey = match sp_core::sr25519::Public::try_from(pubkey.as_slice()) {
                             Ok(pubkey) => pubkey,
                             Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
                         };
-                        sr25519_verify(&sig, &msg, &pubkey)
+                        sig.verify(msg.as_slice(), &pubkey)
                     }
                     SigType::Ed25519 => {
                         // 64 bytes
-                        let sig = match sp_core::ed25519::Signature::from_slice(&signature) {
-                            Some(sig) => sig,
-                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        let sig = match sp_core::ed25519::Signature::try_from(signature.as_slice()) {
+                            Ok(sig) => sig,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
                         };
-                        let pubkey = match sp_core::ed25519::Public::from_slice(&pubkey) {
+                        // 32 bytes
+                        let pubkey = match sp_core::ed25519::Public::try_from(pubkey.as_slice()) {
                             Ok(pubkey) => pubkey,
                             Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
                         };
-                        ed25519_verify(&sig, &msg, &pubkey)
+                        sig.verify(msg.as_slice(), &pubkey)
                     }
                     SigType::Ecdsa => {
                         // 65 bytes
-                        let sig = match sp_core::ecdsa::Signature::from_slice(&signature) {
-                            Some(sig) => sig,
-                            None => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
+                        let sig = match sp_core::ecdsa::Signature::try_from(signature.as_slice()) {
+                            Ok(sig) => sig,
+                            Err(_) => return Ok(RetVal::Converging(Outcome::InvalidSignature as u32)),
                         };
-                        let pubkey = match sp_core::ecdsa::Public::from_slice(&pubkey) {
+                        // 33 bytes
+                        let pubkey = match sp_core::ecdsa::Public::try_from(pubkey.as_slice()) {
                             Ok(pubkey) => pubkey,
                             Err(_) => return Ok(RetVal::Converging(Outcome::InvalidPubkey as u32)),
                         };
-                        ecdsa_verify(&sig, &msg, &pubkey)
+                        sig.verify(msg.as_slice(), &pubkey)
                     },
                 };
                 env.write(&result.encode(), false, None)?;
