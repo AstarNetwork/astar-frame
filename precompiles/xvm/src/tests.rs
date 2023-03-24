@@ -76,7 +76,6 @@ fn correct_arguments_works() {
             .execute_returns(
                 EvmDataWriter::new()
                     .write(false) // the XVM call should succeed but the internal should fail
-                    .write(1000000u64)
                     .write(vec![0u8])
                     .build(),
             );

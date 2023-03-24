@@ -97,7 +97,7 @@ where
 
         let from = R::AddressMapping::into_account_id(handle.context().caller);
         match &pallet_xvm::Pallet::<R>::xvm_bare_call(context, from, call_to, call_input) {
-            result @ Ok(success) => {
+            Ok(success) => {
                 log::trace!(
                     target: "xvm-precompile::xvm_call",
                     "success: {:?}", success
@@ -106,13 +106,12 @@ where
                 Ok(succeed(
                     EvmDataWriter::new()
                         .write(true)
-                        .write(pallet_xvm::consumed_weight(&result))
                         .write(Bytes(success.output().to_vec())) // TODO redundant clone
                         .build(),
                 ))
             }
 
-            result @ Err(failure) => {
+            Err(failure) => {
                 log::trace!(
                     target: "xvm-precompile::xvm_call",
                     "failure: {:?}", failure
@@ -124,7 +123,6 @@ where
                 Ok(succeed(
                     EvmDataWriter::new()
                         .write(false)
-                        .write(pallet_xvm::consumed_weight(&result))
                         .write(Bytes(error_buffer))
                         .build(),
                 ))
