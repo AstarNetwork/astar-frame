@@ -27,6 +27,7 @@ pub mod pallet {
         traits::IsSubType,
     };
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{IdentifyAccount, Verify};
 
     /// The current storage version.                                                                                      
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -39,8 +40,10 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        /// Custom origin type that used for derived accounts.
+        /// Custom origin type.
         type CustomOrigin: Parameter + TryInto<Self::AccountId>;
+        /// Parameter that defin different origin options and how to create it.
+        type CustomOriginKind: Parameter + OriginDeriving<Self::AccountId, Self::CustomOrigin>;
         /// The runtime origin type.
         type RuntimeOrigin: From<Self::CustomOrigin>
             + From<frame_system::RawOrigin<Self::AccountId>>;
@@ -51,6 +54,12 @@ pub mod pallet {
             + From<frame_system::Call<Self>>
             + IsSubType<Call<Self>>
             + IsType<<Self as frame_system::Config>::RuntimeCall>;
+        /// Meta transaction chain magic prefix. Required to prevent tx replay attack.
+        type ChainMagic: Get<u16>;
+        /// Meta transaction signature type.
+        type Signature: Parameter + Verify<Signer = Self::Signer>;
+        /// Meta transaction signer type.
+        type Signer: IdentifyAccount<AccountId = Self::AccountId>;
         /// General event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Weight information for extrinsics in this pallet.
@@ -61,13 +70,25 @@ pub mod pallet {
     pub enum Error<T> {
         /// Origin with given index not registered.
         UnregisteredOrigin,
+        /// Signer not match signature, check nonce, magic and try again.
+        BadSignature,
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
-        CallExecuted {
+        NewOrigin {
+            account: T::AccountId,
             origin: T::CustomOrigin,
+        },
+        ProxyCall {
+            payer: T::AccountId,
+            origin: T::CustomOrigin,
+            result: DispatchResult,
+        },
+        MetaCall {
+            payer: T::AccountId,
+            origin: T::AccountId,
             result: DispatchResult,
         },
     }
@@ -82,6 +103,32 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Derive new origin for account.
+        ///
+        /// The dispatch origin for this call must be _Signed_.
+        #[pallet::weight(T::WeightInfo::new_origin())]
+        #[pallet::call_index(0)]
+        pub fn new_origin(
+            origin: OriginFor<T>,
+            origin_kind: T::CustomOriginKind,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            let mut origins = AccountOrigin::<T>::get(who.clone());
+            let next_index = origins.len();
+            let new_origin = origin_kind.derive(&who, next_index as u32);
+
+            origins.push(new_origin.clone());
+            AccountOrigin::<T>::insert(who.clone(), origins);
+
+            Self::deposit_event(Event::NewOrigin {
+                account: who,
+                origin: new_origin,
+            });
+
+            Ok(())
+        }
+
         /// Dispatch the given `call` from an account that the sender is authorised.
         ///
         /// The dispatch origin for this call must be _Signed_.
@@ -92,12 +139,11 @@ pub mod pallet {
         #[pallet::weight({
 			let di = call.get_dispatch_info();
 			(T::WeightInfo::proxy_call()
-				 // AccountData for inner call origin accountdata.
 				.saturating_add(T::DbWeight::get().reads_writes(1, 1))
 				.saturating_add(di.weight),
 			di.class)
 		})]
-        #[pallet::call_index(0)]
+        #[pallet::call_index(1)]
         pub fn proxy_call(
             origin: OriginFor<T>,
             #[pallet::compact] origin_index: u32,
@@ -105,7 +151,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let custom_origin = AccountOrigin::<T>::get(who)
+            let custom_origin = AccountOrigin::<T>::get(who.clone())
                 .get(origin_index as usize)
                 .ok_or(Error::<T>::UnregisteredOrigin)?
                 .clone();
@@ -118,7 +164,8 @@ pub mod pallet {
                 call.dispatch(custom_origin.clone().into())
             };
 
-            Self::deposit_event(Event::CallExecuted {
+            Self::deposit_event(Event::ProxyCall {
+                payer: who,
                 origin: custom_origin,
                 result: e.map(|_| ()).map_err(|e| e.error),
             });
@@ -126,13 +173,55 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Derive new origin for account.
+        /// Send meta transaction: verify call signature and execute transaction.
+        ///
+        /// Signature should be made from following payload:
+        ///   * ChainMagic (set in pallet config)
+        ///   * Account Nonce (should be get form chain before call)
+        ///   * Runtime Call (well formatted and encoded runtime call)
+        ///
+        /// Fields above should be SCALE encoded and packed together. Signed and then
+        /// properly encoded into `MultiSignature` depend of selected signer key pair.
         ///
         /// The dispatch origin for this call must be _Signed_.
-        #[pallet::weight(T::WeightInfo::new_origin())]
-        #[pallet::call_index(1)]
-        pub fn new_origin(origin: OriginFor<T>) -> DispatchResult {
+        #[pallet::weight({
+			let di = call.get_dispatch_info();
+			(T::WeightInfo::meta_call()
+				.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+				.saturating_add(di.weight),
+			di.class)
+		})]
+        #[pallet::call_index(2)]
+        pub fn meta_call(
+            origin: OriginFor<T>,
+            call: Box<<T as Config>::RuntimeCall>,
+            signer: T::AccountId,
+            signature: T::Signature,
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+
+            let magic = T::ChainMagic::get();
+            let nonce = frame_system::Pallet::<T>::account_nonce(signer.clone());
+            let payload = (magic, nonce, call.clone());
+
+            // Verify signature for given call
+            if !signature.verify(&payload.encode()[..], &signer) {
+                Err(Error::<T>::BadSignature)?
+            }
+
+            // Dispatch call using signer as origin
+            let origin = frame_system::RawOrigin::Signed(signer.clone()).into();
+            let e = call.dispatch(origin);
+
+            // Increment signer account nonce
+            frame_system::Pallet::<T>::inc_account_nonce(signer.clone());
+
+            Self::deposit_event(Event::MetaCall {
+                payer: who,
+                origin: signer,
+                result: e.map(|_| ()).map_err(|e| e.error),
+            });
+
             Ok(())
         }
     }

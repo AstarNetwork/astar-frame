@@ -30,14 +30,15 @@
 //!
 //! ### Dispatchable Function
 //!
-//! * proxy() - make proxy call with derived account as origin
-//!
-//!
-//! ### Other
-//!
+//! * new_origin() - create new origin for account
+//! * proxy_call() - make proxy call with derived account as origin
+//! * meta_call() - make meta call with dedicated payer account
 //!
 
 #![cfg_attr(not(feature = "std"), no_std)]
+
+pub mod origins;
+pub use origins::*;
 
 pub mod pallet;
 pub use pallet::pallet::*;
@@ -49,22 +50,3 @@ pub use weights::*;
 mod mock;
 #[cfg(test)]
 mod tests;
-
-/*
-/// A method to derive new account from existed one
-pub trait AccountDeriving<AccountId> {
-    /// Derive new account from existed one
-    fn derive(&self, source: &AccountId) -> AccountId;
-}
-
-/// Use simple salt and Blake2 hash for account deriving.
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo, RuntimeDebug)]
-pub struct SimpleSalt(pub u32);
-
-impl<AccountId: AsRef<[u8]> + From<[u8; 32]>> AccountDeriving<AccountId> for SimpleSalt {
-    fn derive(&self, source: &AccountId) -> AccountId {
-        let salted_source = [source.as_ref(), &self.encode()[..]].concat();
-        sp_core::blake2_256(&salted_source).into()
-    }
-}
-*/

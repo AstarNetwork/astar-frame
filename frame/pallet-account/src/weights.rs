@@ -19,15 +19,19 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-    fn proxy_call() -> Weight;
     fn new_origin() -> Weight;
+    fn proxy_call() -> Weight;
+    fn meta_call() -> Weight;
 }
 
 impl WeightInfo for () {
+    fn new_origin() -> Weight {
+        Default::default()
+    }
     fn proxy_call() -> Weight {
         Default::default()
     }
-    fn new_origin() -> Weight {
+    fn meta_call() -> Weight {
         Default::default()
     }
 }

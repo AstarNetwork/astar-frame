@@ -19,18 +19,15 @@
 use crate as pallet_account;
 
 use frame_support::{
-    construct_runtime, parameter_types, sp_io::TestExternalities, weights::Weight, RuntimeDebug,
+    construct_runtime, parameter_types, sp_io::TestExternalities, weights::Weight,
 };
-
+use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     AccountId32,
 };
-
-use codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
 
 pub(crate) type AccountId = AccountId32;
 pub(crate) type BlockNumber = u64;
@@ -39,27 +36,15 @@ pub(crate) type Balance = u128;
 pub(crate) const ALICE: AccountId = AccountId::new([0u8; 32]);
 pub(crate) const BOB: AccountId = AccountId::new([1u8; 32]);
 
+pub(crate) const ALICE_ED25519: [u8; 32] =
+    hex!["88dc3417d5058ec4b4503e0c12ea1a0a89be200fe98922423d4334014fa6b0ee"];
+
+pub(crate) const ALICE_D1_NATIVE: [u8; 32] =
+    hex!["9f0e444c69f77a49bd0be89db92c38fe713e0963165cca12faf5712d7657120f"];
+pub(crate) const ALICE_D2_H160: [u8; 20] = hex!["5d2532e641a22a8f5e0a42652fe82dc231fd27f8"];
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
-
-/// Origin for the account module.
-#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum MyOrigin {
-    /// Substrate native origin.
-    Native(AccountId32),
-    /// The 20-byte length Ethereum like origin.
-    H160(sp_core::H160),
-}
-
-impl TryInto<AccountId32> for MyOrigin {
-    type Error = ();
-    fn try_into(self) -> Result<AccountId32, Self::Error> {
-        match self {
-            MyOrigin::Native(a) => Ok(a),
-            _ => Err(()),
-        }
-    }
-}
 
 /// Value shouldn't be less than 2 for testing purposes, otherwise we cannot test certain corner cases.
 pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 2;
@@ -127,10 +112,18 @@ impl pallet_balances::Config for TestRuntime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const ChainMagic: u16 = 0x4200;
+}
+
 impl pallet_account::Config for TestRuntime {
-    type CustomOrigin = MyOrigin;
+    type CustomOrigin = super::NativeAndEVM;
+    type CustomOriginKind = super::NativeAndEVMKind;
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
+    type ChainMagic = ChainMagic;
+    type Signer = sp_runtime::MultiSigner;
+    type Signature = sp_runtime::MultiSignature;
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
 }
@@ -145,7 +138,12 @@ impl ExternalityBuilder {
 
         // This will cause some initial issuance
         pallet_balances::GenesisConfig::<TestRuntime> {
-            balances: vec![(ALICE, 9000), (BOB, 800)],
+            balances: vec![
+                (ALICE, 9000),
+                (ALICE_ED25519.into(), 1000),
+                (ALICE_D1_NATIVE.into(), 1000),
+                (BOB, 800),
+            ],
         }
         .assimilate_storage(&mut storage)
         .ok();
