@@ -1,35 +1,37 @@
 [package]
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2021"
+authors = ["Parity Technologies <admin@parity.io>", "Stake Technologies <devops@stake.co.jp>"]
 name = "pallet-xcm"
 version = "0.9.28"
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-log = { version = "0.4.16", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.140", optional = true, features = ["derive"] }
+log = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
 
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
+xcm = { workspace = true }
+xcm-executor = { workspace = true }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37" }
-polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.37" }
+pallet-balances = { workspace = true }
+polkadot-parachain = { workspace = true }
+polkadot-runtime-parachains = { workspace = true }
+sp-io = { workspace = true }
+xcm-builder = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"scale-info/std",
 	"serde",
 	"sp-std/std",

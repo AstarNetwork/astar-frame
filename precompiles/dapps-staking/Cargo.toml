@@ -1,46 +1,47 @@
 [package]
 name = "pallet-precompile-dapps-staking"
 version = "3.6.3"
-authors = ["Stake Technologies <devops@stake.co.jp>"]
-edition = "2021"
 license = "Apache-2.0"
-homepage = "https://astar.network"
-repository = "https://github.com/AstarNetwork/astar-frame"
 description = "dApps Staking EVM precompiles"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-log = "0.4.16"
-num_enum = { version = "0.5.3", default-features = false }
-precompile-utils = { path = "../utils", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+log = { workspace = true }
+num_enum = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # Astar
-pallet-dapps-staking = { path = "../../frame/dapps-staking", default-features = false }
+pallet-dapps-staking = { workspace = true }
+precompile-utils = { workspace = true, default-features = false }
 
 # Frontier
-fp-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false }
-pallet-evm = { git = "https://github.com/AstarNetwork/frontier", branch = "polkadot-v0.9.37", default-features = false, features = ["forbid-evm-reentrancy"] }
+fp-evm = { workspace = true }
+pallet-evm = { workspace = true }
 
 [dev-dependencies]
-derive_more = "0.99"
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-precompile-utils = { path = "../utils", features = ["testing"] }
-serde = "1.0.140"
-sha3 = "0.10.1"
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+derive_more = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-timestamp = { workspace = true }
+precompile-utils = { workspace = true, features = ["testing"] }
+serde = { workspace = true }
+sha3 = { workspace = true }
+sp-io = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"scale-info/std",
 	"sp-std/std",
 	"sp-core/std",

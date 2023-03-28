@@ -1,32 +1,35 @@
 [package]
 name = "pallet-block-reward"
 version = "2.2.2"
-authors = ["Stake  Technologies <devops@stake.co.jp>"]
-edition = "2021"
 license = "Apache-2.0"
-homepage = "https://astar.network"
-repository = "https://github.com/AstarNetwork/Astar"
 description = "FRAME pallet for managing block reward issuance & distribution"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+parity-scale-codec = { workspace = true }
+serde = { workspace = true }
 
-frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', branch = 'polkadot-v0.9.37', default-features = false, optional = true }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
-serde = { version = "1.0.136", optional = true }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+scale-info = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+frame-benchmarking = { workspace = true, optional = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true }
+pallet-timestamp = { workspace = true }
+sp-core = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"sp-core/std",
 	"scale-info/std",
 	"sp-std/std",

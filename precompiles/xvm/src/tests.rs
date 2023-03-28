@@ -19,7 +19,7 @@
 use crate::mock::*;
 use crate::*;
 
-use codec::Encode;
+use parity_scale_codec::Encode;
 use precompile_utils::testing::*;
 use precompile_utils::EvmDataWriter;
 

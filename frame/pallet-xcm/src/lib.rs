@@ -27,8 +27,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 use frame_support::traits::{Contains, EnsureOrigin, Get, OriginTrait};
+use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
     traits::{BadOrigin, Saturating},
