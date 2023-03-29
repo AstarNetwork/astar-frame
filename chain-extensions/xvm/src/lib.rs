@@ -82,29 +82,32 @@ where
                     env: None,
                 };
 
-                let call_result = pallet_xvm::Pallet::<T>::xvm_call(
-                    RawOrigin::Signed(caller).into(),
-                    xvm_context,
-                    to,
-                    input,
-                );
+                let from = R::AddressMapping::into_account_id(caller);
+                let call_result = pallet_xvm::Pallet::<R>::xvm_bare_call(context, from, to, input);
 
-                // Adjust the actual weight used by the call if needed.
-                let actual_weight = match call_result {
-                    Ok(e) => e.actual_weight,
-                    Err(e) => e.post_info.actual_weight,
-                };
-                if let Some(actual_weight) = actual_weight {
-                    env.adjust_weight(charged_weight, actual_weight);
-                }
+                let actual_weight = pallet_xvm::consumed_weight(&call_result);
+                env.adjust_weight(charged_weight, actual_weight);
 
-                return match call_result {
-                    Err(e) => {
-                        let mapped_error = XvmExecutionResult::try_from(e.error)?;
-                        Ok(RetVal::Converging(mapped_error as u32))
+                match &call_result {
+                    Ok(success) => {
+                        log::trace!(
+                            target: "xvm-extension::xvm_call",
+                            "success: {:?}", success
+                        );
+
+                        env.write(success.output(), false, None);
+                        Ok(RetVal::Converging(XvmExecutionResult::Success as u32))
                     }
-                    Ok(_) => Ok(RetVal::Converging(XvmExecutionResult::Success as u32)),
-                };
+
+                    Err(failure) => {
+                        log::trace!(
+                            target: "xvm-extension::xvm_call",
+                            "failure: {:?}", failure
+                        );
+
+                        Ok(RetVal::Converging(failure.error() as u32))
+                    }
+                }
             }
         }
     }
