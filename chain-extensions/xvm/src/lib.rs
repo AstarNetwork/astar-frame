@@ -18,12 +18,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_system::RawOrigin;
+use frame_support::dispatch::Encode;
+use frame_support::weights::Weight;
 use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
 use pallet_xvm::XvmContext;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
-
 use xvm_chain_extension_types::{XvmCallArgs, XvmExecutionResult};
 
 enum XvmFuncId {
@@ -82,20 +82,21 @@ where
                     env: None,
                 };
 
-                let from = R::AddressMapping::into_account_id(caller);
-                let call_result = pallet_xvm::Pallet::<R>::xvm_bare_call(context, from, to, input);
+                let call_result =
+                    pallet_xvm::Pallet::<T>::xvm_bare_call(xvm_context, caller, to, input);
 
                 let actual_weight = pallet_xvm::consumed_weight(&call_result);
-                env.adjust_weight(charged_weight, actual_weight);
+                env.adjust_weight(charged_weight, Weight::from_ref_time(actual_weight));
 
-                match &call_result {
+                match call_result {
                     Ok(success) => {
                         log::trace!(
                             target: "xvm-extension::xvm_call",
                             "success: {:?}", success
                         );
 
-                        env.write(success.output(), false, None);
+                        let buffer: sp_std::vec::Vec<_> = success.output().encode();
+                        env.write(&buffer, false, None)?;
                         Ok(RetVal::Converging(XvmExecutionResult::Success as u32))
                     }
 
@@ -105,7 +106,8 @@ where
                             "failure: {:?}", failure
                         );
 
-                        Ok(RetVal::Converging(failure.error() as u32))
+                        // TODO Propagate error
+                        Ok(RetVal::Converging(XvmExecutionResult::UnknownError as u32))
                     }
                 }
             }
