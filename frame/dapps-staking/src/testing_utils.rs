@@ -1,3 +1,11 @@
+// This file is part of Astar.
+
+// Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+// You should have received a copy of the PolyForm-Noncommercial license with this crate.
+// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+
 use super::{pallet::pallet::Event, *};
 use frame_support::assert_ok;
 use mock::{EraIndex, *};
@@ -70,12 +78,9 @@ pub(crate) fn assert_register(developer: AccountId, contract_id: &MockSmartContr
     ));
 
     // Verify op is successful
-    assert_ok!(DappsStaking::enable_developer_pre_approval(
-        Origin::root(),
-        false
-    ));
     assert_ok!(DappsStaking::register(
-        Origin::signed(developer),
+        RuntimeOrigin::root(),
+        developer,
         contract_id.clone()
     ));
 
@@ -105,10 +110,10 @@ pub(crate) fn assert_unregister(developer: AccountId, contract_id: &MockSmartCon
 
     // Ensure that contract can be unregistered
     assert_ok!(DappsStaking::unregister(
-        Origin::root(),
+        RuntimeOrigin::root(),
         contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::ContractRemoved(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::ContractRemoved(
         developer,
         contract_id.clone(),
     )));
@@ -158,14 +163,12 @@ pub(crate) fn assert_withdraw_from_unregistered(
 
     // Op with verification
     assert_ok!(DappsStaking::withdraw_from_unregistered(
-        Origin::signed(staker.clone()),
+        RuntimeOrigin::signed(staker.clone()),
         contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::WithdrawFromUnregistered(
-        staker,
-        contract_id.clone(),
-        staked_value,
-    )));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(
+        Event::WithdrawFromUnregistered(staker, contract_id.clone(), staked_value),
+    ));
 
     let final_state = MemorySnapshot::all(current_era, contract_id, staker);
 
@@ -212,11 +215,11 @@ pub(crate) fn assert_bond_and_stake(
 
     // Perform op and verify everything is as expected
     assert_ok!(DappsStaking::bond_and_stake(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         contract_id.clone(),
         value,
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::BondAndStake(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::BondAndStake(
         staker,
         contract_id.clone(),
         staking_value,
@@ -283,11 +286,11 @@ pub(crate) fn assert_unbond_and_unstake(
 
     // Ensure op is successful and event is emitted
     assert_ok!(DappsStaking::unbond_and_unstake(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         contract_id.clone(),
         value
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::UnbondAndUnstake(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::UnbondAndUnstake(
         staker,
         contract_id.clone(),
         expected_unbond_amount,
@@ -368,8 +371,10 @@ pub(crate) fn assert_withdraw_unbonded(staker: AccountId) {
     let expected_unbond_amount = valid_info.sum();
 
     // Ensure op is successful and event is emitted
-    assert_ok!(DappsStaking::withdraw_unbonded(Origin::signed(staker),));
-    System::assert_last_event(mock::Event::DappsStaking(Event::Withdrawn(
+    assert_ok!(DappsStaking::withdraw_unbonded(RuntimeOrigin::signed(
+        staker
+    ),));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Withdrawn(
         staker,
         expected_unbond_amount,
     )));
@@ -416,12 +421,12 @@ pub(crate) fn assert_nomination_transfer(
 
     // Ensure op is successful and event is emitted
     assert_ok!(DappsStaking::nomination_transfer(
-        Origin::signed(staker),
+        RuntimeOrigin::signed(staker),
         origin_contract_id.clone(),
         value,
         target_contract_id.clone()
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::NominationTransfer(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::NominationTransfer(
         staker,
         origin_contract_id.clone(),
         expected_transfer_amount,
@@ -483,8 +488,7 @@ pub(crate) fn assert_nomination_transfer(
     }
 }
 
-/// Used to perform claim for stakers with success assertion
-pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartContract<AccountId>) {
+pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartContract<AccountId>, delegated_account: Option<AccountId>) { // We add an option of delegated_account
     let (claim_era, _) = DappsStaking::staker_info(&claimer, contract_id).claim();
     let current_era = DappsStaking::current_era();
 
@@ -513,10 +517,16 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
             * stakers_joint_reward;
     let issuance_before_claim = <TestRuntime as Config>::Currency::total_issuance();
 
+    // We take the balance before the claim_staker of the delegated account
+    let delegated_init_free_balance = delegated_account.map(|account| <TestRuntime as Config>::Currency::free_balance(&account));
+
     assert_ok!(DappsStaking::claim_staker(
-        Origin::signed(claimer),
+        RuntimeOrigin::signed(claimer),
         contract_id.clone(),
     ));
+
+    // We take the balance after the claim_staker of the delegated account
+    let delegated_final_free_balance = delegated_account.map(|account| <TestRuntime as Config>::Currency::free_balance(&account));
 
     let final_state_current_era = MemorySnapshot::all(current_era, contract_id, claimer);
 
@@ -525,6 +535,9 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
         &init_state_current_era,
         &final_state_current_era,
         calculated_reward,
+        delegated_account, // We add three parameters to this function
+        delegated_init_free_balance,
+        delegated_final_free_balance,
     );
 
     // check for stake event if restaking is performed
@@ -544,7 +557,7 @@ pub(crate) fn assert_claim_staker(claimer: AccountId, contract_id: &MockSmartCon
     }
 
     // last event should be Reward, regardless of restaking
-    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Reward(
         claimer,
         contract_id.clone(),
         claim_era,
@@ -581,6 +594,9 @@ fn assert_restake_reward(
     init_state_current_era: &MemorySnapshot,
     final_state_current_era: &MemorySnapshot,
     reward: Balance,
+    delegated_account: Option<AccountId>, // If we have a delegated account, we will be able to compare the free balance
+    delegated_init_free_balance: Option<Balance>,
+    delegated_final_free_balance: Option<Balance>,
 ) {
     if DappsStaking::should_restake_reward(
         init_state_current_era.ledger.reward_destination,
@@ -606,10 +622,17 @@ fn assert_restake_reward(
         );
     } else {
         // staked values should remain the same, and free balance increase
-        assert_eq!(
-            init_state_current_era.free_balance + reward,
-            final_state_current_era.free_balance
-        );
+     
+        if let Some(_account) = delegated_account { // If we have a delegated account
+            if let (Some(init_free_balance), Some(final_free_balance)) = (delegated_init_free_balance, delegated_final_free_balance) {
+                assert_eq!(init_free_balance + reward, final_free_balance); // We make sure the free balance increase
+            }
+        } else {
+            assert_eq!(
+                init_state_current_era.free_balance + reward, // If there is no delegated_account, we check the free balance of the staker
+                final_state_current_era.free_balance
+            );
+        }
         assert_eq!(
             init_state_current_era.era_info.staked,
             final_state_current_era.era_info.staked
@@ -622,6 +645,7 @@ fn assert_restake_reward(
             init_state_current_era.contract_info,
             final_state_current_era.contract_info
         );
+
     }
 }
 
@@ -641,11 +665,11 @@ pub(crate) fn assert_claim_dapp(contract_id: &MockSmartContract<AccountId>, clai
         DappsStaking::dev_stakers_split(&init_state.contract_info, &init_state.era_info);
 
     assert_ok!(DappsStaking::claim_dapp(
-        Origin::signed(developer),
+        RuntimeOrigin::signed(developer),
         contract_id.clone(),
         claim_era,
     ));
-    System::assert_last_event(mock::Event::DappsStaking(Event::Reward(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::Reward(
         developer,
         contract_id.clone(),
         claim_era,
@@ -671,11 +695,11 @@ pub(crate) fn assert_set_reward_destination(
     reward_destination: RewardDestination,
 ) {
     assert_ok!(DappsStaking::set_reward_destination(
-        Origin::signed(account_id),
+        RuntimeOrigin::signed(account_id),
         reward_destination
     ));
 
-    System::assert_last_event(mock::Event::DappsStaking(Event::RewardDestination(
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::RewardDestination(
         account_id,
         reward_destination,
     )));
@@ -683,4 +707,41 @@ pub(crate) fn assert_set_reward_destination(
     let ledger = Ledger::<TestRuntime>::get(&account_id);
 
     assert_eq!(ledger.reward_destination, reward_destination);
+}
+
+/// Used to burn stale rewards with success assertions
+pub(crate) fn assert_burn_stale_reward(
+    contract_id: &MockSmartContract<AccountId>,
+    claim_era: EraIndex,
+) {
+    let developer = DappsStaking::dapp_info(contract_id).unwrap().developer;
+    let init_state = MemorySnapshot::all(claim_era, contract_id, developer);
+    let issuance_before_claim = <TestRuntime as Config>::Currency::total_issuance();
+
+    assert!(!init_state.contract_info.contract_reward_claimed);
+
+    // Calculate contract portion of the reward
+    let (calculated_reward, _) =
+        DappsStaking::dev_stakers_split(&init_state.contract_info, &init_state.era_info);
+
+    assert_ok!(DappsStaking::burn_stale_reward(
+        RuntimeOrigin::root(),
+        contract_id.clone(),
+        claim_era,
+    ));
+    System::assert_last_event(mock::RuntimeEvent::DappsStaking(Event::StaleRewardBurned(
+        developer,
+        contract_id.clone(),
+        claim_era,
+        calculated_reward,
+    )));
+
+    let final_state = MemorySnapshot::all(claim_era, &contract_id, developer);
+    let issuance_after_claim = <TestRuntime as Config>::Currency::total_issuance();
+    assert_eq!(init_state.free_balance, final_state.free_balance);
+    assert!(final_state.contract_info.contract_reward_claimed);
+    assert_eq!(
+        issuance_before_claim - calculated_reward,
+        issuance_after_claim
+    );
 }
