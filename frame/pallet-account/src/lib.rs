@@ -21,7 +21,7 @@
 //! ## Overview
 //!
 //! An accout abstraction pallet makes it possible to derive new blockchain based
-//! account for your existed external owned account (seed phrase based). The onchain
+//! account for an existing external owned account (seed phrase based). The onchain
 //! account could be derived to multiple address spaces: H160 and SS58. For example,
 //! it makes possible to predictably interact between substrate native account and
 //! EVM smart contracts.
