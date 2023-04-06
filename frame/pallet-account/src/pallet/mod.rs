@@ -70,7 +70,7 @@ pub mod pallet {
     pub enum Error<T> {
         /// Origin with given index not registered.
         UnregisteredOrigin,
-        /// Signer not match signature, check nonce, magic and try again.
+        /// Signature does not match Signer, check nonce, magic and try again.
         BadSignature,
     }
 
