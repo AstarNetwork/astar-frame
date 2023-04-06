@@ -60,7 +60,6 @@ pub mod pallet {
         traits::IsSubType,
     };
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{IdentifyAccount, Verify};
 
     /// The current storage version.                                                                                      
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -68,13 +67,12 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// Custom origin type.
-        type CustomOrigin: Parameter + TryInto<Self::AccountId>;
+        type CustomOrigin: Parameter + TryInto<Self::AccountId> + MaxEncodedLen;
         /// Parameter that defin different origin options and how to create it.
         type CustomOriginKind: Parameter + OriginDeriving<Self::AccountId, Self::CustomOrigin>;
         /// The runtime origin type.
@@ -87,12 +85,6 @@ pub mod pallet {
             + From<frame_system::Call<Self>>
             + IsSubType<Call<Self>>
             + IsType<<Self as frame_system::Config>::RuntimeCall>;
-        /// Meta transaction chain magic prefix. Required to prevent tx replay attack.
-        type ChainMagic: Get<u16>;
-        /// Meta transaction signature type.
-        type Signature: Parameter + Verify<Signer = Self::Signer>;
-        /// Meta transaction signer type.
-        type Signer: IdentifyAccount<AccountId = Self::AccountId>;
         /// General event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Weight information for extrinsics in this pallet.
@@ -126,7 +118,12 @@ pub mod pallet {
     /// Account origins
     #[pallet::storage]
     pub type AccountOrigin<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<T::CustomOrigin>, ValueQuery>;
+        StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Twox64Concat, u32, T::CustomOrigin>;
+
+    /// Account last origin index
+    #[pallet::storage]
+    pub type AccountLastOrigin<T: Config> =
+        StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -141,12 +138,10 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let mut origins = AccountOrigin::<T>::get(who.clone());
-            let next_index = origins.len();
-            let new_origin = origin_kind.derive(&who, next_index as u32);
-
-            origins.push(new_origin.clone());
-            AccountOrigin::<T>::insert(who.clone(), origins);
+            let next_index = AccountLastOrigin::<T>::get(&who);
+            let new_origin = origin_kind.derive(&who, next_index);
+            AccountOrigin::<T>::insert(&who, next_index, new_origin.clone());
+            AccountLastOrigin::<T>::insert(&who, next_index + 1);
 
             Self::deposit_event(Event::NewOrigin {
                 account: who,
@@ -177,11 +172,13 @@ pub mod pallet {
             call: Box<<T as Config>::RuntimeCall>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(
+                origin_index < AccountLastOrigin::<T>::get(&who),
+                Error::<T>::UnregisteredOrigin
+            );
 
-            let custom_origin = AccountOrigin::<T>::get(who)
-                .get(origin_index as usize)
-                .ok_or(Error::<T>::UnregisteredOrigin)?
-                .clone();
+            let custom_origin = AccountOrigin::<T>::get(&who, origin_index)
+                .ok_or(Error::<T>::UnregisteredOrigin)?;
 
             let e = if let Ok(id) = custom_origin.clone().try_into() {
                 // in case of native dispatch with system signed origin

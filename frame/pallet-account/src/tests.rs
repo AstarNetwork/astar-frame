@@ -30,20 +30,18 @@ pub fn new_origin_works() {
             NativeAndEVMKind::Native,
         ));
         assert_eq!(
-            AccountOrigin::<TestRuntime>::get(ALICE),
-            vec![NativeAndEVM::Native(ALICE_D1_NATIVE.into())],
+            AccountOrigin::<TestRuntime>::get(ALICE, 0),
+            Some(NativeAndEVM::Native(ALICE_D1_NATIVE.into())),
         );
+        assert_eq!(AccountOrigin::<TestRuntime>::get(ALICE, 1), None,);
         // Create EVM origin
         assert_ok!(Account::new_origin(
             RuntimeOrigin::signed(ALICE).into(),
             NativeAndEVMKind::H160,
         ));
         assert_eq!(
-            AccountOrigin::<TestRuntime>::get(ALICE),
-            vec![
-                NativeAndEVM::Native(ALICE_D1_NATIVE.into()),
-                NativeAndEVM::H160(ALICE_D2_H160.into())
-            ],
+            AccountOrigin::<TestRuntime>::get(ALICE, 1),
+            Some(NativeAndEVM::H160(ALICE_D2_H160.into())),
         );
     })
 }

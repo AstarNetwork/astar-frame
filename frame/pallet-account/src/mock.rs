@@ -112,18 +112,11 @@ impl pallet_balances::Config for TestRuntime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ChainMagic: u16 = 0x4200;
-}
-
 impl pallet_account::Config for TestRuntime {
     type CustomOrigin = super::NativeAndEVM;
     type CustomOriginKind = super::NativeAndEVMKind;
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type ChainMagic = ChainMagic;
-    type Signer = sp_runtime::MultiSigner;
-    type Signature = sp_runtime::MultiSignature;
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
 }
