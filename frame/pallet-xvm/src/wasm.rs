@@ -20,7 +20,6 @@
 
 use crate::*;
 use frame_support::traits::Currency;
-use pallet_contracts::weights::WeightInfo;
 use parity_scale_codec::HasCompact;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
@@ -77,10 +76,7 @@ where
             "WASM XVM call result: {:?}", call_result
         );
 
-        let consumed_weight = call_result
-            .gas_consumed
-            .saturating_add(T::WeightInfo::call())
-            .ref_time();
+        let consumed_weight = call_result.gas_consumed.ref_time();
 
         match call_result.result {
             Ok(success) => Ok(XvmCallOk {
