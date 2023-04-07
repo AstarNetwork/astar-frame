@@ -73,6 +73,11 @@ fn correct_arguments_works() {
                     .build(),
             )
             .expect_no_logs()
-            .execute_returns(EvmDataWriter::new().write(true).build());
+            .execute_returns(
+                EvmDataWriter::new()
+                    .write(false) // the XVM call should succeed but the internal should fail
+                    .write(vec![0u8])
+                    .build(),
+            );
     })
 }
