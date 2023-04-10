@@ -27,7 +27,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrationXcmV3<T> {
     fn on_runtime_upgrade() -> Weight {
         let version = Pallet::<T>::on_chain_storage_version();
         let mut consumed_weight = Weight::zero();
-        if version < 2 {
+        if version >= 2 {
             return consumed_weight;
         }
 
