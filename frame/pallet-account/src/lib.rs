@@ -95,8 +95,6 @@ pub mod pallet {
     pub enum Error<T> {
         /// Origin with given index not registered.
         UnregisteredOrigin,
-        /// Signature does not match Signer, check nonce, magic and try again.
-        BadSignature,
     }
 
     #[pallet::event]

@@ -79,3 +79,36 @@ pub fn proxy_call_works() {
         );
     })
 }
+
+#[test]
+pub fn proxy_call_fails() {
+    ExternalityBuilder::build().execute_with(|| {
+        let call: RuntimeCall = pallet_balances::Call::transfer {
+            dest: BOB,
+            value: 10,
+        }
+        .into();
+
+        // Make call with unknown origin
+        assert_eq!(
+            Account::proxy_call(
+                RuntimeOrigin::signed(ALICE).into(),
+                0,
+                Box::new(call.clone()),
+            ),
+            Err(Error::<TestRuntime>::UnregisteredOrigin.into())
+        );
+
+        // Create native origin
+        assert_ok!(Account::new_origin(
+            RuntimeOrigin::signed(ALICE).into(),
+            NativeAndEVMKind::Native,
+        ));
+
+        // Make call with native origin
+        assert_eq!(
+            Account::proxy_call(RuntimeOrigin::signed(ALICE).into(), 1, Box::new(call),),
+            Err(Error::<TestRuntime>::UnregisteredOrigin.into())
+        );
+    })
+}
