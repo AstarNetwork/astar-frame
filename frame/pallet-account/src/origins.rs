@@ -45,9 +45,9 @@ impl TryInto<AccountId32> for NativeAndEVM {
     }
 }
 
-impl TryInto<H160> for NativeAndEVM {
+impl TryInto<sp_core::H160> for NativeAndEVM {
     type Error = ();
-    fn try_into(self) -> Result<H160, Self::Error> {
+    fn try_into(self) -> Result<sp_core::H160, Self::Error> {
         match self {
             NativeAndEVM::H160(a) => Ok(a),
             _ => Err(()),
