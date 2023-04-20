@@ -130,7 +130,10 @@ pub mod pallet {
         /// Derive new origin for account.
         ///
         /// The dispatch origin for this call must be _Signed_.
-        #[pallet::weight(T::WeightInfo::new_origin())]
+        #[pallet::weight(
+            T::WeightInfo::new_origin()
+                .saturating_add(T::DbWeight::get().reads_writes(1, 2))
+        )]
         #[pallet::call_index(0)]
         pub fn new_origin(
             origin: OriginFor<T>,
@@ -161,7 +164,7 @@ pub mod pallet {
         #[pallet::weight({
 			let di = call.get_dispatch_info();
 			(T::WeightInfo::proxy_call()
-				.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+				.saturating_add(T::DbWeight::get().reads(1))
 				.saturating_add(di.weight),
 			di.class)
 		})]
