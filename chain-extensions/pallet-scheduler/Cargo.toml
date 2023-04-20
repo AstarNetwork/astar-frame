@@ -23,6 +23,15 @@ sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
+[dev-dependencies]
+env_logger = "0.9"
+sp-keystore = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-preimage = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-randomness-collective-flip = { workspace = true }
+sp-io =  { workspace = true }
+
 [features]
 default = ["std"]
 std = [
@@ -38,4 +47,5 @@ std = [
 	"sp-runtime/std",
 	"pallet-scheduler/std",
 	"scheduler-chain-extension-types/std",
+	"pallet-balances/std",
 ]

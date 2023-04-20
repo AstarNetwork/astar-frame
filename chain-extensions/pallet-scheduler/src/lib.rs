@@ -18,6 +18,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+pub mod tests;
 pub mod weights;
 
 use frame_support::traits::{schedule, Currency};
@@ -39,6 +43,7 @@ use sp_std::marker::PhantomData;
 
 enum SchedulerFunc {
     Schedule,
+    Cancel,
 }
 
 impl TryFrom<u16> for SchedulerFunc {
@@ -47,6 +52,7 @@ impl TryFrom<u16> for SchedulerFunc {
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(SchedulerFunc::Schedule),
+            2 => Ok(SchedulerFunc::Cancel),
             _ => Err(DispatchError::Other(
                 "PalletSchedulerExtension: Unimplemented func_id",
             )),
@@ -122,6 +128,34 @@ where
                 return match call_result {
                     Err(e) => {
                         sp_std::if_std! {println!("Schedule:{:?}", e)};
+                        let mapped_error = Outcome::from(e);
+                        Ok(RetVal::Converging(mapped_error as u32))
+                    }
+                    Ok(_) => Ok(RetVal::Converging(Outcome::Success as u32)),
+                };
+            },
+            SchedulerFunc::Cancel => {
+                let (origin, when, index): (
+                    Origin,
+                    T::BlockNumber,
+                    u32,
+                ) = env.read_as()?;
+
+                let base_weight = <T as pallet_scheduler::Config>::WeightInfo::cancel(
+                    T::MaxScheduledPerBlock::get(),
+                );
+                env.charge_weight(base_weight)?;
+
+                let raw_origin = select_origin!(&origin, env.ext().address().clone());
+
+                let call_result = pallet_scheduler::Pallet::<T>::cancel(
+                    raw_origin.into(),
+                    when,
+                    index,
+                );
+                return match call_result {
+                    Err(e) => {
+                        sp_std::if_std! {println!("Cancel:{:?}", e)};
                         let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
