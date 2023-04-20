@@ -45,6 +45,16 @@ impl TryInto<AccountId32> for NativeAndEVM {
     }
 }
 
+impl TryInto<H160> for NativeAndEVM {
+    type Error = ();
+    fn try_into(self) -> Result<H160, Self::Error> {
+        match self {
+            NativeAndEVM::H160(a) => Ok(a),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Kind for NativeAndEVM origin.
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum NativeAndEVMKind {

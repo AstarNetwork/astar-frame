@@ -18,10 +18,11 @@
 
 use frame_support::weights::Weight;
 
+// TODO: generate weights when pallet comes to testnet
+
 pub trait WeightInfo {
     fn new_origin() -> Weight;
     fn proxy_call() -> Weight;
-    fn meta_call() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -29,9 +30,6 @@ impl WeightInfo for () {
         Default::default()
     }
     fn proxy_call() -> Weight {
-        Default::default()
-    }
-    fn meta_call() -> Weight {
         Default::default()
     }
 }
