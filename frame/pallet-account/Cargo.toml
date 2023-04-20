@@ -11,9 +11,9 @@ log = { workspace = true }
 serde = { workspace = true, optional = true }
 
 # Substrate
-parity-scale-codec = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
@@ -23,9 +23,9 @@ sp-std = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-pallet-balances = { workspace = true, features = ["std"] }
 assert_matches = { workspace = true }
 hex-literal = { workspace = true }
+pallet-balances = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
