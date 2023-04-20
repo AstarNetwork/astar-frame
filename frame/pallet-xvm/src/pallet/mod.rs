@@ -37,6 +37,8 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
+    const PLACEHOLDER_WEIGHT: u64 = 100_000; 
+
     #[pallet::pallet]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -75,6 +77,10 @@ pub mod pallet {
             to: Vec<u8>,
             input: Vec<u8>,
         ) -> XvmResult {
+            // Executing XVM call logic itself will consume some weight,
+            // so that should be subtracted from the max allowed weight of XCM call
+            context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
+
             let result = T::SyncVM::xvm_call(context, from, to, input);
 
             log::trace!(
@@ -98,9 +104,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
 
-            // Executing XVM call logic itself will consume some weight so that should be subtracted from the max allowed weight of XCM call
-            // TODO: fix
-            //context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
+            // Executing XVM call logic itself will consume some weight,
+            // so that should be subtracted from the max allowed weight of XCM call
+            context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
 
             let result = T::SyncVM::xvm_call(context, from, to, input);
             let consumed_weight = consumed_weight(&result);
