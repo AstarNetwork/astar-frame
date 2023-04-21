@@ -1,18 +1,20 @@
 use crate::weights::SubstrateWeight;
 use crate::BalanceOf;
 use crate::{weights, SchedulerExtension};
-use frame_support::{ord_parameter_types, parameter_types, sp_io, traits::{ConstU32, ConstU64, EqualPrivilegeOnly, Nothing, OnFinalize, OnInitialize}, weights::{constants::RocksDbWeight, Weight}};
-use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+use frame_support::{
+    ord_parameter_types, parameter_types, sp_io,
+    traits::{ConstU32, ConstU64, EqualPrivilegeOnly, Nothing, OnFinalize, OnInitialize},
+    weights::Weight,
+};
+use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_contracts::chain_extension::RegisteredChainExtension;
 use pallet_contracts::{DefaultAddressGenerator, Frame};
 use sp_core::crypto::AccountId32;
 use sp_keystore::{testing::KeyStore, KeystoreExt};
-use sp_runtime::testing::{Header, H256};
-use sp_runtime::traits::{AccountIdLookup, BlakeTwo256, Convert, IdentityLookup};
+use sp_runtime::testing::H256;
+use sp_runtime::traits::{BlakeTwo256, Convert, IdentityLookup};
 use sp_runtime::{generic, Perbill};
 use std::sync::Arc;
-use frame_support::traits::{Contains, EitherOfDiverse};
-use pallet_scheduler::WeightInfo;
 
 pub type BlockNumber = u32;
 pub type Balance = u128;
@@ -42,7 +44,7 @@ impl frame_system::Config for Test {
     type BlockHashCount = BlockHashCount;
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData =  pallet_balances::AccountData<Balance>;
+    type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
@@ -53,7 +55,7 @@ impl frame_system::Config for Test {
 
 impl pallet_preimage::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = pallet_preimage::weights::SubstrateWeight<Test>;
+    type WeightInfo = ();
     type Currency = ();
     type ManagerOrigin = EnsureRoot<AccountId32>;
     type BaseDeposit = ();
@@ -66,47 +68,7 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const One: u64 = 1;
-}
-
-pub struct TestWeightInfo;
-impl WeightInfo for TestWeightInfo {
-    fn service_agendas_base() -> Weight {
-        Weight::from_ref_time(0b0000_0001)
-    }
-    fn service_agenda_base(i: u32) -> Weight {
-        Weight::from_ref_time((i << 8) as u64 + 0b0000_0010)
-    }
-    fn service_task_base() -> Weight {
-        Weight::from_ref_time(0b0000_0100)
-    }
-    fn service_task_periodic() -> Weight {
-        Weight::from_ref_time(0b0000_1100)
-    }
-    fn service_task_named() -> Weight {
-        Weight::from_ref_time(0b0001_0100)
-    }
-    fn service_task_fetched(s: u32) -> Weight {
-        Weight::from_ref_time((s << 8) as u64 + 0b0010_0100)
-    }
-    fn execute_dispatch_signed() -> Weight {
-        Weight::from_ref_time(0b0100_0000)
-    }
-    fn execute_dispatch_unsigned() -> Weight {
-        Weight::from_ref_time(0b1000_0000)
-    }
-    fn schedule(_s: u32) -> Weight {
-        Weight::from_ref_time(50)
-    }
-    fn cancel(_s: u32) -> Weight {
-        Weight::from_ref_time(50)
-    }
-    fn schedule_named(_s: u32) -> Weight {
-        Weight::from_ref_time(50)
-    }
-    fn cancel_named(_s: u32) -> Weight {
-        Weight::from_ref_time(50)
-    }
+    pub const One: u64 = 1;
 }
 
 impl pallet_scheduler::Config for Test {
@@ -117,7 +79,7 @@ impl pallet_scheduler::Config for Test {
     type MaximumWeight = MaximumSchedulerWeight;
     type ScheduleOrigin = EnsureSigned<AccountId32>;
     type MaxScheduledPerBlock = ConstU32<10>;
-    type WeightInfo = TestWeightInfo;
+    type WeightInfo = ();
     type OriginPrivilegeCmp = EqualPrivilegeOnly;
     type Preimages = Preimage;
 }
@@ -129,7 +91,7 @@ parameter_types! {
     pub static UnstableInterface: bool = true;
     pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
     pub static DepositPerByte: BalanceOf<Test> = 1;
-	pub const DepositPerItem: BalanceOf<Test> = 1;
+    pub const DepositPerItem: BalanceOf<Test> = 1;
 }
 
 impl pallet_contracts::Config for Test {
@@ -198,7 +160,6 @@ frame_support::construct_runtime!(
         Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
-        Logger: logger::{Pallet, Call, Event<T>},
     }
 );
 
@@ -250,88 +211,9 @@ impl ExtBuilder {
 }
 
 pub fn run_to_block(n: u32) {
-    println!("entry: {:?}", System::block_number());
     while System::block_number() < n {
-        println!("looop: {:?}", n);
         Scheduler::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         Scheduler::on_initialize(System::block_number());
     }
 }
-
-// ________________________________________
-
-pub fn new_test_ext() -> sp_io::TestExternalities {
-    let t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-    t.into()
-}
-
-pub fn root() -> OriginCaller { frame_system::RawOrigin::Root.into()
-}
-
-pub type LoggerCall = logger::Call<Test>;
-
-// Logger module to track execution.
-#[frame_support::pallet]
-pub mod logger {
-    use super::OriginCaller;
-    use frame_support::{pallet_prelude::*, parameter_types};
-    use frame_support::traits::OriginTrait;
-    use frame_system::pallet_prelude::*;
-
-    parameter_types! {
-		static Log: Vec<(OriginCaller, u32)> = Vec::new();
-	}
-    pub fn log() -> Vec<(OriginCaller, u32)> {
-        Log::get().clone()
-    }
-
-    #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-    #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-    }
-
-    #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        Logged(u32, Weight),
-    }
-
-    #[pallet::call]
-    impl<T: Config> Pallet<T>
-        where
-            <T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
-    {
-        #[pallet::call_index(0)]
-        #[pallet::weight(*weight)]
-        pub fn log(origin: OriginFor<T>, i: u32, weight: Weight) -> DispatchResult {
-            Self::deposit_event(Event::Logged(i, weight));
-            Log::mutate(|log| {
-                log.push((origin.caller().clone(), i));
-            });
-            Ok(())
-        }
-
-        #[pallet::call_index(1)]
-        #[pallet::weight(*weight)]
-        pub fn log_without_filter(origin: OriginFor<T>, i: u32, weight: Weight) -> DispatchResult {
-            Self::deposit_event(Event::Logged(i, weight));
-            Log::mutate(|log| {
-                log.push((origin.caller().clone(), i));
-            });
-            Ok(())
-        }
-    }
-}
-
-impl logger::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-}
-
