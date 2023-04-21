@@ -17,7 +17,6 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use frame_support::weights::Weight;
 use parity_scale_codec::MaxEncodedLen;
 use parity_scale_codec::{Decode, Encode};
 use scale_info::prelude::vec::Vec;
@@ -66,7 +65,7 @@ impl From<DispatchError> for Outcome {
 pub struct ContractCallInput<AccountId, Balance> {
     pub dest: AccountId,
     pub data: Vec<u8>,
-    pub gas_limit: Weight,
+    pub gas_limit: (u64, u64),
     pub storage_deposit_limit: Option<Balance>,
     pub value: Balance,
     pub max_weight: u64,

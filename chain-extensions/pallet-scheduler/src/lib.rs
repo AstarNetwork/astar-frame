@@ -24,6 +24,7 @@ mod mock;
 pub mod tests;
 pub mod weights;
 
+use frame_support::dispatch::Weight;
 use frame_support::traits::{schedule, Currency};
 use frame_system::RawOrigin;
 use pallet_contracts::{
@@ -113,7 +114,7 @@ where
                     PalletContractCall::<T>::call {
                         dest: call_input.dest.into(),
                         value: call_input.value,
-                        gas_limit: call_input.gas_limit,
+                        gas_limit: Weight::from_parts(call_input.gas_limit.0, call_input.gas_limit.1),
                         data: call_input.data,
                         storage_deposit_limit: None,
                     }.into();

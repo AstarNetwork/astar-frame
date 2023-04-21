@@ -104,16 +104,12 @@ fn chain_extension_works() {
             //  ) -> Result<(), SchedulerError>
             //
             // With args:
-            // when: 3
+            // when: 5
             // maybe_periodic: None
-            // let input = (selector, 5).encode();
-
             let mut data = Vec::new();
             data.append(&mut [0x9d, 0xb8, 0x31, 0x96].to_vec());
-            data.append(&mut 5u64.encode());
-
-            let selector: Vec<u8> = [0x9d, 0xb8, 0x31, 0x96].to_vec();
-            let input = (selector, 5u64).encode();
+            data.append(&mut 5.encode());
+            data.append(&mut Option::<(u64, u32)>::None.encode());
 
             let result = Contracts::call(
                 RuntimeOrigin::signed(ALICE),
