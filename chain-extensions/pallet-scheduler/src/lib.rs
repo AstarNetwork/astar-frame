@@ -100,10 +100,10 @@ where
                     schedule::Priority,
                     ContractCallInput<T::AccountId, BalanceOf<T>>,
                 ) = env.read_as_unbounded(env.in_len())?;
-                
-                let read_weigth = <W as weights::WeightInfo>::read_as_unbounded(env.in_len());
-                env.charge_weight(read_weigth)?;
-                
+
+                let read_weight = <W as weights::WeightInfo>::read_as_unbounded(env.in_len());
+                env.charge_weight(read_weight)?;
+
                 let base_weight = <T as pallet_scheduler::Config>::WeightInfo::schedule(
                     T::MaxScheduledPerBlock::get(),
                 );
@@ -129,7 +129,6 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        sp_std::if_std! {println!("Schedule:{:?}", e)};
                         let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
@@ -157,7 +156,6 @@ where
                 );
                 return match call_result {
                     Err(e) => {
-                        sp_std::if_std! {println!("Cancel:{:?}", e)};
                         let mapped_error = Outcome::from(e);
                         Ok(RetVal::Converging(mapped_error as u32))
                     }
