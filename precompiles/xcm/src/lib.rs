@@ -20,14 +20,18 @@
 #![cfg_attr(test, feature(assert_matches))]
 
 use fp_evm::{PrecompileHandle, PrecompileOutput};
-use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
+use frame_support::{
+    dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
+    pallet_prelude::Weight,
+    traits::Get,
+};
 use pallet_evm::{AddressMapping, Precompile};
 use sp_core::{H160, H256, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
 use xcm::latest::prelude::*;
-use xcm_executor::traits::{Convert, InvertLocation};
+use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
 use precompile_utils::{
@@ -147,14 +151,14 @@ where
             BeneficiaryType::Account32 => {
                 let recipient: [u8; 32] = input.read::<H256>()?.into();
                 X1(Junction::AccountId32 {
-                    network: Any,
+                    network: None,
                     id: recipient,
                 })
             }
             BeneficiaryType::Account20 => {
                 let recipient: H160 = input.read::<Address>()?.into();
                 X1(Junction::AccountKey20 {
-                    network: Any,
+                    network: None,
                     key: recipient.to_fixed_bytes(),
                 })
             }
@@ -244,13 +248,13 @@ where
         }
         let fee_amount = fee_amount.low_u128();
 
-        let ancestry = R::LocationInverter::ancestry();
+        let context = R::UniversalLocation::get();
         let fee_multilocation = MultiAsset {
             id: Concrete(fee_asset),
             fun: Fungible(fee_amount),
         };
         let fee_multilocation = fee_multilocation
-            .reanchored(&dest, &ancestry)
+            .reanchored(&dest, context)
             .map_err(|_| revert("Failed to reanchor fee asset"))?;
 
         // Prepare XCM
@@ -261,8 +265,8 @@ where
                 weight_limit: WeightLimit::Unlimited,
             },
             Transact {
-                origin_type: OriginKind::SovereignAccount,
-                require_weight_at_most: transact_weight,
+                origin_kind: OriginKind::SovereignAccount,
+                require_weight_at_most: Weight::from_ref_time(transact_weight),
                 call: remote_call.into(),
             },
         ]);
@@ -273,7 +277,7 @@ where
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
         let call = pallet_xcm::Call::<R>::send {
             dest: Box::new(dest.into()),
-            message: Box::new(xcm::VersionedXcm::V2(xcm)), // TODO: could this be problematic in case destination doesn't support v2?
+            message: Box::new(xcm::VersionedXcm::V3(xcm)),
         };
 
         // Dispatch a call.
@@ -324,14 +328,14 @@ where
             BeneficiaryType::Account32 => {
                 let recipient: [u8; 32] = input.read::<H256>()?.into();
                 X1(Junction::AccountId32 {
-                    network: Any,
+                    network: None,
                     id: recipient,
                 })
             }
             BeneficiaryType::Account20 => {
                 let recipient: H160 = input.read::<Address>()?.into();
                 X1(Junction::AccountKey20 {
-                    network: Any,
+                    network: None,
                     key: recipient.to_fixed_bytes(),
                 })
             }

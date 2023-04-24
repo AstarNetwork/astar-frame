@@ -113,8 +113,6 @@ impl FindAuthor<u64> for Author4 {
 
 impl pallet_authorship::Config for Test {
     type FindAuthor = Author4;
-    type UncleGenerations = ();
-    type FilterUncle = ();
     type EventHandler = CollatorSelection;
 }
 

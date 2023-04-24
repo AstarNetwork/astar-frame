@@ -24,12 +24,12 @@ use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{AddressMapping, Precompile};
 use pallet_xvm::XvmContext;
 use parity_scale_codec::Decode;
+use sp_runtime::codec::Encode;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
 use precompile_utils::{
     revert, succeed, Bytes, EvmDataWriter, EvmResult, FunctionModifier, PrecompileHandleExt,
-    RuntimeHelper,
 };
 
 #[cfg(test)]
@@ -55,7 +55,7 @@ where
         From<pallet_xvm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 {
     fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
-        log::trace!(target: "xcm-precompile", "In XVM precompile");
+        log::trace!(target: "xvm-precompile", "In XVM precompile");
 
         let selector = handle.read_selector()?;
 
@@ -95,18 +95,38 @@ where
         let call_to = input.read::<Bytes>()?.0;
         let call_input = input.read::<Bytes>()?.0;
 
-        // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xvm::Call::<R>::xvm_call {
-            context,
-            to: call_to,
-            input: call_input,
-        };
+        let from = R::AddressMapping::into_account_id(handle.context().caller);
+        match &pallet_xvm::Pallet::<R>::xvm_bare_call(context, from, call_to, call_input) {
+            Ok(success) => {
+                log::trace!(
+                    target: "xvm-precompile::xvm_call",
+                    "success: {:?}", success
+                );
 
-        // Dispatch a call.
-        // The underlying logic will handle updating used EVM gas based on the weight of the executed call.
-        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+                Ok(succeed(
+                    EvmDataWriter::new()
+                        .write(true)
+                        .write(Bytes(success.output().to_vec())) // TODO redundant clone
+                        .build(),
+                ))
+            }
 
-        Ok(succeed(EvmDataWriter::new().write(true).build()))
+            Err(failure) => {
+                log::trace!(
+                    target: "xvm-precompile::xvm_call",
+                    "failure: {:?}", failure
+                );
+
+                let mut error_buffer = Vec::new();
+                failure.error().encode_to(&mut error_buffer);
+
+                Ok(succeed(
+                    EvmDataWriter::new()
+                        .write(false)
+                        .write(Bytes(error_buffer))
+                        .build(),
+                ))
+            }
+        }
     }
 }

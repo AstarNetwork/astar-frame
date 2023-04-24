@@ -22,7 +22,7 @@ use super::*;
 
 use frame_support::{
     construct_runtime, parameter_types,
-    traits::{AsEnsureOriginWithArg, Everything},
+    traits::{AsEnsureOriginWithArg, Everything, Nothing},
     weights::Weight,
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -43,8 +43,7 @@ use sp_std::{borrow::Borrow, cell::RefCell};
 use xcm::prelude::XcmVersion;
 use xcm_builder::{
     test_utils::TransactAsset, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, LocationInverter, SignedToAccountId32,
-    TakeWeightCredit,
+    AllowTopLevelPaidExecutionFrom, FixedWeightBounds, SignedToAccountId32, TakeWeightCredit,
 };
 use xcm_executor::XcmExecutor;
 
@@ -308,13 +307,16 @@ impl pallet_evm::Config for Runtime {
     type BlockGasLimit = ();
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
+    type OnCreate = ();
 }
 
 parameter_types! {
-    pub const RelayLocation: MultiLocation = Here.into();
-    pub const AnyNetwork: NetworkId = NetworkId::Any;
+    pub const RelayLocation: MultiLocation = Here.into_location();
+    pub const AnyNetwork: Option<NetworkId> = None;
+    pub UniversalLocation: InteriorMultiLocation = Here;
     pub Ancestry: MultiLocation = Here.into();
     pub UnitWeightCost: u64 = 1_000;
+    pub const MaxAssetsIntoHolding: u32 = 64;
 }
 
 parameter_types! {
@@ -330,14 +332,17 @@ pub type Barrier = (
 );
 
 pub struct LocalAssetTransactor;
-
 impl TransactAsset for LocalAssetTransactor {
-    fn transfer_asset(
-        _asset: &MultiAsset,
-        _from: &MultiLocation,
-        _to: &MultiLocation,
+    fn deposit_asset(_what: &MultiAsset, _who: &MultiLocation, _context: &XcmContext) -> XcmResult {
+        Ok(())
+    }
+
+    fn withdraw_asset(
+        _what: &MultiAsset,
+        _who: &MultiLocation,
+        _maybe_context: Option<&XcmContext>,
     ) -> Result<xcm_executor::Assets, XcmError> {
-        Ok(xcm_executor::Assets::new())
+        Ok(MultiAssets::new().into())
     }
 }
 
@@ -349,18 +354,27 @@ impl xcm_executor::Config for XcmConfig {
     type OriginConverter = ();
     type IsReserve = ();
     type IsTeleporter = ();
-    type LocationInverter = LocationInverter<Ancestry>;
+    type UniversalLocation = UniversalLocation;
     type Barrier = Barrier;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
     type Trader = ();
     type ResponseHandler = XcmPallet;
     type AssetTrap = XcmPallet;
+    type AssetLocker = ();
+    type AssetExchanger = ();
     type AssetClaims = XcmPallet;
     type SubscriptionService = XcmPallet;
+    type PalletInstancesInfo = AllPalletsWithSystem;
+    type MaxAssetsIntoHolding = MaxAssetsIntoHolding;
+    type FeeManager = ();
+    type MessageExporter = ();
+    type UniversalAliases = Nothing;
+    type CallDispatcher = RuntimeCall;
+    type SafeCallFilter = Everything;
 }
 
 parameter_types! {
-    pub static AdvertisedXcmVersion: XcmVersion = 2;
+    pub static AdvertisedXcmVersion: XcmVersion = 3;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
@@ -383,10 +397,28 @@ pub(crate) fn take_sent_xcm() -> Vec<(MultiLocation, Xcm<()>)> {
 
 pub struct StoringRouter;
 impl SendXcm for StoringRouter {
-    fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
-        SENT_XCM.with(|q| q.borrow_mut().push((dest.into(), msg)));
-        Ok(())
+    type Ticket = (MultiLocation, Xcm<()>);
+
+    fn validate(
+        destination: &mut Option<MultiLocation>,
+        message: &mut Option<Xcm<()>>,
+    ) -> SendResult<(MultiLocation, Xcm<()>)> {
+        Ok((
+            (destination.take().unwrap(), message.take().unwrap()),
+            MultiAssets::new().into(),
+        ))
     }
+
+    fn deliver(pair: Self::Ticket) -> Result<XcmHash, SendError> {
+        let (dest, msg) = (pair.0, pair.1);
+        SENT_XCM.with(|q| q.borrow_mut().push((dest.into(), msg)));
+        Ok(XcmHash::default())
+    }
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+    pub ReachableDest: Option<MultiLocation> = Some(Parachain(1000).into());
 }
 
 impl pallet_xcm::Config for Runtime {
@@ -399,11 +431,20 @@ impl pallet_xcm::Config for Runtime {
     type XcmTeleportFilter = Everything;
     type XcmReserveTransferFilter = Everything;
     type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
-    type LocationInverter = LocationInverter<Ancestry>;
+    type UniversalLocation = UniversalLocation;
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
     const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+
     type AdvertisedXcmVersion = AdvertisedXcmVersion;
+    type TrustedLockers = ();
+    type SovereignAccountOf = ();
+    type Currency = Balances;
+    type CurrencyMatcher = ();
+    type MaxLockers = frame_support::traits::ConstU32<8>;
+    type WeightInfo = pallet_xcm::TestWeightInfo;
+    #[cfg(feature = "runtime-benchmarks")]
+    type ReachableDest = ReachableDest;
 }
 
 // Configure a mock runtime to test the pallet.

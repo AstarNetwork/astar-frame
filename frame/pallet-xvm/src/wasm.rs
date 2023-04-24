@@ -23,8 +23,8 @@ use frame_support::traits::Currency;
 use parity_scale_codec::HasCompact;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Get;
+use sp_runtime::traits::StaticLookup;
 use sp_std::fmt::Debug;
-
 pub struct WASM<I, T>(sp_std::marker::PhantomData<(I, T)>);
 
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
@@ -55,39 +55,39 @@ where
             error: XvmError::EncodingFailure,
             consumed_weight: PLACEHOLDER_WEIGHT,
         })?;
-        let res = pallet_contracts::Pallet::<T>::call(
-            frame_support::dispatch::RawOrigin::Signed(from).into(),
+
+        let dest = T::Lookup::lookup(dest).map_err(|error| XvmCallError {
+            error: XvmError::ExecutionError(Into::<&str>::into(error).into()),
+            consumed_weight: PLACEHOLDER_WEIGHT,
+        })?;
+        let call_result = pallet_contracts::Pallet::<T>::bare_call(
+            from, // no need to check origin, we consider it signed here
             dest,
             Default::default(),
             gas_limit.into(),
             None,
             input,
-        )
-        .map_err(|e| {
-            let consumed_weight = if let Some(weight) = e.post_info.actual_weight {
-                weight.ref_time()
-            } else {
-                gas_limit.ref_time()
-            };
-            XvmCallError {
-                error: XvmError::ExecutionError(Into::<&str>::into(e.error).into()),
-                consumed_weight,
-            }
-        })?;
+            false,
+            pallet_contracts::Determinism::Deterministic,
+        );
 
         log::trace!(
             target: "xvm::WASM::xvm_call",
-            "WASM XVM call result: {:?}", res
+            "WASM XVM call result: {:?}", call_result
         );
 
-        let consumed_weight = if let Some(weight) = res.actual_weight {
-            weight.ref_time()
-        } else {
-            gas_limit.ref_time()
-        };
-        Ok(XvmCallOk {
-            output: Default::default(), // TODO: Fill in with output from the call
-            consumed_weight,
-        })
+        let consumed_weight = call_result.gas_consumed.ref_time();
+
+        match call_result.result {
+            Ok(success) => Ok(XvmCallOk {
+                output: success.data,
+                consumed_weight,
+            }),
+
+            Err(error) => Err(XvmCallError {
+                error: XvmError::ExecutionError(Into::<&str>::into(error).into()),
+                consumed_weight,
+            }),
+        }
     }
 }

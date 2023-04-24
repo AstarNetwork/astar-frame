@@ -88,7 +88,7 @@ where
         );
 
         Ok(XvmCallOk {
-            output: Default::default(), // TODO: Fill output vec with response from the call
+            output: info.value,
             consumed_weight: T::GasWeightMapping::gas_to_weight(
                 info.used_gas.unique_saturated_into(),
                 false,
