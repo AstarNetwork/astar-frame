@@ -65,7 +65,7 @@ pub enum NativeAndEVMKind {
 impl OriginDeriving<AccountId32, NativeAndEVM> for NativeAndEVMKind {
     fn derive(&self, source: &AccountId32, index: u32) -> NativeAndEVM {
         let salted_source = [source.as_ref(), &index.encode()[..]].concat();
-        let derived = sp_core::blake2_256(&salted_source);
+        let derived = sp_io::hashing::blake2_256(&salted_source);
         match self {
             NativeAndEVMKind::Native => NativeAndEVM::Native(derived.into()),
             NativeAndEVMKind::H160 => NativeAndEVM::H160(sp_core::H160::from_slice(&derived[..20])),
