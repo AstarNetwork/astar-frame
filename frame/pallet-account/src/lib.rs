@@ -62,6 +62,7 @@ pub mod pallet {
         traits::IsSubType,
     };
     use frame_system::pallet_prelude::*;
+    use sp_std::prelude::*;
 
     /// The current storage version.                                                                                      
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
