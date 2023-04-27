@@ -168,6 +168,11 @@ pub mod pallet {
             asset_location: VersionedMultiLocation,
             asset_id: T::AssetId,
         },
+        /// Registered mapping between Reserve nonfungible multi location and local multi location.
+        CollectionRegistered {
+            reserve_ml: VersionedMultiLocation,
+            local_ml: VersionedMultiLocation,
+        },
         /// Changed the amount of units we are charging per execution second for an asset
         UnitsPerSecondChanged {
             asset_location: VersionedMultiLocation,
@@ -198,6 +203,14 @@ pub mod pallet {
     pub type AssetIdToLocation<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, VersionedMultiLocation>;
 
+    /// Mapping from an asset id to asset type.
+    /// Can be used when receiving transaction specifying an asset directly,
+    /// like transferring an asset from this chain to another.
+    #[pallet::storage]
+    #[pallet::getter(fn local_to_reserve)]
+    pub type LocalToReserve<T: Config> =
+        StorageMap<_, Twox64Concat, VersionedMultiLocation, VersionedMultiLocation>;
+
     /// Mapping from an asset type to an asset id.
     /// Can be used when receiving a multilocation XCM message to retrieve
     /// the corresponding asset in which tokens should me minted.
@@ -205,6 +218,14 @@ pub mod pallet {
     #[pallet::getter(fn asset_location_to_id)]
     pub type AssetLocationToId<T: Config> =
         StorageMap<_, Twox64Concat, VersionedMultiLocation, T::AssetId>;
+
+    /// Mapping from an asset type to an asset id.
+    /// Can be used when receiving a multilocation XCM message to retrieve
+    /// the corresponding asset in which tokens should me minted.
+    #[pallet::storage]
+    #[pallet::getter(fn reserve_to_local)]
+    pub type ReserveToLocal<T: Config> =
+        StorageMap<_, Twox64Concat, VersionedMultiLocation, VersionedMultiLocation>;
 
     /// Stores the units per second for local execution for a AssetLocation.
     /// This is used to know how to charge for XCM execution in a particular asset.
@@ -359,6 +380,42 @@ pub mod pallet {
             Self::deposit_event(Event::AssetRemoved {
                 asset_id,
                 asset_location,
+            });
+            Ok(())
+        }
+
+        /// Register new asset location to asset Id mapping.
+        ///
+        /// This makes the asset eligible for XCM interaction.
+        #[pallet::call_index(5)]
+        #[pallet::weight(T::WeightInfo::register_asset_location())]
+        pub fn register_nonfungible_location(
+            origin: OriginFor<T>,
+            reserve_ml: Box<VersionedMultiLocation>,
+            local_ml: Box<VersionedMultiLocation>,
+        ) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+
+            // Ensure such an assetId does not exist
+            // ensure!(
+            //     !AssetIdToLocation::<T>::contains_key(&asset_id),
+            //     Error::<T>::AssetAlreadyRegistered
+            // );
+
+            let v3_reserve_loc = MultiLocation::try_from(*reserve_ml)
+                .map_err(|_| Error::<T>::MultiLocationNotSupported)?;
+            let reserve_ml = VersionedMultiLocation::V3(v3_reserve_loc);
+
+            let v3_local_loc = MultiLocation::try_from(*local_ml)
+                .map_err(|_| Error::<T>::MultiLocationNotSupported)?;
+            let local_ml = VersionedMultiLocation::V3(v3_local_loc);
+
+            LocalToReserve::<T>::insert(&local_ml, reserve_ml.clone());
+            ReserveToLocal::<T>::insert(&reserve_ml, local_ml.clone());
+
+            Self::deposit_event(Event::CollectionRegistered {
+                reserve_ml,
+                local_ml,
             });
             Ok(())
         }
