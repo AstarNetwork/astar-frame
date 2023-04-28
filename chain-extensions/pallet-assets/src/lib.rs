@@ -18,6 +18,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+pub mod tests;
 pub mod weights;
 
 use assets_chain_extension_types::{select_origin, Origin, Outcome};
