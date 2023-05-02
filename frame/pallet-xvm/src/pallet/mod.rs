@@ -79,7 +79,7 @@ pub mod pallet {
         ) -> XvmResult {
             // Executing XVM call logic itself will consume some weight,
             // so that should be subtracted from the max allowed weight of XCM call
-            context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
+            context.max_weight = context.max_weight - Weight::from_ref_time(PLACEHOLDER_WEIGHT);
 
             let result = T::SyncVM::xvm_call(context, from, to, input);
 
@@ -106,7 +106,7 @@ pub mod pallet {
 
             // Executing XVM call logic itself will consume some weight,
             // so that should be subtracted from the max allowed weight of XCM call
-            context.max_weight = context.max_weight - PLACEHOLDER_WEIGHT;
+            context.max_weight = context.max_weight - Weight::from_ref_time(PLACEHOLDER_WEIGHT);
 
             let result = T::SyncVM::xvm_call(context, from, to, input);
             let consumed_weight = consumed_weight(&result);
