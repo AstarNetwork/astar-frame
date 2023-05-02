@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
-//! XVM - The cross-VM pallet interface. 
+//! XVM - The cross-VM pallet interface.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
