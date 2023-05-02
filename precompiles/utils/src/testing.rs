@@ -20,7 +20,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Utils.  If not, see <http://www.gnu.org/licenses/>.
 use super::*;
-use core::assert_matches::assert_matches;
 use fp_evm::{
     ExitReason, ExitSucceed, PrecompileOutput, PrecompileResult, PrecompileSet, Transfer,
 };
@@ -369,12 +368,25 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
     /// Take a closure allowing to perform custom matching on the output.
     pub fn execute_reverts(mut self, check: impl Fn(&[u8]) -> bool) {
         let res = self.execute();
-        assert_matches!(
-            res,
-            Some(Err(PrecompileFailure::Revert { output, ..}))
-                if check(&output)
-        );
-        self.assert_optionals();
+        match res {
+			Some(Err(PrecompileFailure::Revert { output, .. })) => {
+				if !check(&output) {
+                    let decoded = decode_revert_message(&output);
+					eprintln!(
+						"Revert message (bytes): {:?}",
+						sp_core::hexdisplay::HexDisplay::from(&decoded)
+					);
+					eprintln!(
+						"Revert message (string): {:?}",
+						core::str::from_utf8(decoded).ok()
+					);
+					panic!("Revert reason doesn't match !");
+				}
+			}
+			other => panic!("Didn't revert, instead returned {:?}", other),
+		}
+
+		self.assert_optionals();
     }
 
     /// Execute the precompile set and check it returns provided output.
@@ -406,6 +418,18 @@ impl<T: PrecompileSet> PrecompileTesterExt for T {
     ) -> PrecompilesTester<Self> {
         PrecompilesTester::new(self, from, to, data)
     }
+}
+
+pub fn decode_revert_message(encoded: &[u8]) -> &[u8] {
+	let encoded_len = encoded.len();
+	// selector 4 + offset 32 + string length 32
+	if encoded_len > 68 {
+		let message_len = encoded[36..68].iter().sum::<u8>();
+		if encoded_len >= 68 + message_len as usize {
+			return &encoded[68..68 + message_len as usize];
+		}
+	}
+	b"decode_revert_message: error"
 }
 
 #[derive(Clone, PartialEq, Eq)]
