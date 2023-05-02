@@ -72,7 +72,7 @@ pub mod pallet {
         ///   - It does not deposit event upon completion
         ///   - It returns `XvmResult` letting the caller get return data directly
         pub fn xvm_bare_call(
-            context: XvmContext,
+            mut context: XvmContext,
             from: T::AccountId,
             to: Vec<u8>,
             input: Vec<u8>,
@@ -98,7 +98,7 @@ pub mod pallet {
         #[pallet::weight(context.max_weight)]
         pub fn xvm_call(
             origin: OriginFor<T>,
-            context: XvmContext,
+            mut context: XvmContext,
             to: Vec<u8>,
             input: Vec<u8>,
         ) -> DispatchResultWithPostInfo {
