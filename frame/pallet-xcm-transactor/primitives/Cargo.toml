@@ -1,0 +1,32 @@
+[package]
+name = "xcm-ce-primitives"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+num_enum = { version = "0.6", default-features = false }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+#substarte
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+
+# xcm
+xcm = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+	"num_enum/std",
+	"parity-scale-codec/std",
+	"scale-info/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"xcm/std",
+]
