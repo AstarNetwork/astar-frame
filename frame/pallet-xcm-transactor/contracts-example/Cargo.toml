@@ -1,10 +1,10 @@
 [package]
 name = "contracts-example"
 version = "0.1.0"
-authors = ["[your_name] <[your_email]>"]
+authors = ["Ashutosh Varma <ashutoshvarma11@live.com>"]
 edition = "2021"
 
-# [workspace]
+[workspace]
 
 [dependencies]
 ink = { version = "~4.2.0", default-features = false }

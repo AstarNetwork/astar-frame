@@ -21,13 +21,11 @@
 use crate::{Config, Pallet, QueryConfig};
 use frame_support::{traits::EnsureOrigin, DefaultNoBound};
 use frame_system::RawOrigin;
-// use log;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, Result as DispatchResult, RetVal, SysConfig,
 };
 use pallet_xcm::{Pallet as XcmPallet, WeightInfo};
 use parity_scale_codec::Encode;
-use sp_core::Get;
 use sp_std::prelude::*;
 use xcm::prelude::*;
 pub use xcm_ce_primitives::{
@@ -59,10 +57,6 @@ impl<T: Config> ChainExtension<T> for XCMExtension<T>
 where
     <T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
-    fn enabled() -> bool {
-        true
-    }
-
     fn call<E>(&mut self, env: Environment<E, InitState>) -> DispatchResult<RetVal>
     where
         E: Ext<T = T>,
@@ -80,6 +74,8 @@ where
 }
 
 impl<T: Config> XCMExtension<T> {
+    /// Returns the weight for given XCM and saves it (in CE, per-call scratch buffer) for
+    /// execution
     fn prepare_execute<E: Ext<T = T>>(
         &mut self,
         env: Environment<E, InitState>,
@@ -101,6 +97,7 @@ impl<T: Config> XCMExtension<T> {
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
+    /// Execute the XCM that was prepared earlier
     fn execute<E: Ext<T = T>>(
         &mut self,
         mut env: Environment<E, InitState>,
@@ -118,7 +115,7 @@ impl<T: Config> XCMExtension<T> {
         // ensure xcm execute origin
         let origin_location = unwrap!(
             T::ExecuteXcmOrigin::ensure_origin(origin.into()),
-            BadVersion
+            InvalidOrigin
         );
 
         let hash = input.xcm.using_encoded(sp_io::hashing::blake2_256);
@@ -142,6 +139,8 @@ impl<T: Config> XCMExtension<T> {
         }
     }
 
+    /// Returns the fee required to send XCM and saves
+    /// it for sending
     fn validate_send<E: Ext<T = T>>(
         &mut self,
         env: Environment<E, InitState>,
@@ -166,6 +165,7 @@ impl<T: Config> XCMExtension<T> {
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
+    /// Send the validated XCM
     fn send<E: Ext<T = T>>(
         &mut self,
         mut env: Environment<E, InitState>,
@@ -195,6 +195,8 @@ impl<T: Config> XCMExtension<T> {
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
+    /// Register the new query
+    /// TODO: figure out weights
     fn new_query<E: Ext<T = T>>(&self, env: Environment<E, InitState>) -> DispatchResult<RetVal>
     where
         <T as SysConfig>::AccountId: AsRef<[u8; 32]>,
@@ -208,48 +210,52 @@ impl<T: Config> XCMExtension<T> {
 
         let dest: MultiLocation = unwrap!(dest.try_into(), BadVersion);
 
-        // TODO: find better way to get origin
-        //       https://github.com/paritytech/substrate/pull/13708
-        let origin = RawOrigin::Signed(env.ext().address().clone());
-        // ensure origin is allowed to make queries
-        unwrap!(
-            T::RegisterQueryOrigin::ensure_origin(origin.into()),
+        // convert to interior junction
+        let interior: Junctions = unwrap!(
+            Self::querier_location(env.ext().address().clone()),
             InvalidOrigin
         );
 
         // register the query
-        let query_id: u64 = Pallet::<T>::new_query(
-            query_config,
-            AccountId32 {
-                id: *env.ext().address().as_ref(),
-                network: T::Network::get(),
-            },
-            dest,
-        )?;
+        let query_id: u64 = Pallet::<T>::new_query(query_config, interior, dest)?;
 
         // write the query_id to buffer
         query_id.using_encoded(|q| env.write(q, true, None))?;
 
-        Ok(RetVal::Converging(XcmCeError::Success.into()))
+        Ok(RetVal::Converging(Success.into()))
     }
 
+    /// Take the response for query if available
+    /// TODO: figure out weights
     fn take_response<E: Ext<T = T>>(
         &self,
         env: Environment<E, InitState>,
     ) -> DispatchResult<RetVal> {
         let mut env = env.buf_in_buf_out();
         let query_id: u64 = env.read_as()?;
-        let response = unwrap!(
-            pallet_xcm::Pallet::<T>::take_response(query_id)
-                .map(|ret| ret.0)
-                .ok_or(()),
-            XcmCeError::NoResponse
+        // convert to interior junction
+        let interior: Junctions = unwrap!(
+            Self::querier_location(env.ext().address().clone()),
+            InvalidOrigin
         );
+
+        let response = unwrap!(
+            unwrap!(
+                Pallet::<T>::take_response(interior, query_id),
+                InvalidQuerier
+            )
+            .map(|r| r.0)
+            .ok_or(()),
+            NoResponse
+        );
+
         VersionedResponse::from(response).using_encoded(|r| env.write(r, true, None))?;
 
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
+    /// Get the pallet account id which will call the contract callback
+    /// TODO: figure out weights
     fn pallet_account_id<E: Ext<T = T>>(
         &self,
         env: Environment<E, InitState>,
@@ -258,5 +264,18 @@ impl<T: Config> XCMExtension<T> {
         Pallet::<T>::account_id().using_encoded(|r| env.write(r, true, None))?;
 
         Ok(RetVal::Converging(XcmCeError::Success.into()))
+    }
+}
+
+impl<T: Config> XCMExtension<T> {
+    fn querier_location(account_id: T::AccountId) -> Result<Junctions, XcmCeError> {
+        // TODO: find better way to get origin
+        //       https://github.com/paritytech/substrate/pull/13708
+        let origin = RawOrigin::Signed(account_id);
+        // ensure origin is allowed to make queries
+        let origin_location =
+            T::RegisterQueryOrigin::ensure_origin(origin.into()).map_err(|_| InvalidOrigin)?;
+        // convert to interior junction
+        origin_location.try_into().map_err(|_| InvalidOrigin)
     }
 }

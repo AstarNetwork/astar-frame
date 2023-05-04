@@ -14,7 +14,7 @@ members = [
 	"frame/contracts-migration",
     "frame/pallet-xcm-transactor",
     "frame/pallet-xcm-transactor/primitives",
-    "frame/pallet-xcm-transactor/contracts-example",
+    # "frame/pallet-xcm-transactor/contracts-example",
 	"primitives/xcm",
 	"precompiles/assets-erc20",
 	"precompiles/dapps-staking",

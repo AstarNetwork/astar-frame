@@ -29,12 +29,20 @@ pub const XCM_EXTENSION_ID: u16 = 04;
 #[repr(u16)]
 #[derive(TryFromPrimitive, IntoPrimitive)]
 pub enum Command {
+    /// Returns the weight for given XCM and saves it (in CE, per-call scratch buffer) for
+    /// execution
     PrepareExecute = 0,
+    /// Execute the XCM that was prepared earlier
     Execute = 1,
+    /// Returns the fee required to send XCM and saves it for sending
     ValidateSend = 2,
+    /// Send the validated XCM
     Send = 3,
+    /// Register the new query
     NewQuery = 4,
+    /// Take the response for query if available
     TakeResponse = 5,
+    /// Get the pallet account id which will call the contract callback
     PalletAccountId = 6,
 }
 
@@ -128,6 +136,8 @@ macro_rules! create_error_enum {
             NoResponse = 9,
             /// Failed to weigh the XCM message
             CannotWeigh = 10,
+            /// Querier mismatch
+            InvalidQuerier = 11,
             /// Unknown runtime error
             #[num_enum(default)]
             RuntimeError = 99,

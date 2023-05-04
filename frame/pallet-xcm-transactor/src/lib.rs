@@ -30,8 +30,6 @@ use sp_runtime::traits::{AccountIdConversion, Zero};
 use sp_std::prelude::*;
 use xcm::prelude::*;
 
-pub type MethodSelector = [u8; 4];
-
 pub mod chain_extension;
 
 #[frame_support::pallet]
@@ -41,12 +39,19 @@ pub mod pallet {
     use pallet_xcm::ensure_response;
     pub use xcm_ce_primitives::{QueryConfig, QueryType};
 
-    // Response info
+    /// Response info
     #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
     pub struct ResponseInfo<AccountId> {
         pub query_id: QueryId,
         pub query_type: QueryType<AccountId>,
         pub response: Response,
+    }
+
+    /// Query infor
+    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+    pub struct QueryInfo<AccountId> {
+        pub query_type: QueryType<AccountId>,
+        pub querier: Junctions,
     }
 
     #[pallet::pallet]
@@ -82,18 +87,13 @@ pub mod pallet {
         /// Max weight for callback
         #[pallet::constant]
         type MaxCallbackWeight: Get<Weight>;
-
-        /// Relay network id
-        /// required only in CE for building interior AccountId32 junction
-        #[pallet::constant]
-        type Network: Get<Option<NetworkId>>;
     }
 
     /// Mapping of ongoing queries and thier type
     #[pallet::storage]
     #[pallet::getter(fn callback_query)]
     pub(super) type CallbackQueries<T: Config> =
-        StorageMap<_, Blake2_128Concat, QueryId, QueryType<T::AccountId>, OptionQuery>;
+        StorageMap<_, Blake2_128Concat, QueryId, QueryInfo<T::AccountId>, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -121,6 +121,8 @@ pub mod pallet {
         UnexpectedQueryResponse,
         /// Does not support the given query type
         NotSupported,
+        /// Querier mismatch
+        InvalidQuerier,
         /// Callback out of gas
         /// TODO: use it
         OutOfGas,
@@ -149,7 +151,7 @@ pub mod pallet {
             // ensure the origin is a response
             let responder = ensure_response(<T as Config>::RuntimeOrigin::from(origin))?;
             // fetch the query
-            let query_type =
+            let QueryInfo { query_type, .. } =
                 CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQueryResponse)?;
             // handle the response routing
             // TODO: in case of error, maybe save the response for manual
@@ -185,6 +187,8 @@ pub mod pallet {
         ///       Weight for this does not take callback weights into account. That should be
         ///       done via XcmWeigher using WeightBounds, where all query instructions's
         ///       `QueryResponseInfo` `max_weight` is taken into account.
+        ///        https://github.com/paritytech/polkadot/blob/b9d192c418da83c784e366c86b7db0b2ff0789d9/runtime/kusama/src/weights/xcm/mod.rs#L99-L106
+        ///        Kusama uses WeightInfoBounds but does not take `max_weight` into account
         #[pallet::call_index(1)]
         #[pallet::weight(Weight::from_parts(1_000_000, 1_000_000))]
         pub fn prepare_new_query(
@@ -212,11 +216,11 @@ pub mod pallet {
 
 /// Handle the incoming xcm notify callback from ResponseHandler (pallet_xcm)
 pub trait OnCallback {
-    // error type, that can be converted to dispatch error
+    /// error type, that can be converted to dispatch error
     type Error: Into<DispatchError>;
-    // account id type
+    /// account id type
     type AccountId;
-    // blocknumber type
+    /// blocknumber type
     type BlockNumber;
 
     // TODO: Query type itself should be generic like
@@ -323,11 +327,33 @@ impl<T: Config> Pallet<T> {
                     response: Response::Null,
                 }
                 .into();
-                let id = PalletXcm::<T>::new_notify_query(dest, call, timeout, querier);
-                CallbackQueries::<T>::insert(id, query_type);
+                let id = PalletXcm::<T>::new_notify_query(dest, call, timeout, querier.clone());
+                CallbackQueries::<T>::insert(
+                    id,
+                    QueryInfo {
+                        query_type,
+                        querier,
+                    },
+                );
                 id
             }
         })
+    }
+
+    /// Take the response if available and querier matches
+    pub fn take_response(
+        querier: impl Into<Junctions>,
+        query_id: QueryId,
+    ) -> Result<Option<(Response, T::BlockNumber)>, Error<T>> {
+        let query_info =
+            CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQueryResponse)?;
+
+        if querier.into() == query_info.querier {
+            let response = pallet_xcm::Pallet::<T>::take_response(query_id);
+            Ok(response)
+        } else {
+            Err(Error::<T>::InvalidQuerier)
+        }
     }
 
     fn call_wasm_contract_method(
