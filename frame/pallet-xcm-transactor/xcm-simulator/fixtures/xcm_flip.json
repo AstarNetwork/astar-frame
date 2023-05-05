@@ -1,0 +1,5196 @@
+{
+  "source": {
+    "hash": "0xb53f65b20a11c687464e0ecf95ed2abb4a3a41fd64ecfa8458b97cdfd5f8c01d",
+    "language": "ink! 4.1.0",
+    "compiler": "rustc 1.68.0-nightly",
+    "build_info": {
+      "build_mode": "Debug",
+      "cargo_contract_version": "2.0.0",
+      "rust_toolchain": "nightly-x86_64-unknown-linux-gnu",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
+  },
+  "contract": {
+    "name": "contracts-example",
+    "version": "0.1.0",
+    "authors": [
+      "[your_name] <[your_email]>"
+    ]
+  },
+  "spec": {
+    "constructors": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "default",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 1
+        },
+        "selector": "0xffffffff"
+      }
+    ],
+    "docs": [],
+    "environment": {
+      "accountId": {
+        "displayName": [
+          "AccountId"
+        ],
+        "type": 86
+      },
+      "balance": {
+        "displayName": [
+          "Balance"
+        ],
+        "type": 26
+      },
+      "blockNumber": {
+        "displayName": [
+          "BlockNumber"
+        ],
+        "type": 17
+      },
+      "chainExtension": {
+        "displayName": [
+          "ChainExtension"
+        ],
+        "type": 95
+      },
+      "hash": {
+        "displayName": [
+          "Hash"
+        ],
+        "type": 94
+      },
+      "maxEventTopics": 4,
+      "timestamp": {
+        "displayName": [
+          "Timestamp"
+        ],
+        "type": 23
+      }
+    },
+    "events": [],
+    "lang_error": {
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 3
+    },
+    "messages": [
+      {
+        "args": [
+          {
+            "label": "xcm",
+            "type": {
+              "displayName": [
+                "VersionedXcm"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "execute",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 77
+        },
+        "selector": "0x11111111"
+      },
+      {
+        "args": [
+          {
+            "label": "input",
+            "type": {
+              "displayName": [
+                "ValidateSendInput"
+              ],
+              "type": 80
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "send",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 82
+        },
+        "selector": "0x22222222"
+      },
+      {
+        "args": [
+          {
+            "label": "config",
+            "type": {
+              "displayName": [
+                "QueryConfig"
+              ],
+              "type": 85
+            }
+          },
+          {
+            "label": "dest",
+            "type": {
+              "displayName": [
+                "VersionedMultiLocation"
+              ],
+              "type": 81
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "query",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 89
+        },
+        "selector": "0x33333333"
+      },
+      {
+        "args": [
+          {
+            "label": "query_id",
+            "type": {
+              "displayName": [
+                "QueryId"
+              ],
+              "type": 23
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "poll_response",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 91
+        },
+        "selector": "0x44444444"
+      },
+      {
+        "args": [
+          {
+            "label": "query_id",
+            "type": {
+              "displayName": [
+                "QueryId"
+              ],
+              "type": 23
+            }
+          },
+          {
+            "label": "_responder",
+            "type": {
+              "displayName": [
+                "MultiLocation"
+              ],
+              "type": 51
+            }
+          },
+          {
+            "label": "_response",
+            "type": {
+              "displayName": [
+                "Response"
+              ],
+              "type": 60
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "handle_response",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 1
+        },
+        "selector": "0x55555555"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 93
+        },
+        "selector": "0x66666666"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "value"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x44b7479a",
+                      "ty": 0
+                    }
+                  },
+                  "root_key": "0x44b7479a"
+                }
+              },
+              "name": "expecting_query"
+            }
+          ],
+          "name": "Contracts"
+        }
+      },
+      "root_key": "0x00000000"
+    }
+  },
+  "types": [
+    {
+      "id": 0,
+      "type": {
+        "def": {
+          "primitive": "bool"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 2
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 2
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5,
+                    "typeName": "v2::Xcm<RuntimeCall>"
+                  }
+                ],
+                "index": 2,
+                "name": "V2"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 44,
+                    "typeName": "v3::Xcm<RuntimeCall>"
+                  }
+                ],
+                "index": 3,
+                "name": "V3"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "RuntimeCall",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "VersionedXcm"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 6,
+                "typeName": "Vec<Instruction<RuntimeCall>>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "RuntimeCall",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "v2",
+          "Xcm"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 7
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 0,
+                "name": "WithdrawAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 1,
+                "name": "ReserveAssetDeposited"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 2,
+                "name": "ReceiveTeleportedAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "response",
+                    "type": 34,
+                    "typeName": "Response"
+                  },
+                  {
+                    "name": "max_weight",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 3,
+                "name": "QueryResponse"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "beneficiary",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 4,
+                "name": "TransferAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 5,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 5,
+                "name": "TransferReserveAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "origin_type",
+                    "type": 38,
+                    "typeName": "OriginKind"
+                  },
+                  {
+                    "name": "require_weight_at_most",
+                    "type": 22,
+                    "typeName": "u64"
+                  },
+                  {
+                    "name": "call",
+                    "type": 39,
+                    "typeName": "DoubleEncoded<RuntimeCall>"
+                  }
+                ],
+                "index": 6,
+                "name": "Transact"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "sender",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "max_message_size",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "max_capacity",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 7,
+                "name": "HrmpNewChannelOpenRequest"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "recipient",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 8,
+                "name": "HrmpChannelAccepted"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "initiator",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "sender",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "recipient",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 9,
+                "name": "HrmpChannelClosing"
+              },
+              {
+                "index": 10,
+                "name": "ClearOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14,
+                    "typeName": "InteriorMultiLocation"
+                  }
+                ],
+                "index": 11,
+                "name": "DescendOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "max_response_weight",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 12,
+                "name": "ReportError"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "max_assets",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "beneficiary",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 13,
+                "name": "DepositAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "max_assets",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 5,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 14,
+                "name": "DepositReserveAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "give",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "receive",
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 15,
+                "name": "ExchangeAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "reserve",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 5,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 16,
+                "name": "InitiateReserveWithdraw"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 5,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 17,
+                "name": "InitiateTeleport"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "assets",
+                    "type": 40,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "max_response_weight",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 18,
+                "name": "QueryHolding"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "fees",
+                    "type": 10,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "weight_limit",
+                    "type": 43,
+                    "typeName": "WeightLimit"
+                  }
+                ],
+                "index": 19,
+                "name": "BuyExecution"
+              },
+              {
+                "index": 20,
+                "name": "RefundSurplus"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 5,
+                    "typeName": "Xcm<RuntimeCall>"
+                  }
+                ],
+                "index": 21,
+                "name": "SetErrorHandler"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 5,
+                    "typeName": "Xcm<RuntimeCall>"
+                  }
+                ],
+                "index": 22,
+                "name": "SetAppendix"
+              },
+              {
+                "index": 23,
+                "name": "ClearError"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "ticket",
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 24,
+                "name": "ClaimAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 25,
+                "name": "Trap"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "max_response_weight",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 26,
+                "name": "SubscribeVersion"
+              },
+              {
+                "index": 27,
+                "name": "UnsubscribeVersion"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "RuntimeCall",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "v2",
+          "Instruction"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 9,
+                "typeName": "Vec<MultiAsset>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "MultiAssets"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "id",
+                "type": 11,
+                "typeName": "AssetId"
+              },
+              {
+                "name": "fun",
+                "type": 29,
+                "typeName": "Fungibility"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "MultiAsset"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 12,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 0,
+                "name": "Concrete"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 20,
+                    "typeName": "Vec<u8>"
+                  }
+                ],
+                "index": 1,
+                "name": "Abstract"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "AssetId"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "parents",
+                "type": 13,
+                "typeName": "u8"
+              },
+              {
+                "name": "interior",
+                "type": 14,
+                "typeName": "Junctions"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multilocation",
+          "MultiLocation"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "primitive": "u8"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Here"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 1,
+                "name": "X1"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 2,
+                "name": "X2"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 3,
+                "name": "X3"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 4,
+                "name": "X4"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 5,
+                "name": "X5"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 6,
+                "name": "X6"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 7,
+                "name": "X7"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 15,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 8,
+                "name": "X8"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multilocation",
+          "Junctions"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 0,
+                "name": "Parachain"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 18,
+                    "typeName": "NetworkId"
+                  },
+                  {
+                    "name": "id",
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 1,
+                "name": "AccountId32"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 18,
+                    "typeName": "NetworkId"
+                  },
+                  {
+                    "name": "index",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 2,
+                "name": "AccountIndex64"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 18,
+                    "typeName": "NetworkId"
+                  },
+                  {
+                    "name": "key",
+                    "type": 24,
+                    "typeName": "[u8; 20]"
+                  }
+                ],
+                "index": 3,
+                "name": "AccountKey20"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "u8"
+                  }
+                ],
+                "index": 4,
+                "name": "PalletInstance"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 5,
+                "name": "GeneralIndex"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 19,
+                    "typeName": "WeakBoundedVec<u8, ConstU32<32>>"
+                  }
+                ],
+                "index": 6,
+                "name": "GeneralKey"
+              },
+              {
+                "index": 7,
+                "name": "OnlyChild"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "id",
+                    "type": 27,
+                    "typeName": "BodyId"
+                  },
+                  {
+                    "name": "part",
+                    "type": 28,
+                    "typeName": "BodyPart"
+                  }
+                ],
+                "index": 8,
+                "name": "Plurality"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "junction",
+          "Junction"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "compact": {
+            "type": 17
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Any"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 19,
+                    "typeName": "WeakBoundedVec<u8, ConstU32<32>>"
+                  }
+                ],
+                "index": 1,
+                "name": "Named"
+              },
+              {
+                "index": 2,
+                "name": "Polkadot"
+              },
+              {
+                "index": 3,
+                "name": "Kusama"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "NetworkId"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 20,
+                "typeName": "Vec<T>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 13
+          },
+          {
+            "name": "S",
+            "type": null
+          }
+        ],
+        "path": [
+          "bounded_collections",
+          "weak_bounded_vec",
+          "WeakBoundedVec"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": {
+        "def": {
+          "array": {
+            "len": 32,
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": {
+        "def": {
+          "compact": {
+            "type": 23
+          }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": {
+        "def": {
+          "array": {
+            "len": 20,
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 25,
+      "type": {
+        "def": {
+          "compact": {
+            "type": 26
+          }
+        }
+      }
+    },
+    {
+      "id": 26,
+      "type": {
+        "def": {
+          "primitive": "u128"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Unit"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 19,
+                    "typeName": "WeakBoundedVec<u8, ConstU32<32>>"
+                  }
+                ],
+                "index": 1,
+                "name": "Named"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 2,
+                "name": "Index"
+              },
+              {
+                "index": 3,
+                "name": "Executive"
+              },
+              {
+                "index": 4,
+                "name": "Technical"
+              },
+              {
+                "index": 5,
+                "name": "Legislative"
+              },
+              {
+                "index": 6,
+                "name": "Judicial"
+              },
+              {
+                "index": 7,
+                "name": "Defense"
+              },
+              {
+                "index": 8,
+                "name": "Administration"
+              },
+              {
+                "index": 9,
+                "name": "Treasury"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "BodyId"
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Voice"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "count",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 1,
+                "name": "Members"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 2,
+                "name": "Fraction"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 3,
+                "name": "AtLeastProportion"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 4,
+                "name": "MoreThanProportion"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "BodyPart"
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 0,
+                "name": "Fungible"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 30,
+                    "typeName": "AssetInstance"
+                  }
+                ],
+                "index": 1,
+                "name": "NonFungible"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "Fungibility"
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Undefined"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 1,
+                "name": "Index"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 31,
+                    "typeName": "[u8; 4]"
+                  }
+                ],
+                "index": 2,
+                "name": "Array4"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 32,
+                    "typeName": "[u8; 8]"
+                  }
+                ],
+                "index": 3,
+                "name": "Array8"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 33,
+                    "typeName": "[u8; 16]"
+                  }
+                ],
+                "index": 4,
+                "name": "Array16"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 5,
+                "name": "Array32"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 20,
+                    "typeName": "Vec<u8>"
+                  }
+                ],
+                "index": 6,
+                "name": "Blob"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "AssetInstance"
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "type": {
+        "def": {
+          "array": {
+            "len": 4,
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 32,
+      "type": {
+        "def": {
+          "array": {
+            "len": 8,
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 33,
+      "type": {
+        "def": {
+          "array": {
+            "len": 16,
+            "type": 13
+          }
+        }
+      }
+    },
+    {
+      "id": 34,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Null"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 1,
+                "name": "Assets"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 35,
+                    "typeName": "Option<(u32, Error)>"
+                  }
+                ],
+                "index": 2,
+                "name": "ExecutionResult"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 17,
+                    "typeName": "super::Version"
+                  }
+                ],
+                "index": 3,
+                "name": "Version"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "Response"
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 36
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 36
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "type": {
+        "def": {
+          "tuple": [
+            17,
+            37
+          ]
+        }
+      }
+    },
+    {
+      "id": 37,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Overflow"
+              },
+              {
+                "index": 1,
+                "name": "Unimplemented"
+              },
+              {
+                "index": 2,
+                "name": "UntrustedReserveLocation"
+              },
+              {
+                "index": 3,
+                "name": "UntrustedTeleportLocation"
+              },
+              {
+                "index": 4,
+                "name": "MultiLocationFull"
+              },
+              {
+                "index": 5,
+                "name": "MultiLocationNotInvertible"
+              },
+              {
+                "index": 6,
+                "name": "BadOrigin"
+              },
+              {
+                "index": 7,
+                "name": "InvalidLocation"
+              },
+              {
+                "index": 8,
+                "name": "AssetNotFound"
+              },
+              {
+                "index": 9,
+                "name": "FailedToTransactAsset"
+              },
+              {
+                "index": 10,
+                "name": "NotWithdrawable"
+              },
+              {
+                "index": 11,
+                "name": "LocationCannotHold"
+              },
+              {
+                "index": 12,
+                "name": "ExceedsMaxMessageSize"
+              },
+              {
+                "index": 13,
+                "name": "DestinationUnsupported"
+              },
+              {
+                "index": 14,
+                "name": "Transport"
+              },
+              {
+                "index": 15,
+                "name": "Unroutable"
+              },
+              {
+                "index": 16,
+                "name": "UnknownClaim"
+              },
+              {
+                "index": 17,
+                "name": "FailedToDecode"
+              },
+              {
+                "index": 18,
+                "name": "MaxWeightInvalid"
+              },
+              {
+                "index": 19,
+                "name": "NotHoldingFees"
+              },
+              {
+                "index": 20,
+                "name": "TooExpensive"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 23,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 21,
+                "name": "Trap"
+              },
+              {
+                "index": 22,
+                "name": "UnhandledXcmVersion"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 23,
+                    "typeName": "Weight"
+                  }
+                ],
+                "index": 23,
+                "name": "WeightLimitReached"
+              },
+              {
+                "index": 24,
+                "name": "Barrier"
+              },
+              {
+                "index": 25,
+                "name": "WeightNotComputable"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "traits",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Native"
+              },
+              {
+                "index": 1,
+                "name": "SovereignAccount"
+              },
+              {
+                "index": 2,
+                "name": "Superuser"
+              },
+              {
+                "index": 3,
+                "name": "Xcm"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "OriginKind"
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "encoded",
+                "type": 20,
+                "typeName": "Vec<u8>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "double_encoded",
+          "DoubleEncoded"
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 0,
+                "name": "Definite"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 41,
+                    "typeName": "WildMultiAsset"
+                  }
+                ],
+                "index": 1,
+                "name": "Wild"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "MultiAssetFilter"
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "All"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "id",
+                    "type": 11,
+                    "typeName": "AssetId"
+                  },
+                  {
+                    "name": "fun",
+                    "type": 42,
+                    "typeName": "WildFungibility"
+                  }
+                ],
+                "index": 1,
+                "name": "AllOf"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "WildMultiAsset"
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Fungible"
+              },
+              {
+                "index": 1,
+                "name": "NonFungible"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "multiasset",
+          "WildFungibility"
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Unlimited"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 1,
+                "name": "Limited"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v2",
+          "WeightLimit"
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 45,
+                "typeName": "Vec<Instruction<Call>>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "Call",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "v3",
+          "Xcm"
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 46
+          }
+        }
+      }
+    },
+    {
+      "id": 46,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 0,
+                "name": "WithdrawAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 1,
+                "name": "ReserveAssetDeposited"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 2,
+                "name": "ReceiveTeleportedAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "response",
+                    "type": 60,
+                    "typeName": "Response"
+                  },
+                  {
+                    "name": "max_weight",
+                    "type": 64,
+                    "typeName": "Weight"
+                  },
+                  {
+                    "name": "querier",
+                    "type": 71,
+                    "typeName": "Option<MultiLocation>"
+                  }
+                ],
+                "index": 3,
+                "name": "QueryResponse"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "beneficiary",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 4,
+                "name": "TransferAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 44,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 5,
+                "name": "TransferReserveAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "origin_kind",
+                    "type": 38,
+                    "typeName": "OriginKind"
+                  },
+                  {
+                    "name": "require_weight_at_most",
+                    "type": 64,
+                    "typeName": "Weight"
+                  },
+                  {
+                    "name": "call",
+                    "type": 39,
+                    "typeName": "DoubleEncoded<Call>"
+                  }
+                ],
+                "index": 6,
+                "name": "Transact"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "sender",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "max_message_size",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "max_capacity",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 7,
+                "name": "HrmpNewChannelOpenRequest"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "recipient",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 8,
+                "name": "HrmpChannelAccepted"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "initiator",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "sender",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "recipient",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 9,
+                "name": "HrmpChannelClosing"
+              },
+              {
+                "index": 10,
+                "name": "ClearOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 52,
+                    "typeName": "InteriorMultiLocation"
+                  }
+                ],
+                "index": 11,
+                "name": "DescendOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 72,
+                    "typeName": "QueryResponseInfo"
+                  }
+                ],
+                "index": 12,
+                "name": "ReportError"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "beneficiary",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 13,
+                "name": "DepositAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 44,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 14,
+                "name": "DepositReserveAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "give",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "want",
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "maximal",
+                    "type": 0,
+                    "typeName": "bool"
+                  }
+                ],
+                "index": 15,
+                "name": "ExchangeAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "reserve",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 44,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 16,
+                "name": "InitiateReserveWithdraw"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  },
+                  {
+                    "name": "dest",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 44,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 17,
+                "name": "InitiateTeleport"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "response_info",
+                    "type": 72,
+                    "typeName": "QueryResponseInfo"
+                  },
+                  {
+                    "name": "assets",
+                    "type": 73,
+                    "typeName": "MultiAssetFilter"
+                  }
+                ],
+                "index": 18,
+                "name": "ReportHolding"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "fees",
+                    "type": 49,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "weight_limit",
+                    "type": 76,
+                    "typeName": "WeightLimit"
+                  }
+                ],
+                "index": 19,
+                "name": "BuyExecution"
+              },
+              {
+                "index": 20,
+                "name": "RefundSurplus"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 44,
+                    "typeName": "Xcm<Call>"
+                  }
+                ],
+                "index": 21,
+                "name": "SetErrorHandler"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 44,
+                    "typeName": "Xcm<Call>"
+                  }
+                ],
+                "index": 22,
+                "name": "SetAppendix"
+              },
+              {
+                "index": 23,
+                "name": "ClearError"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "assets",
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  },
+                  {
+                    "name": "ticket",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 24,
+                "name": "ClaimAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 25,
+                "name": "Trap"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "query_id",
+                    "type": 22,
+                    "typeName": "QueryId"
+                  },
+                  {
+                    "name": "max_response_weight",
+                    "type": 64,
+                    "typeName": "Weight"
+                  }
+                ],
+                "index": 26,
+                "name": "SubscribeVersion"
+              },
+              {
+                "index": 27,
+                "name": "UnsubscribeVersion"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 28,
+                "name": "BurnAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 29,
+                "name": "ExpectAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 71,
+                    "typeName": "Option<MultiLocation>"
+                  }
+                ],
+                "index": 30,
+                "name": "ExpectOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 61,
+                    "typeName": "Option<(u32, Error)>"
+                  }
+                ],
+                "index": 31,
+                "name": "ExpectError"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 69,
+                    "typeName": "MaybeErrorCode"
+                  }
+                ],
+                "index": 32,
+                "name": "ExpectTransactStatus"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "module_name",
+                    "type": 20,
+                    "typeName": "Vec<u8>"
+                  },
+                  {
+                    "name": "response_info",
+                    "type": 72,
+                    "typeName": "QueryResponseInfo"
+                  }
+                ],
+                "index": 33,
+                "name": "QueryPallet"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "index",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "name",
+                    "type": 20,
+                    "typeName": "Vec<u8>"
+                  },
+                  {
+                    "name": "module_name",
+                    "type": 20,
+                    "typeName": "Vec<u8>"
+                  },
+                  {
+                    "name": "crate_major",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "min_crate_minor",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 34,
+                "name": "ExpectPallet"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 72,
+                    "typeName": "QueryResponseInfo"
+                  }
+                ],
+                "index": 35,
+                "name": "ReportTransactStatus"
+              },
+              {
+                "index": 36,
+                "name": "ClearTransactStatus"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 37,
+                "name": "UniversalOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 55,
+                    "typeName": "NetworkId"
+                  },
+                  {
+                    "name": "destination",
+                    "type": 52,
+                    "typeName": "InteriorMultiLocation"
+                  },
+                  {
+                    "name": "xcm",
+                    "type": 44,
+                    "typeName": "Xcm<()>"
+                  }
+                ],
+                "index": 38,
+                "name": "ExportMessage"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "asset",
+                    "type": 49,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "unlocker",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 39,
+                "name": "LockAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "asset",
+                    "type": 49,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "target",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 40,
+                "name": "UnlockAsset"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "asset",
+                    "type": 49,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "owner",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 41,
+                "name": "NoteUnlockable"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "asset",
+                    "type": 49,
+                    "typeName": "MultiAsset"
+                  },
+                  {
+                    "name": "locker",
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 42,
+                "name": "RequestUnlock"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "jit_withdraw",
+                    "type": 0,
+                    "typeName": "bool"
+                  }
+                ],
+                "index": 43,
+                "name": "SetFeesMode"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 44,
+                "name": "SetTopic"
+              },
+              {
+                "index": 45,
+                "name": "ClearTopic"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 46,
+                "name": "AliasOrigin"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "weight_limit",
+                    "type": 76,
+                    "typeName": "WeightLimit"
+                  },
+                  {
+                    "name": "check_origin",
+                    "type": 71,
+                    "typeName": "Option<MultiLocation>"
+                  }
+                ],
+                "index": 47,
+                "name": "UnpaidExecution"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "Call",
+            "type": null
+          }
+        ],
+        "path": [
+          "xcm",
+          "v3",
+          "Instruction"
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 48,
+                "typeName": "Vec<MultiAsset>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "MultiAssets"
+        ]
+      }
+    },
+    {
+      "id": 48,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 49
+          }
+        }
+      }
+    },
+    {
+      "id": 49,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "id",
+                "type": 50,
+                "typeName": "AssetId"
+              },
+              {
+                "name": "fun",
+                "type": 58,
+                "typeName": "Fungibility"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "MultiAsset"
+        ]
+      }
+    },
+    {
+      "id": 50,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 51,
+                    "typeName": "MultiLocation"
+                  }
+                ],
+                "index": 0,
+                "name": "Concrete"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 1,
+                "name": "Abstract"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "AssetId"
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "parents",
+                "type": 13,
+                "typeName": "u8"
+              },
+              {
+                "name": "interior",
+                "type": 52,
+                "typeName": "Junctions"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multilocation",
+          "MultiLocation"
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Here"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 1,
+                "name": "X1"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 2,
+                "name": "X2"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 3,
+                "name": "X3"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 4,
+                "name": "X4"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 5,
+                "name": "X5"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 6,
+                "name": "X6"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 7,
+                "name": "X7"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  },
+                  {
+                    "type": 53,
+                    "typeName": "Junction"
+                  }
+                ],
+                "index": 8,
+                "name": "X8"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "junctions",
+          "Junctions"
+        ]
+      }
+    },
+    {
+      "id": 53,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 0,
+                "name": "Parachain"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 54,
+                    "typeName": "Option<NetworkId>"
+                  },
+                  {
+                    "name": "id",
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 1,
+                "name": "AccountId32"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 54,
+                    "typeName": "Option<NetworkId>"
+                  },
+                  {
+                    "name": "index",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 2,
+                "name": "AccountIndex64"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "network",
+                    "type": 54,
+                    "typeName": "Option<NetworkId>"
+                  },
+                  {
+                    "name": "key",
+                    "type": 24,
+                    "typeName": "[u8; 20]"
+                  }
+                ],
+                "index": 3,
+                "name": "AccountKey20"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "u8"
+                  }
+                ],
+                "index": 4,
+                "name": "PalletInstance"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 5,
+                "name": "GeneralIndex"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "length",
+                    "type": 13,
+                    "typeName": "u8"
+                  },
+                  {
+                    "name": "data",
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 6,
+                "name": "GeneralKey"
+              },
+              {
+                "index": 7,
+                "name": "OnlyChild"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "id",
+                    "type": 56,
+                    "typeName": "BodyId"
+                  },
+                  {
+                    "name": "part",
+                    "type": 57,
+                    "typeName": "BodyPart"
+                  }
+                ],
+                "index": 8,
+                "name": "Plurality"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 55,
+                    "typeName": "NetworkId"
+                  }
+                ],
+                "index": 9,
+                "name": "GlobalConsensus"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "junction",
+          "Junction"
+        ]
+      }
+    },
+    {
+      "id": 54,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 55
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 55
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 55,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 0,
+                "name": "ByGenesis"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "block_number",
+                    "type": 23,
+                    "typeName": "u64"
+                  },
+                  {
+                    "name": "block_hash",
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 1,
+                "name": "ByFork"
+              },
+              {
+                "index": 2,
+                "name": "Polkadot"
+              },
+              {
+                "index": 3,
+                "name": "Kusama"
+              },
+              {
+                "index": 4,
+                "name": "Westend"
+              },
+              {
+                "index": 5,
+                "name": "Rococo"
+              },
+              {
+                "index": 6,
+                "name": "Wococo"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "chain_id",
+                    "type": 22,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 7,
+                "name": "Ethereum"
+              },
+              {
+                "index": 8,
+                "name": "BitcoinCore"
+              },
+              {
+                "index": 9,
+                "name": "BitcoinCash"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "junction",
+          "NetworkId"
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Unit"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 31,
+                    "typeName": "[u8; 4]"
+                  }
+                ],
+                "index": 1,
+                "name": "Moniker"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 2,
+                "name": "Index"
+              },
+              {
+                "index": 3,
+                "name": "Executive"
+              },
+              {
+                "index": 4,
+                "name": "Technical"
+              },
+              {
+                "index": 5,
+                "name": "Legislative"
+              },
+              {
+                "index": 6,
+                "name": "Judicial"
+              },
+              {
+                "index": 7,
+                "name": "Defense"
+              },
+              {
+                "index": 8,
+                "name": "Administration"
+              },
+              {
+                "index": 9,
+                "name": "Treasury"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "junction",
+          "BodyId"
+        ]
+      }
+    },
+    {
+      "id": 57,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Voice"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "count",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 1,
+                "name": "Members"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 2,
+                "name": "Fraction"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 3,
+                "name": "AtLeastProportion"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "nom",
+                    "type": 16,
+                    "typeName": "u32"
+                  },
+                  {
+                    "name": "denom",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 4,
+                "name": "MoreThanProportion"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "junction",
+          "BodyPart"
+        ]
+      }
+    },
+    {
+      "id": 58,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 0,
+                "name": "Fungible"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 59,
+                    "typeName": "AssetInstance"
+                  }
+                ],
+                "index": 1,
+                "name": "NonFungible"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "Fungibility"
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Undefined"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 25,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 1,
+                "name": "Index"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 31,
+                    "typeName": "[u8; 4]"
+                  }
+                ],
+                "index": 2,
+                "name": "Array4"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 32,
+                    "typeName": "[u8; 8]"
+                  }
+                ],
+                "index": 3,
+                "name": "Array8"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 33,
+                    "typeName": "[u8; 16]"
+                  }
+                ],
+                "index": 4,
+                "name": "Array16"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 5,
+                "name": "Array32"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "AssetInstance"
+        ]
+      }
+    },
+    {
+      "id": 60,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Null"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 1,
+                "name": "Assets"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 61,
+                    "typeName": "Option<(u32, Error)>"
+                  }
+                ],
+                "index": 2,
+                "name": "ExecutionResult"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 17,
+                    "typeName": "super::Version"
+                  }
+                ],
+                "index": 3,
+                "name": "Version"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 65,
+                    "typeName": "BoundedVec<PalletInfo, MaxPalletsInfo>"
+                  }
+                ],
+                "index": 4,
+                "name": "PalletsInfo"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 69,
+                    "typeName": "MaybeErrorCode"
+                  }
+                ],
+                "index": 5,
+                "name": "DispatchResult"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "Response"
+        ]
+      }
+    },
+    {
+      "id": 61,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 62
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 62
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 62,
+      "type": {
+        "def": {
+          "tuple": [
+            17,
+            63
+          ]
+        }
+      }
+    },
+    {
+      "id": 63,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Overflow"
+              },
+              {
+                "index": 1,
+                "name": "Unimplemented"
+              },
+              {
+                "index": 2,
+                "name": "UntrustedReserveLocation"
+              },
+              {
+                "index": 3,
+                "name": "UntrustedTeleportLocation"
+              },
+              {
+                "index": 4,
+                "name": "LocationFull"
+              },
+              {
+                "index": 5,
+                "name": "LocationNotInvertible"
+              },
+              {
+                "index": 6,
+                "name": "BadOrigin"
+              },
+              {
+                "index": 7,
+                "name": "InvalidLocation"
+              },
+              {
+                "index": 8,
+                "name": "AssetNotFound"
+              },
+              {
+                "index": 9,
+                "name": "FailedToTransactAsset"
+              },
+              {
+                "index": 10,
+                "name": "NotWithdrawable"
+              },
+              {
+                "index": 11,
+                "name": "LocationCannotHold"
+              },
+              {
+                "index": 12,
+                "name": "ExceedsMaxMessageSize"
+              },
+              {
+                "index": 13,
+                "name": "DestinationUnsupported"
+              },
+              {
+                "index": 14,
+                "name": "Transport"
+              },
+              {
+                "index": 15,
+                "name": "Unroutable"
+              },
+              {
+                "index": 16,
+                "name": "UnknownClaim"
+              },
+              {
+                "index": 17,
+                "name": "FailedToDecode"
+              },
+              {
+                "index": 18,
+                "name": "MaxWeightInvalid"
+              },
+              {
+                "index": 19,
+                "name": "NotHoldingFees"
+              },
+              {
+                "index": 20,
+                "name": "TooExpensive"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 23,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 21,
+                "name": "Trap"
+              },
+              {
+                "index": 22,
+                "name": "ExpectationFalse"
+              },
+              {
+                "index": 23,
+                "name": "PalletNotFound"
+              },
+              {
+                "index": 24,
+                "name": "NameMismatch"
+              },
+              {
+                "index": 25,
+                "name": "VersionIncompatible"
+              },
+              {
+                "index": 26,
+                "name": "HoldingWouldOverflow"
+              },
+              {
+                "index": 27,
+                "name": "ExportError"
+              },
+              {
+                "index": 28,
+                "name": "ReanchorFailed"
+              },
+              {
+                "index": 29,
+                "name": "NoDeal"
+              },
+              {
+                "index": 30,
+                "name": "FeesNotMet"
+              },
+              {
+                "index": 31,
+                "name": "LockError"
+              },
+              {
+                "index": 32,
+                "name": "NoPermission"
+              },
+              {
+                "index": 33,
+                "name": "Unanchored"
+              },
+              {
+                "index": 34,
+                "name": "NotDepositable"
+              },
+              {
+                "index": 35,
+                "name": "UnhandledXcmVersion"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 64,
+                    "typeName": "Weight"
+                  }
+                ],
+                "index": 36,
+                "name": "WeightLimitReached"
+              },
+              {
+                "index": 37,
+                "name": "Barrier"
+              },
+              {
+                "index": 38,
+                "name": "WeightNotComputable"
+              },
+              {
+                "index": 39,
+                "name": "ExceedsStackLimit"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "traits",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 64,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "ref_time",
+                "type": 22,
+                "typeName": "u64"
+              },
+              {
+                "name": "proof_size",
+                "type": 22,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "sp_weights",
+          "weight_v2",
+          "Weight"
+        ]
+      }
+    },
+    {
+      "id": 65,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 68,
+                "typeName": "Vec<T>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 66
+          },
+          {
+            "name": "S",
+            "type": null
+          }
+        ],
+        "path": [
+          "bounded_collections",
+          "bounded_vec",
+          "BoundedVec"
+        ]
+      }
+    },
+    {
+      "id": 66,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "index",
+                "type": 16,
+                "typeName": "u32"
+              },
+              {
+                "name": "name",
+                "type": 67,
+                "typeName": "BoundedVec<u8, MaxPalletNameLen>"
+              },
+              {
+                "name": "module_name",
+                "type": 67,
+                "typeName": "BoundedVec<u8, MaxPalletNameLen>"
+              },
+              {
+                "name": "major",
+                "type": 16,
+                "typeName": "u32"
+              },
+              {
+                "name": "minor",
+                "type": 16,
+                "typeName": "u32"
+              },
+              {
+                "name": "patch",
+                "type": 16,
+                "typeName": "u32"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "PalletInfo"
+        ]
+      }
+    },
+    {
+      "id": 67,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 20,
+                "typeName": "Vec<T>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 13
+          },
+          {
+            "name": "S",
+            "type": null
+          }
+        ],
+        "path": [
+          "bounded_collections",
+          "bounded_vec",
+          "BoundedVec"
+        ]
+      }
+    },
+    {
+      "id": 68,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 66
+          }
+        }
+      }
+    },
+    {
+      "id": 69,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Success"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 70,
+                    "typeName": "BoundedVec<u8, MaxDispatchErrorLen>"
+                  }
+                ],
+                "index": 1,
+                "name": "Error"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 70,
+                    "typeName": "BoundedVec<u8, MaxDispatchErrorLen>"
+                  }
+                ],
+                "index": 2,
+                "name": "TruncatedError"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "MaybeErrorCode"
+        ]
+      }
+    },
+    {
+      "id": 70,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 20,
+                "typeName": "Vec<T>"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 13
+          },
+          {
+            "name": "S",
+            "type": null
+          }
+        ],
+        "path": [
+          "bounded_collections",
+          "bounded_vec",
+          "BoundedVec"
+        ]
+      }
+    },
+    {
+      "id": 71,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 51
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 51
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 72,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "destination",
+                "type": 51,
+                "typeName": "MultiLocation"
+              },
+              {
+                "name": "query_id",
+                "type": 22,
+                "typeName": "QueryId"
+              },
+              {
+                "name": "max_weight",
+                "type": 64,
+                "typeName": "Weight"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "QueryResponseInfo"
+        ]
+      }
+    },
+    {
+      "id": 73,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "MultiAssets"
+                  }
+                ],
+                "index": 0,
+                "name": "Definite"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 74,
+                    "typeName": "WildMultiAsset"
+                  }
+                ],
+                "index": 1,
+                "name": "Wild"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "MultiAssetFilter"
+        ]
+      }
+    },
+    {
+      "id": 74,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "All"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "id",
+                    "type": 50,
+                    "typeName": "AssetId"
+                  },
+                  {
+                    "name": "fun",
+                    "type": 75,
+                    "typeName": "WildFungibility"
+                  }
+                ],
+                "index": 1,
+                "name": "AllOf"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 2,
+                "name": "AllCounted"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "id",
+                    "type": 50,
+                    "typeName": "AssetId"
+                  },
+                  {
+                    "name": "fun",
+                    "type": 75,
+                    "typeName": "WildFungibility"
+                  },
+                  {
+                    "name": "count",
+                    "type": 16,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 3,
+                "name": "AllOfCounted"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "WildMultiAsset"
+        ]
+      }
+    },
+    {
+      "id": 75,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Fungible"
+              },
+              {
+                "index": 1,
+                "name": "NonFungible"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "multiasset",
+          "WildFungibility"
+        ]
+      }
+    },
+    {
+      "id": 76,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Unlimited"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 64,
+                    "typeName": "Weight"
+                  }
+                ],
+                "index": 1,
+                "name": "Limited"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "v3",
+          "WeightLimit"
+        ]
+      }
+    },
+    {
+      "id": 77,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 78
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 78
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 78,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 64
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 79
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 64
+          },
+          {
+            "name": "E",
+            "type": 79
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 79,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Success"
+              },
+              {
+                "index": 1,
+                "name": "NoResponse"
+              },
+              {
+                "index": 2,
+                "name": "RuntimeError"
+              }
+            ]
+          }
+        },
+        "path": [
+          "contracts_example",
+          "sdk",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 80,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "dest",
+                "type": 81,
+                "typeName": "VersionedMultiLocation"
+              },
+              {
+                "name": "xcm",
+                "type": 4,
+                "typeName": "VersionedXcm<()>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm_ce_primitives",
+          "ValidateSendInput"
+        ]
+      }
+    },
+    {
+      "id": 81,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 12,
+                    "typeName": "v2::MultiLocation"
+                  }
+                ],
+                "index": 1,
+                "name": "V2"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 51,
+                    "typeName": "v3::MultiLocation"
+                  }
+                ],
+                "index": 3,
+                "name": "V3"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "VersionedMultiLocation"
+        ]
+      }
+    },
+    {
+      "id": 82,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 83
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 83
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 83,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 84
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 79
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 84
+          },
+          {
+            "name": "E",
+            "type": 79
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 84,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 8,
+                    "typeName": "v2::MultiAssets"
+                  }
+                ],
+                "index": 1,
+                "name": "V2"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 47,
+                    "typeName": "v3::MultiAssets"
+                  }
+                ],
+                "index": 3,
+                "name": "V3"
+              }
+            ]
+          }
+        },
+        "path": [
+          "xcm",
+          "VersionedMultiAssets"
+        ]
+      }
+    },
+    {
+      "id": 85,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "query_type",
+                "type": 87,
+                "typeName": "QueryType<AccountId>"
+              },
+              {
+                "name": "timeout",
+                "type": 17,
+                "typeName": "BlockNumber"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "AccountId",
+            "type": 86
+          },
+          {
+            "name": "BlockNumber",
+            "type": 17
+          }
+        ],
+        "path": [
+          "xcm_ce_primitives",
+          "QueryConfig"
+        ]
+      }
+    },
+    {
+      "id": 86,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 21,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "AccountId"
+        ]
+      }
+    },
+    {
+      "id": 87,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "NoCallback"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "contract_id",
+                    "type": 86,
+                    "typeName": "AccountId"
+                  },
+                  {
+                    "name": "selector",
+                    "type": 31,
+                    "typeName": "[u8; 4]"
+                  }
+                ],
+                "index": 1,
+                "name": "WASMContractCallback"
+              },
+              {
+                "fields": [
+                  {
+                    "name": "contract_id",
+                    "type": 88,
+                    "typeName": "H160"
+                  },
+                  {
+                    "name": "selector",
+                    "type": 31,
+                    "typeName": "[u8; 4]"
+                  }
+                ],
+                "index": 2,
+                "name": "EVMContractCallback"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "AccountId",
+            "type": 86
+          }
+        ],
+        "path": [
+          "xcm_ce_primitives",
+          "QueryType"
+        ]
+      }
+    },
+    {
+      "id": 88,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 24,
+                "typeName": "[u8; 20]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "primitive_types",
+          "H160"
+        ]
+      }
+    },
+    {
+      "id": 89,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 90
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 90
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 90,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 23
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 79
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 23
+          },
+          {
+            "name": "E",
+            "type": 79
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 91,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 92
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 92
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 92,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 60
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 79
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 60
+          },
+          {
+            "name": "E",
+            "type": 79
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 93,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 94,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 21,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 95,
+      "type": {
+        "def": {
+          "variant": {}
+        },
+        "path": [
+          "ink_env",
+          "types",
+          "NoChainExtension"
+        ]
+      }
+    }
+  ],
+  "version": "4"
+}
