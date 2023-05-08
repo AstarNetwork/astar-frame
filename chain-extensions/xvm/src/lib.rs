@@ -68,7 +68,7 @@ where
             XvmFuncId::XvmCall => {
                 // We need to immediately charge for the worst case scenario. Gas equals Weight in pallet-contracts context.
                 let remaining_weight = env.ext().gas_meter().gas_left();
-                let charged_weight = env.charge_weight(remaining_weight)?;
+                let charged_weight = env.charge_weight(remaining_weight.set_proof_size(0))?;
 
                 let caller = env.ext().caller().clone();
 
