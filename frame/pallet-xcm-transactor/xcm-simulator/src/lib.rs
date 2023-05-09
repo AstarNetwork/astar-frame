@@ -46,15 +46,18 @@ mod tests {
     const SELECTOR_HANDLE_RESPONSE: [u8; 4] = [0x55, 0x55, 0x55, 0x55];
     const SELECTOR_GET: [u8; 4] = [0x66, 0x66, 0x66, 0x66];
 
-    #[test]
-    fn xcm_remote_contract_callback() {
-        MockNet::reset();
+    struct Fixture {
+        pub basic_flip_id: parachain::AccountId,
+    }
 
+    /// Deploy the xcm flipper contract in ParaA and fund it's derive account
+    /// in ParaB
+    fn xcm_flipper_fixture() -> Fixture {
         // deploy and initialize xcm flipper contract with `false` in ParaA
-        let mut contract_id = [0u8; 32].into();
+        let mut basic_flip_id = [0u8; 32].into();
         ParaA::execute_with(|| {
-            (contract_id, _) = deploy_contract::<parachain::Runtime>(
-                "xcm_flip",
+            (basic_flip_id, _) = deploy_contract::<parachain::Runtime>(
+                "basic_flip",
                 ALICE.into(),
                 0,
                 GAS_LIMIT,
@@ -63,10 +66,10 @@ mod tests {
                 SELECTOR_CONSTRUCTOR.to_vec(),
             );
 
-            // check for flip status
+            // check for flip status, should be false
             let outcome = ParachainContracts::bare_call(
                 ALICE.into(),
-                contract_id.clone(),
+                basic_flip_id.clone(),
                 0,
                 GAS_LIMIT,
                 None,
@@ -82,11 +85,11 @@ mod tests {
             assert_eq!(flag, Ok(false));
         });
 
-        // transfer funds to contract derieve account
+        // transfer funds to contract derieve account in ParaB
         ParaB::execute_with(|| {
             use parachain::System;
 
-            let account = sibling_para_account_account_id(1, contract_id.clone());
+            let account = sibling_para_account_account_id(1, basic_flip_id.clone());
             assert_ok!(ParachainBalances::transfer(
                 parachain::RuntimeOrigin::signed(ALICE),
                 account,
@@ -96,7 +99,21 @@ mod tests {
             System::reset_events();
         });
 
-        // check the execute
+        Fixture { basic_flip_id }
+    }
+
+    /// Execute XCM from contract via CE
+    #[test]
+    fn test_ce_execute() {
+        MockNet::reset();
+
+        let Fixture {
+            basic_flip_id: contract_id,
+        } = xcm_flipper_fixture();
+
+        //
+        //  check the execute
+        //
         ParaA::execute_with(|| {
             let transfer_amount = 100_000;
             // transfer some native to contract
@@ -141,9 +158,19 @@ mod tests {
                 ParachainBalances::balance(&ALICE.into()) == alice_balance_before + transfer_amount
             );
         });
+    }
+
+    /// Send the XCM and handle response callback via CE
+    #[test]
+    fn test_ce_wasm_callback() {
+        MockNet::reset();
+
+        let Fixture {
+            basic_flip_id: contract_id,
+        } = xcm_flipper_fixture();
 
         //
-        // Check send & query
+        // Check send & callback query
         //
         ParaA::execute_with(|| {
             use parachain::{Runtime, RuntimeCall};
@@ -161,6 +188,7 @@ mod tests {
             };
             let dest: VersionedMultiLocation = (Parent, Parachain(2)).into();
 
+            // register the callback query
             let (res, _, _) = call_contract_method::<
                 parachain::Runtime,
                 Result<Result<QueryId, XcmCEError>, ()>,
@@ -189,7 +217,7 @@ mod tests {
                 SetAppendix(Xcm(vec![ReportTransactStatus(QueryResponseInfo {
                     destination: (Parent, Parachain(1)).into(),
                     query_id,
-                    max_weight: GAS_LIMIT,
+                    max_weight: parachain::CallbackGasLimit::get(),
                 })])),
                 Transact {
                     origin_kind: OriginKind::SovereignAccount,
@@ -253,169 +281,5 @@ mod tests {
             );
             assert_eq!(res, Ok(true));
         });
-
-        // ParaA::execute_with(|| {
-        //     use parachain::XcmTransact;
-        //     // dispatch call to flip contract
-        //     // let call = parachain::RuntimeCall::Contracts(pallet_contracts::Call::call {
-        //     //     dest: contract_id.clone(),
-        //     //     value: 0,
-        //     //     gas_limit: Weight::from_parts(100_000_000_000, 1024 * 1024),
-        //     //     storage_deposit_limit: None,
-        //     //     data: SELECTOR_FLIP.to_vec(),
-        //     // });
-        //     let call = parachain::RuntimeCall::System(frame_system::Call::remark_with_event {
-        //         remark: vec![1, 2, 3, 4],
-        //     });
-
-        //     let query_id = XcmTransact::new_query(
-        //         QueryConfig {
-        //             query_type: QueryType::WASMContractCallback {
-        //                 contract_id: contract_id.clone(),
-        //                 selector: SELECTOR_XCM_FLIP,
-        //             },
-        //             timeout: Bounded::max_value(),
-        //         },
-        //         AccountId32 {
-        //             id: ALICE.into(),
-        //             network: Some(Kusama),
-        //         }
-        //         .into(),
-        //         // Here,
-        //         (Parent, Parachain(2)),
-        //     )
-        //     .unwrap();
-
-        //     let xcm: Xcm<()> = Xcm(vec![
-        //         WithdrawAsset((Here, INITIAL_BALANCE).into()),
-        //         BuyExecution {
-        //             fees: (Here, INITIAL_BALANCE).into(),
-        //             weight_limit: Unlimited,
-        //         },
-        //         SetAppendix(Xcm(vec![ReportTransactStatus(QueryResponseInfo {
-        //             destination: (Parent, Parachain(1)).into(),
-        //             query_id,
-        //             max_weight: GAS_LIMIT,
-        //         })])),
-        //         Transact {
-        //             origin_kind: OriginKind::SovereignAccount,
-        //             require_weight_at_most: Weight::from_parts(100_000_000_000_000, 1024 * 1024 * 1024),
-        //             call: call.encode().into(),
-        //         },
-        //     ]);
-
-        //     // send the XCM to ParaA
-        //     assert_ok!(ParachainPalletXcm::send(
-        //         parachain::RuntimeOrigin::signed(ALICE),
-        //         // parachain::RuntimeOrigin::root(),
-        //         Box::new((Parent, Parachain(2)).into()),
-        //         Box::new(VersionedXcm::V3(xcm)),
-        //     ));
-
-        //     use parachain::System;
-        //     System::reset_events();
-        //     // println!("{:?}", System::events());
-        // });
-
-        // ParaB::execute_with(|| {
-
-        //     // let outcome = ParachainContracts::bare_call(
-        //     //     ALICE.into(),
-        //     //     contract_id.clone(),
-        //     //     0,
-        //     //     GAS_LIMIT,
-        //     //     None,
-        //     //     SELECTOR_GET.to_vec(),
-        //     //     true,
-        //     //     Determinism::Deterministic,
-        //     // );
-        //     // let res = outcome.result.unwrap();
-        //     // // check for revert
-        //     // assert!(res.did_revert() == false);
-        //     // // decode the return value, it should be false
-        //     // let flag = Result::<bool, ()>::decode(&mut res.data.as_ref()).unwrap();
-        //     // assert_eq!(flag, Ok(false));
-        // });
-
-        // ParaA::execute_with(|| {
-        //     // use parachain::System;
-        //     // println!("{:?}", System::events());
-
-        //     let outcome = ParachainContracts::bare_call(
-        //         ALICE.into(),
-        //         contract_id.clone(),
-        //         0,
-        //         GAS_LIMIT,
-        //         None,
-        //         SELECTOR_GET.to_vec(),
-        //         true,
-        //         Determinism::Deterministic,
-        //     );
-        //     let res = outcome.result.unwrap();
-        //     // check for revert
-        //     assert!(res.did_revert() == false);
-        //     // decode the return value, it should be false
-        //     let flag = Result::<bool, ()>::decode(&mut res.data.as_ref()).unwrap();
-
-        //     // println!("{:?}", ParachainPalletXcm::query(0));
-        //     // println!(
-        //     //     "expecting response = {:?}",
-        //     //     ParachainPalletXcm::expecting_response(
-        //     //         &(Parent, Parachain(2)).into(),
-        //     //         0,
-        //     //         Some(&Here.into())
-        //     //     )
-        //     // );
-
-        //     // std::thread::sleep(std::time::Duration::from_secs(1));
-        //     assert_eq!(flag, Ok(true));
-        // });
-
-        // ParaA::execute_with(|| {
-        //     // use parachain::System;
-        //     // println!("{:?}", System::events());
-        //     let xcm: VersionedXcm<()> = VersionedXcm::V3(Xcm(vec![
-        //         WithdrawAsset((Here, 10).into()),
-        //         BuyExecution {
-        //             fees: (Here, 10).into(),
-        //             weight_limit: Unlimited,
-        //         },
-        //         SetAppendix(Xcm(vec![ReportError(QueryResponseInfo {
-        //             destination: (Parent, Parachain(1)).into(),
-        //             query_id: 1,
-        //             max_weight: GAS_LIMIT,
-        //         })])),
-        //     ]));
-        //     let outcome = ParachainContracts::bare_call(
-        //         ALICE.into(),
-        //         contract_id.clone(),
-        //         0,
-        //         GAS_LIMIT,
-        //         None,
-        //         [SELECTOR_TEST.to_vec(), xcm.encode()].concat(),
-        //         true,
-        //         Determinism::Deterministic,
-        //     );
-        //     println!("outcome={outcome:?}");
-        //     println!("{:?}", String::from_utf8(outcome.debug_message));
-        //     let res = outcome.result.unwrap();
-        //     // check for revert
-        //     assert!(res.did_revert() == false);
-        //     // decode the return value, it should be false
-        //     let out = Result::<Result<Weight, XcmCEError>, ()>::decode(&mut res.data.as_ref()).unwrap();
-        //     println!("out={out:?}");
-        //     // println!("{:?}", ParachainPalletXcm::query(0));
-        //     // println!(
-        //     //     "expecting response = {:?}",
-        //     //     ParachainPalletXcm::expecting_response(
-        //     //         &(Parent, Parachain(2)).into(),
-        //     //         0,
-        //     //         Some(&Here.into())
-        //     //     )
-        //     // );
-
-        //     // std::thread::sleep(std::time::Duration::from_secs(1));
-        //     // assert_eq!(flag, Ok(true));
-        // });
     }
 }
