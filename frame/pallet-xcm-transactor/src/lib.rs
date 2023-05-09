@@ -17,7 +17,58 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 //! Pallet to handle XCM Callbacks.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+//! - [`Event`]
+//!
+//! ## Overview
+//!
+//! The pallet provides functionality for xcm query management and handling callbacks:
+//!
+//! - Registering a new query
+//! - Taking response of query (if available)
+//! - Handling the pallet_xcm's OnResponse notify
+//!
+//! ### Terminology
+//!
+//! - **Callback:** When recieving the XCM response from pallet_xcm notify routing that
+//!   response to desired destination (like wasm contract)
+//! - **Pallet XCM Notify:** The pallet_xcm OnResponse handler can call (notify) custom
+//!   disptach on recieving the XCM response given that query is registered before
+//!   hand.
+//! - **Manual Polling:** Instead of callback, the response is saved for the user to manually
+//!   poll it.
+//!
+//! To use it in your runtime, you need to implement the pallet's [`Config`].
+//!
+//! ### Implementation
+//!
+//! The pallet provides implementations for the following traits.
+//! - [`OnCallback`](pallet_xcm_transactor::OnCallback): Functions for dealing when a
+//! callback is recieved.
+//!
+//! ### Goals
+//! The callback system is designed to make following possible:
+//!
+//! - Registeration of new query which can either be manual polling or callbacks
+//! - Allow query owners to take the response in case of manual polling
+//! - Handle the incoming pallet_xcm's notify and route it with help of `CallbackHandler`
+//!
+//! ## Interface
+//!
+//! ### Permissioned Functions
+//! - `on_callback_recieved`: Accepts the XCM Response and invoke the `CallbackHandler`, can only
+//!   be called in a response to XCM.
+//!
+//! ### Public Functions
+//! - `new_query`: Registers a new query and returns the query id
+//! - `account_id`: Get the account id associated with this pallet that will be the origin
+//!   of the callback
+//! - `take_response`: Take the response if available
 
+// Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{pallet_prelude::*, PalletId};
