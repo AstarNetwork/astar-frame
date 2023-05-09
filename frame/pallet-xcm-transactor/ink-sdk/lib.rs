@@ -26,6 +26,11 @@ use xcm_ce_primitives::{
     create_error_enum, Command, QueryConfig, ValidateSendInput, XCM_EXTENSION_ID,
 };
 
+/// Re-export everything from xcm-ce-primitves
+pub mod types {
+    pub use xcm_ce_primitives::*;
+}
+
 create_error_enum!(pub Error);
 
 impl FromStatusCode for Error {

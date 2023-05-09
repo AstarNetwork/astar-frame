@@ -1,10 +1,8 @@
 [package]
-name = "contracts-example"
+name = "basic_flip"
 version = "0.1.0"
 authors = ["Ashutosh Varma <ashutoshvarma11@live.com>"]
 edition = "2021"
-
-[workspace]
 
 [dependencies]
 ink = { version = "~4.2.0", default-features = false }
@@ -13,13 +11,10 @@ num_enum = { version = "0.6", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
-xcm-ce-primitives = { path = "../primitives", default-features = false }
+xcm-ce-sdk = { path = "../../ink-sdk", default-features = false }
 
 [lib]
 path = "lib.rs"
-
-[profile.release]
-overflow-checks = false # Disable integer overflow checks.
 
 [features]
 default = ["std"]
@@ -29,6 +24,11 @@ std = [
 	"scale/std",
 	"scale-info/std",
 	"xcm/std",
-	"xcm-ce-primitives/std",
+	"xcm-ce-sdk/std",
 ]
 ink-as-dependency = []
+
+[profile.release]
+overflow-checks = false
+
+[workspace]

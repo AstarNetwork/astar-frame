@@ -16,17 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-mod sdk;
-pub use sdk::{Error as XcmCEError, XcmExtension as _XcmExtension};
+#![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
 mod contracts {
-    use super::*;
     use ink::{env::DefaultEnvironment, storage::Mapping};
     use xcm::{latest::Weight, prelude::*};
-    use xcm_ce_primitives::{QueryConfig, ValidateSendInput};
+    pub use xcm_ce_sdk::{
+        types::{QueryConfig, ValidateSendInput},
+        Error as XcmCEError, XcmExtension as _XcmExtension,
+    };
 
     type XcmExtension = _XcmExtension<DefaultEnvironment>;
 
