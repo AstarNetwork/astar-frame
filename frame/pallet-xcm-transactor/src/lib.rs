@@ -77,7 +77,7 @@ pub mod pallet {
             BlockNumber = Self::BlockNumber,
         >;
 
-        /// Required origin for sending registering new queries. If successful, it resolves to `MultiLocation`
+        /// Required origin for registering new queries. If successful, it resolves to `MultiLocation`
         /// which exists as an interior location within this chain's XCM context.
         type RegisterQueryOrigin: EnsureOrigin<
             <Self as SysConfig>::RuntimeOrigin,
@@ -181,14 +181,15 @@ pub mod pallet {
         }
 
         /// Register a new query
-        /// THIS IS ONLY FOR WEIGHTS BENCHMARKING, since we cannot benchmark non-dispatch
+        /// THIS IS ONLY FOR WEIGHTS BENCHMARKING
         /// TODO: Weights,
         ///       (1 DB read + 3 DB write + 1 event + some extra (need benchmarking))
-        ///       Weight for this does not take callback weights into account. That should be
-        ///       done via XcmWeigher using WeightBounds, where all query instructions's
-        ///       `QueryResponseInfo` `max_weight` is taken into account.
-        ///        https://github.com/paritytech/polkadot/blob/b9d192c418da83c784e366c86b7db0b2ff0789d9/runtime/kusama/src/weights/xcm/mod.rs#L99-L106
-        ///        Kusama uses WeightInfoBounds but does not take `max_weight` into account
+        ///
+        /// Weight for this does not take callback weights into account. That should be
+        /// done during calculation of fees to send XCM via
+        /// `cumulus_pallet_xcmp_queue::Config::PriceForSiblingDelivery`, if using that for XCM Router,
+        /// where all query instructions's `QueryResponseInfo` `max_weight` is taken into account
+        /// while calculating fees to send xcm.
         #[pallet::call_index(1)]
         #[pallet::weight(Weight::from_parts(1_000_000, 1_000_000))]
         pub fn prepare_new_query(
