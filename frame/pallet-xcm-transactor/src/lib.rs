@@ -72,7 +72,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{pallet_prelude::*, PalletId};
-use frame_system::pallet_prelude::*;
+use frame_system::{pallet_prelude::*, Config as SysConfig};
 pub use pallet::*;
 use pallet_contracts::Pallet as PalletContracts;
 use pallet_xcm::Pallet as PalletXcm;
@@ -80,6 +80,7 @@ use sp_core::H160;
 use sp_runtime::traits::{AccountIdConversion, Zero};
 use sp_std::prelude::*;
 use xcm::prelude::*;
+use xcm_executor::traits::WeightBounds;
 
 pub mod chain_extension;
 
@@ -149,17 +150,19 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        // successfully handled callback
+        /// successfully handled callback
         CallbackSuccess(QueryType<T::AccountId>),
         CallbackFailed {
             query_type: QueryType<T::AccountId>,
             query_id: QueryId,
         },
-        // new query registered
+        /// new query registered
         QueryPrepared {
             query_type: QueryType<T::AccountId>,
             query_id: QueryId,
         },
+        /// query response taken
+        ResponseTaken(QueryId),
     }
 
     #[pallet::error]
@@ -174,6 +177,10 @@ pub mod pallet {
         NotSupported,
         /// Querier mismatch
         InvalidQuerier,
+        /// Failed to weigh XCM message
+        CannotWeigh,
+        /// Failed to validate xcm for sending
+        SendValidateFailed,
         /// Callback out of gas
         /// TODO: use it
         OutOfGas,
@@ -228,39 +235,6 @@ pub mod pallet {
 
             // deposit success event
             Self::deposit_event(Event::<T>::CallbackSuccess(query_type));
-            Ok(())
-        }
-
-        /// Register a new query
-        /// THIS IS ONLY FOR WEIGHTS BENCHMARKING
-        /// TODO: Weights,
-        ///       (1 DB read + 3 DB write + 1 event + some extra (need benchmarking))
-        ///
-        /// Weight for this does not take callback weights into account. That should be
-        /// done during calculation of fees to send XCM via
-        /// `cumulus_pallet_xcmp_queue::Config::PriceForSiblingDelivery`, if using that for XCM Router,
-        /// where all query instructions's `QueryResponseInfo` `max_weight` is taken into account
-        /// while calculating fees to send xcm.
-        #[pallet::call_index(1)]
-        #[pallet::weight(Weight::from_parts(1_000_000, 1_000_000))]
-        pub fn prepare_new_query(
-            origin: OriginFor<T>,
-            config: QueryConfig<T::AccountId, T::BlockNumber>,
-            dest: Box<VersionedMultiLocation>,
-        ) -> DispatchResult {
-            let origin_location = T::RegisterQueryOrigin::ensure_origin(origin)?;
-            let interior: Junctions = origin_location
-                .try_into()
-                .map_err(|_| Error::<T>::InvalidOrigin)?;
-            let query_type = config.query_type.clone();
-            let dest = MultiLocation::try_from(*dest).map_err(|()| Error::<T>::BadVersion)?;
-
-            // register query
-            let query_id = Self::new_query(config, interior, dest)?;
-            Self::deposit_event(Event::<T>::QueryPrepared {
-                query_type,
-                query_id,
-            });
             Ok(())
         }
     }
@@ -348,6 +322,7 @@ impl<T: Config> OnCallback for Pallet<T> {
     }
 }
 
+/// Public methods
 impl<T: Config> Pallet<T> {
     /// The account ID of the pallet.
     pub fn account_id() -> T::AccountId {
@@ -355,8 +330,99 @@ impl<T: Config> Pallet<T> {
         AccountIdConversion::<T::AccountId>::into_account_truncating(&ID)
     }
 
+    /// Weigh the XCM to prepare for execution
+    pub fn prepare_execute(
+        origin: OriginFor<T>,
+        xcm: Box<VersionedXcm<<T as SysConfig>::RuntimeCall>>,
+    ) -> Result<(Xcm<<T as SysConfig>::RuntimeCall>, Weight), Error<T>> {
+        T::ExecuteXcmOrigin::ensure_origin(origin).map_err(|_| Error::InvalidOrigin)?;
+
+        let mut xcm = (*xcm).try_into().map_err(|_| Error::BadVersion)?;
+        let weight = T::Weigher::weight(&mut xcm).map_err(|_| Error::CannotWeigh)?;
+        Ok((xcm, weight))
+    }
+
+    pub fn execute(
+        origin: OriginFor<T>,
+        xcm: Box<VersionedXcm<<T as SysConfig>::RuntimeCall>>,
+        weight_limit: Weight,
+    ) -> Result<Outcome, Error<T>> {
+        let origin_location =
+            T::ExecuteXcmOrigin::ensure_origin(origin).map_err(|_| Error::InvalidOrigin)?;
+        let xcm: Xcm<<T as SysConfig>::RuntimeCall> =
+            (*xcm).try_into().map_err(|_| Error::BadVersion)?;
+
+        // execute XCM
+        // NOTE: not using pallet_xcm::execute here because it does not return XcmError
+        //       which is needed to ensure xcm execution success
+        let hash = xcm.using_encoded(sp_io::hashing::blake2_256);
+        Ok(T::XcmExecutor::execute_xcm_in_credit(
+            origin_location,
+            xcm.clone(),
+            hash,
+            weight_limit,
+            weight_limit,
+        ))
+    }
+
+    pub fn validate_send(
+        origin: OriginFor<T>,
+        dest: Box<VersionedMultiLocation>,
+        xcm: Box<VersionedXcm<()>>,
+    ) -> Result<(Xcm<()>, MultiLocation, VersionedMultiAssets), Error<T>> {
+        T::SendXcmOrigin::ensure_origin(origin).map_err(|_| Error::InvalidOrigin)?;
+        let xcm: Xcm<()> = (*xcm).try_into().map_err(|_| Error::BadVersion)?;
+        let dest: MultiLocation = (*dest).try_into().map_err(|_| Error::BadVersion)?;
+
+        let (_, fees) = validate_send::<T::XcmRouter>(dest.clone(), xcm.clone())
+            .map_err(|_| Error::SendValidateFailed)?;
+        Ok((xcm, dest, VersionedMultiAssets::V3(fees)))
+    }
+
+    /// Take the response if available and querier matches
+    pub fn take_response(
+        origin: OriginFor<T>,
+        query_id: QueryId,
+    ) -> Result<Option<(Response, T::BlockNumber)>, Error<T>> {
+        // ensure origin is allowed to make queries
+        let origin_location: Junctions = T::RegisterQueryOrigin::ensure_origin(origin)
+            .map_err(|_| Error::InvalidOrigin)?
+            .try_into()
+            .map_err(|_| Error::InvalidOrigin)?;
+
+        let response = Self::do_take_response(origin_location, query_id)?;
+        Self::deposit_event(Event::ResponseTaken(query_id));
+        Ok(response)
+    }
+
     /// Register new query originating from querier to dest
     pub fn new_query(
+        origin: OriginFor<T>,
+        config: QueryConfig<T::AccountId, T::BlockNumber>,
+        dest: Box<VersionedMultiLocation>,
+    ) -> Result<QueryId, Error<T>> {
+        let origin_location =
+            T::RegisterQueryOrigin::ensure_origin(origin).map_err(|_| Error::InvalidOrigin)?;
+        let interior: Junctions = origin_location
+            .try_into()
+            .map_err(|_| Error::<T>::InvalidOrigin)?;
+        let query_type = config.query_type.clone();
+        let dest = MultiLocation::try_from(*dest).map_err(|()| Error::<T>::BadVersion)?;
+
+        // register query
+        let query_id = Self::do_new_query(config, interior, dest)?;
+        Self::deposit_event(Event::<T>::QueryPrepared {
+            query_type,
+            query_id,
+        });
+        Ok(query_id)
+    }
+}
+
+/// Internal methods
+impl<T: Config> Pallet<T> {
+    /// Register new query originating from querier to dest
+    fn do_new_query(
         QueryConfig {
             query_type,
             timeout,
@@ -392,8 +458,7 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    /// Take the response if available and querier matches
-    pub fn take_response(
+    fn do_take_response(
         querier: impl Into<Junctions>,
         query_id: QueryId,
     ) -> Result<Option<(Response, T::BlockNumber)>, Error<T>> {
@@ -402,6 +467,7 @@ impl<T: Config> Pallet<T> {
 
         if querier.into() == query_info.querier {
             let response = pallet_xcm::Pallet::<T>::take_response(query_id);
+            Self::deposit_event(Event::ResponseTaken(query_id));
             Ok(response)
         } else {
             Err(Error::<T>::InvalidQuerier)

@@ -17,7 +17,6 @@
 // along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 /// build.rs
-
 use std::{
     fs,
     path::{Path, PathBuf},

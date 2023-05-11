@@ -18,8 +18,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::{Config, Pallet, QueryConfig};
-use frame_support::{traits::EnsureOrigin, DefaultNoBound};
+use crate::{Config, Error as PalletError, Pallet, QueryConfig};
+use frame_support::DefaultNoBound;
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, Result as DispatchResult, RetVal, SysConfig,
@@ -34,17 +34,39 @@ pub use xcm_ce_primitives::{
     XcmCeError::{self, *},
     XCM_EXTENSION_ID,
 };
-use xcm_executor::traits::WeightBounds;
 
 type RuntimeCallOf<T> = <T as SysConfig>::RuntimeCall;
 
 macro_rules! unwrap {
+    ($val:expr) => {
+        match $val {
+            Ok(inner) => inner,
+            Err(e) => {
+                let err: XcmCeError = e.into();
+                return Ok(RetVal::Converging(err.into()));
+            }
+        }
+    };
     ($val:expr, $err:expr) => {
         match $val {
             Ok(inner) => inner,
             Err(_) => return Ok(RetVal::Converging($err.into())),
         }
     };
+}
+
+impl<T: Config> From<PalletError<T>> for XcmCeError {
+    fn from(value: PalletError<T>) -> Self {
+        match value {
+            PalletError::BadVersion => BadVersion,
+            PalletError::InvalidOrigin => InvalidOrigin,
+            PalletError::NotSupported => NotSupported,
+            PalletError::SendValidateFailed => SendValidateFailed,
+            PalletError::CannotWeigh => CannotWeigh,
+            PalletError::InvalidQuerier => InvalidQuerier,
+            _ => RuntimeError,
+        }
+    }
 }
 
 #[derive(DefaultNoBound)]
@@ -85,9 +107,8 @@ impl<T: Config> XCMExtension<T> {
         let len = env.in_len();
         let input: VersionedXcm<RuntimeCallOf<T>> = env.read_as_unbounded(len)?;
 
-        let mut xcm = unwrap!(input.try_into(), BadVersion);
-        // calculate the weight
-        let weight = unwrap!(T::Weigher::weight(&mut xcm), CannotWeigh);
+        let origin = RawOrigin::Signed(env.ext().address().clone());
+        let (xcm, weight) = unwrap!(Pallet::<T>::prepare_execute(origin.into(), Box::new(input)));
 
         // save the prepared xcm
         self.prepared_execute = Some(PreparedExecution { xcm, weight });
@@ -102,32 +123,24 @@ impl<T: Config> XCMExtension<T> {
         &mut self,
         mut env: Environment<E, InitState>,
     ) -> DispatchResult<RetVal> {
-        let input = unwrap!(
+        let PreparedExecution { xcm, weight } = unwrap!(
             self.prepared_execute.as_ref().take().ok_or(()),
             PreparationMissing
         );
         // charge for xcm weight
-        let charged = env.charge_weight(input.weight)?;
+        let charged = env.charge_weight(*weight)?;
 
         // TODO: find better way to get origin
         //       https://github.com/paritytech/substrate/pull/13708
         let origin = RawOrigin::Signed(env.ext().address().clone());
-        // ensure xcm execute origin
-        let origin_location = unwrap!(
-            T::ExecuteXcmOrigin::ensure_origin(origin.into()),
+        let outcome = unwrap!(
+            Pallet::<T>::execute(
+                origin.into(),
+                Box::new(VersionedXcm::V3(xcm.clone())),
+                *weight,
+            ),
+            // TODO: mapp pallet error 1-1 with CE errors
             InvalidOrigin
-        );
-
-        let hash = input.xcm.using_encoded(sp_io::hashing::blake2_256);
-        // execute XCM
-        // NOTE: not using pallet_xcm::execute here because it does not return XcmError
-        //       which is needed to ensure xcm execution success
-        let outcome = T::XcmExecutor::execute_xcm_in_credit(
-            origin_location,
-            input.xcm.clone(),
-            hash,
-            input.weight,
-            input.weight,
         );
 
         // adjust with actual weights used
@@ -147,21 +160,21 @@ impl<T: Config> XCMExtension<T> {
     ) -> DispatchResult<RetVal> {
         let mut env = env.buf_in_buf_out();
         let len = env.in_len();
-        let input: ValidateSendInput = env.read_as_unbounded(len)?;
+        let ValidateSendInput { dest, xcm } = env.read_as_unbounded(len)?;
 
-        let dest = unwrap!(input.dest.try_into(), BadVersion);
-        let xcm: Xcm<()> = unwrap!(input.xcm.try_into(), BadVersion);
+        let origin = RawOrigin::Signed(env.ext().address().clone());
+
         // validate and get fees required to send
-        let (_, asset) = unwrap!(
-            validate_send::<T::XcmRouter>(dest, xcm.clone()),
-            SendValidateFailed
-        );
+        let (xcm, dest, fees) = unwrap!(Pallet::<T>::validate_send(
+            origin.into(),
+            Box::new(dest.clone()),
+            Box::new(xcm.clone())
+        ));
 
         // save the validated input
         self.validated_send = Some(ValidatedSend { dest, xcm });
         // write the fees to output
-        VersionedMultiAssets::from(asset).using_encoded(|a| env.write(a, true, None))?;
-
+        VersionedMultiAssets::from(fees).using_encoded(|a| env.write(a, true, None))?;
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
@@ -208,20 +221,12 @@ impl<T: Config> XCMExtension<T> {
             VersionedMultiLocation,
         ) = env.read_as_unbounded(len)?;
 
-        let dest: MultiLocation = unwrap!(dest.try_into(), BadVersion);
-
-        // convert to interior junction
-        let interior: Junctions = unwrap!(
-            Self::querier_location(env.ext().address().clone()),
-            InvalidOrigin
-        );
-
+        let origin = RawOrigin::Signed(env.ext().address().clone());
         // register the query
-        let query_id: u64 = Pallet::<T>::new_query(query_config, interior, dest)?;
+        let query_id: u64 = Pallet::<T>::new_query(origin.into(), query_config, Box::new(dest))?;
 
         // write the query_id to buffer
         query_id.using_encoded(|q| env.write(q, true, None))?;
-
         Ok(RetVal::Converging(Success.into()))
     }
 
@@ -233,24 +238,18 @@ impl<T: Config> XCMExtension<T> {
     ) -> DispatchResult<RetVal> {
         let mut env = env.buf_in_buf_out();
         let query_id: u64 = env.read_as()?;
-        // convert to interior junction
-        let interior: Junctions = unwrap!(
-            Self::querier_location(env.ext().address().clone()),
-            InvalidOrigin
-        );
 
+        // TODO: find better way to get origin
+        //       https://github.com/paritytech/substrate/pull/13708
+        let origin = RawOrigin::Signed(env.ext().address().clone());
         let response = unwrap!(
-            unwrap!(
-                Pallet::<T>::take_response(interior, query_id),
-                InvalidQuerier
-            )
-            .map(|r| r.0)
-            .ok_or(()),
+            unwrap!(Pallet::<T>::take_response(origin.into(), query_id))
+                .map(|r| r.0)
+                .ok_or(()),
             NoResponse
         );
 
         VersionedResponse::from(response).using_encoded(|r| env.write(r, true, None))?;
-
         Ok(RetVal::Converging(XcmCeError::Success.into()))
     }
 
@@ -264,18 +263,5 @@ impl<T: Config> XCMExtension<T> {
         Pallet::<T>::account_id().using_encoded(|r| env.write(r, true, None))?;
 
         Ok(RetVal::Converging(XcmCeError::Success.into()))
-    }
-}
-
-impl<T: Config> XCMExtension<T> {
-    fn querier_location(account_id: T::AccountId) -> Result<Junctions, XcmCeError> {
-        // TODO: find better way to get origin
-        //       https://github.com/paritytech/substrate/pull/13708
-        let origin = RawOrigin::Signed(account_id);
-        // ensure origin is allowed to make queries
-        let origin_location =
-            T::RegisterQueryOrigin::ensure_origin(origin.into()).map_err(|_| InvalidOrigin)?;
-        // convert to interior junction
-        origin_location.try_into().map_err(|_| InvalidOrigin)
     }
 }
