@@ -2,7 +2,6 @@
 name = "pallet-dapps-staking"
 version = "3.9.0"
 description = "FRAME pallet to staking for dapps"
-license = "PolyForm-Noncommercial-1.0.0"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
