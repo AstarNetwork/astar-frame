@@ -18,13 +18,18 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod weights;
+use core::marker::PhantomData;
+
+use weights::CEWeightInfo;
+
 use crate::{Config, Error as PalletError, Pallet, QueryConfig};
 use frame_support::DefaultNoBound;
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, Result as DispatchResult, RetVal, SysConfig,
 };
-use pallet_xcm::{Pallet as XcmPallet, WeightInfo};
+use pallet_xcm::{Pallet as XcmPallet, WeightInfo as PalletXcmWeightInfo};
 use parity_scale_codec::Encode;
 use sp_std::prelude::*;
 use xcm::prelude::*;
@@ -70,12 +75,13 @@ impl<T: Config> From<PalletError<T>> for XcmCeError {
 }
 
 #[derive(DefaultNoBound)]
-pub struct XCMExtension<T: Config> {
+pub struct XCMExtension<T: Config, W: CEWeightInfo> {
     prepared_execute: Option<PreparedExecution<RuntimeCallOf<T>>>,
     validated_send: Option<ValidatedSend>,
+    _w: PhantomData<W>,
 }
 
-impl<T: Config> ChainExtension<T> for XCMExtension<T>
+impl<T: Config, W: CEWeightInfo> ChainExtension<T> for XCMExtension<T, W>
 where
     <T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
@@ -95,7 +101,7 @@ where
     }
 }
 
-impl<T: Config> XCMExtension<T> {
+impl<T: Config, W: CEWeightInfo> XCMExtension<T, W> {
     /// Returns the weight for given XCM and saves it (in CE, per-call scratch buffer) for
     /// execution
     fn prepare_execute<E: Ext<T = T>>(
@@ -106,6 +112,9 @@ impl<T: Config> XCMExtension<T> {
         // input parsing
         let len = env.in_len();
         let input: VersionedXcm<RuntimeCallOf<T>> = env.read_as_unbounded(len)?;
+
+        // charge weight
+        env.charge_weight(W::prepare_execute(len))?;
 
         let origin = RawOrigin::Signed(env.ext().address().clone());
         let (xcm, weight) = unwrap!(Pallet::<T>::prepare_execute(origin.into(), Box::new(input)));
@@ -127,9 +136,8 @@ impl<T: Config> XCMExtension<T> {
             self.prepared_execute.as_ref().take().ok_or(()),
             PreparationMissing
         );
-        // charge for xcm weight
-        let charged = env.charge_weight(*weight)?;
-
+        // charge weight
+        let charged = env.charge_weight(W::execute().saturating_add(*weight))?;
         // TODO: find better way to get origin
         //       https://github.com/paritytech/substrate/pull/13708
         let origin = RawOrigin::Signed(env.ext().address().clone());
@@ -142,9 +150,8 @@ impl<T: Config> XCMExtension<T> {
             // TODO: mapp pallet error 1-1 with CE errors
             InvalidOrigin
         );
-
         // adjust with actual weights used
-        env.adjust_weight(charged, outcome.weight_used());
+        env.adjust_weight(charged, outcome.weight_used().saturating_add(W::execute()));
         // revert for anything but a complete execution
         match outcome {
             Outcome::Complete(_) => Ok(RetVal::Converging(Success.into())),
@@ -161,16 +168,16 @@ impl<T: Config> XCMExtension<T> {
         let mut env = env.buf_in_buf_out();
         let len = env.in_len();
         let ValidateSendInput { dest, xcm } = env.read_as_unbounded(len)?;
+        // charge weight
+        env.charge_weight(W::validate_send(len))?;
 
         let origin = RawOrigin::Signed(env.ext().address().clone());
-
         // validate and get fees required to send
         let (xcm, dest, fees) = unwrap!(Pallet::<T>::validate_send(
             origin.into(),
             Box::new(dest.clone()),
             Box::new(xcm.clone())
         ));
-
         // save the validated input
         self.validated_send = Some(ValidatedSend { dest, xcm });
         // write the fees to output
@@ -187,14 +194,13 @@ impl<T: Config> XCMExtension<T> {
             self.validated_send.as_ref().take().ok_or(()),
             PreparationMissing
         );
-
+        // charge weight
         let base_weight = <T as pallet_xcm::Config>::WeightInfo::send();
-        env.charge_weight(base_weight)?;
+        env.charge_weight(base_weight.saturating_add(W::send()))?;
 
         // TODO: find better way to get origin
         //       https://github.com/paritytech/substrate/pull/13708
         let origin = RawOrigin::Signed(env.ext().address().clone());
-
         // send the xcm
         unwrap!(
             XcmPallet::<T>::send(
@@ -209,7 +215,6 @@ impl<T: Config> XCMExtension<T> {
     }
 
     /// Register the new query
-    /// TODO: figure out weights
     fn new_query<E: Ext<T = T>>(&self, env: Environment<E, InitState>) -> DispatchResult<RetVal>
     where
         <T as SysConfig>::AccountId: AsRef<[u8; 32]>,
@@ -220,11 +225,14 @@ impl<T: Config> XCMExtension<T> {
             QueryConfig<T::AccountId, T::BlockNumber>,
             VersionedMultiLocation,
         ) = env.read_as_unbounded(len)?;
+        // charge weight
+        // NOTE: we only charge the weight associated with query registration and processing of
+        //       calllback only. This does not include the CALLBACK weights
+        env.charge_weight(W::new_query())?;
 
         let origin = RawOrigin::Signed(env.ext().address().clone());
         // register the query
         let query_id: u64 = Pallet::<T>::new_query(origin.into(), query_config, Box::new(dest))?;
-
         // write the query_id to buffer
         query_id.using_encoded(|q| env.write(q, true, None))?;
         Ok(RetVal::Converging(Success.into()))
@@ -238,7 +246,8 @@ impl<T: Config> XCMExtension<T> {
     ) -> DispatchResult<RetVal> {
         let mut env = env.buf_in_buf_out();
         let query_id: u64 = env.read_as()?;
-
+        // charge weight
+        env.charge_weight(W::take_response())?;
         // TODO: find better way to get origin
         //       https://github.com/paritytech/substrate/pull/13708
         let origin = RawOrigin::Signed(env.ext().address().clone());
@@ -260,6 +269,9 @@ impl<T: Config> XCMExtension<T> {
         env: Environment<E, InitState>,
     ) -> DispatchResult<RetVal> {
         let mut env = env.buf_in_buf_out();
+        // charge weight
+        env.charge_weight(W::account_id())?;
+
         Pallet::<T>::account_id().using_encoded(|r| env.write(r, true, None))?;
 
         Ok(RetVal::Converging(XcmCeError::Success.into()))
