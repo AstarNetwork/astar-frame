@@ -243,6 +243,7 @@ impl pallet_evm::Config for TestRuntime {
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type FindAuthor = ();
     type OnCreate = ();
+    type WeightInfo = ();
 }
 
 parameter_types! {
