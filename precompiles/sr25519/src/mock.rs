@@ -204,6 +204,7 @@ impl pallet_evm::Config for Runtime {
     type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
     type OnCreate = ();
     type FindAuthor = ();
+    type WeightInfo = ();
 }
 
 // Configure a mock runtime to test the pallet.
