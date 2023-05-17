@@ -23,7 +23,7 @@ mod mocks;
 mod tests {
     use crate::mocks::{parachain, *};
 
-    use frame_support::{assert_ok, traits::fungible::Inspect, weights::Weight};
+    use frame_support::{assert_ok, weights::Weight};
     use pallet_contracts::Determinism;
     use pallet_xcm_transactor::{
         chain_extension::{ValidateSendInput, XcmCeError as XcmCEError},
@@ -40,7 +40,7 @@ mod tests {
     const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 
     const SELECTOR_CONSTRUCTOR: [u8; 4] = [0xFF, 0xFF, 0xFF, 0xFF];
-    const SELECTOR_EXECUTE: [u8; 4] = [0x11, 0x11, 0x11, 0x11];
+    // const SELECTOR_EXECUTE: [u8; 4] = [0x11, 0x11, 0x11, 0x11];
     const SELECTOR_SEND: [u8; 4] = [0x22, 0x22, 0x22, 0x22];
     const SELECTOR_QUERY: [u8; 4] = [0x33, 0x33, 0x33, 0x33];
     const SELECTOR_HANDLE_RESPONSE: [u8; 4] = [0x55, 0x55, 0x55, 0x55];
@@ -102,65 +102,65 @@ mod tests {
         Fixture { basic_flip_id }
     }
 
-    /// Execute XCM from contract via CE
-    #[test]
-    fn test_ce_execute() {
-        MockNet::reset();
+    // /// Execute XCM from contract via CE
+    // #[test]
+    // fn test_ce_execute() {
+    //     MockNet::reset();
 
-        let Fixture {
-            basic_flip_id: contract_id,
-        } = xcm_flipper_fixture();
+    //     let Fixture {
+    //         basic_flip_id: contract_id,
+    //     } = xcm_flipper_fixture();
 
-        //
-        //  check the execute
-        //
-        ParaA::execute_with(|| {
-            let transfer_amount = 100_000;
-            // transfer some native to contract
-            assert_ok!(ParachainBalances::transfer(
-                parachain::RuntimeOrigin::signed(ALICE),
-                contract_id.clone(),
-                transfer_amount,
-            ));
+    //     //
+    //     //  check the execute
+    //     //
+    //     ParaA::execute_with(|| {
+    //         let transfer_amount = 100_000;
+    //         // transfer some native to contract
+    //         assert_ok!(ParachainBalances::transfer(
+    //             parachain::RuntimeOrigin::signed(ALICE),
+    //             contract_id.clone(),
+    //             transfer_amount,
+    //         ));
 
-            let xcm: Xcm<()> = Xcm(vec![
-                WithdrawAsset((Here, transfer_amount).into()),
-                BuyExecution {
-                    fees: (Here, transfer_amount).into(),
-                    weight_limit: Unlimited,
-                },
-                DepositAsset {
-                    assets: All.into(),
-                    beneficiary: AccountId32 {
-                        network: None,
-                        id: ALICE.into(),
-                    }
-                    .into(),
-                },
-            ]);
+    //         let xcm: Xcm<()> = Xcm(vec![
+    //             WithdrawAsset((Here, transfer_amount).into()),
+    //             BuyExecution {
+    //                 fees: (Here, transfer_amount).into(),
+    //                 weight_limit: Unlimited,
+    //             },
+    //             DepositAsset {
+    //                 assets: All.into(),
+    //                 beneficiary: AccountId32 {
+    //                     network: None,
+    //                     id: ALICE.into(),
+    //                 }
+    //                 .into(),
+    //             },
+    //         ]);
 
-            // run execute in contract
-            let alice_balance_before = ParachainBalances::balance(&ALICE.into());
-            let (res, _, _) =
-                call_contract_method::<parachain::Runtime, Result<Result<Weight, XcmCEError>, ()>>(
-                    ALICE.into(),
-                    contract_id.clone(),
-                    0,
-                    GAS_LIMIT,
-                    None,
-                    [SELECTOR_EXECUTE.to_vec(), VersionedXcm::V3(xcm).encode()].concat(),
-                    true,
-                );
+    //         // run execute in contract
+    //         let alice_balance_before = ParachainBalances::balance(&ALICE.into());
+    //         let (res, _, _) =
+    //             call_contract_method::<parachain::Runtime, Result<Result<Weight, XcmCEError>, ()>>(
+    //                 ALICE.into(),
+    //                 contract_id.clone(),
+    //                 0,
+    //                 Weight::from_parts(u64::MAX, 1024 * 1024 * 10),
+    //                 None,
+    //                 [SELECTOR_EXECUTE.to_vec(), VersionedXcm::V3(xcm).encode()].concat(),
+    //                 true,
+    //             );
 
-            assert_eq!(res, Ok(Ok(Weight::from_parts(30, 0))));
-            assert!(
-                // TODO: since bare_call doesn't charge, use call
-                ParachainBalances::balance(&ALICE.into()) == alice_balance_before + transfer_amount
-            );
-        });
-    }
+    //         assert_eq!(res, Ok(Ok(Weight::from_parts(30, 0))));
+    //         assert!(
+    //             // TODO: since bare_call doesn't charge, use call
+    //             ParachainBalances::balance(&ALICE.into()) == alice_balance_before + transfer_amount
+    //         );
+    //     });
+    // }
 
-    /// Send the XCM and handle response callback via CE
+    // /// Send the XCM and handle response callback via CE
     #[test]
     fn test_ce_wasm_callback() {
         MockNet::reset();

@@ -37,6 +37,7 @@ use frame_system::{
     EnsureSigned,
 };
 use pallet_contracts::chain_extension::RegisteredChainExtension;
+use pallet_xcm_transactor::chain_extension::{XCMExtension, XCM_EXTENSION_ID};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_core_primitives::BlakeTwo256;
 use sp_core::{ConstBool, H256};
@@ -224,7 +225,7 @@ impl pallet_contracts::Config for Runtime {
     /// We are not using the pallet_transaction_payment for simplicity
     type WeightPrice = Self;
     type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-    type ChainExtension = pallet_xcm_transactor::chain_extension::XCMExtension<Self>;
+    type ChainExtension = XCMExtension<Self, pallet_xcm_transactor::ChainExtensionWeight<Self>>;
     type DeletionQueueDepth = ConstU32<128>;
     type DeletionWeightLimit = DeletionWeightLimit;
     type Schedule = Schedule;
@@ -461,6 +462,11 @@ impl mock_msg_queue::Config for Runtime {
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+    pub ReachableDest: Option<MultiLocation> = Some(Parachain(1000).into());
+}
+
 impl pallet_xcm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
@@ -483,6 +489,8 @@ impl pallet_xcm::Config for Runtime {
     type SovereignAccountOf = LocationToAccountId;
     type MaxLockers = ConstU32<0>;
     type WeightInfo = pallet_xcm::TestWeightInfo;
+    #[cfg(feature = "runtime-benchmarks")]
+    type ReachableDest = ReachableDest;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -499,12 +507,13 @@ impl pallet_xcm_transactor::Config for Runtime {
     type CallbackHandler = XcmTransact;
     type RegisterQueryOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type MaxCallbackWeight = CallbackGasLimit;
+    type WeightInfo = pallet_xcm_transactor::SubstrateWeight<Self>;
 }
 
-impl RegisteredChainExtension<Runtime>
-    for pallet_xcm_transactor::chain_extension::XCMExtension<Runtime>
+impl<W: pallet_xcm_transactor::CEWeightInfo> RegisteredChainExtension<Runtime>
+    for XCMExtension<Runtime, W>
 {
-    const ID: u16 = pallet_xcm_transactor::chain_extension::XCM_EXTENSION_ID;
+    const ID: u16 = XCM_EXTENSION_ID;
 }
 
 construct_runtime!(

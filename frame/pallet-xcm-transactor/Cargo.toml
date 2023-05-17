@@ -21,6 +21,7 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # frame dependencies
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
@@ -33,10 +34,19 @@ xcm = { workspace = true }
 xcm-executor = { workspace = true }
 
 # types
-xcm-ce-primitives = { path = "./primitives", default-features = false}
+xcm-ce-primitives = { path = "./primitives", default-features = false }
+
+[dev-dependencies]
+pallet-balances = { workspace = true }
+pallet-insecure-randomness-collective-flip = { workspace = true }
+pallet-timestamp = { workspace = true }
+polkadot-core-primitives = { workspace = true }
+polkadot-parachain = { workspace = true }
+polkadot-runtime-parachains = { workspace = true }
+xcm-builder = { workspace = true, features = ["std", "runtime-benchmarks"] }
 
 [features]
-default = ["std"]
+default = ["std", "runtime-benchmarks"]
 std = [
 	"num_enum/std",
 	"parity-scale-codec/std",
@@ -47,6 +57,7 @@ std = [
 	"sp-std/std",
 	"frame-support/std",
 	"frame-system/std",
+	"frame-benchmarking?/std",
 	"xcm/std",
 	"xcm-executor/std",
 	"pallet-xcm/std",
@@ -54,6 +65,7 @@ std = [
 	"xcm-ce-primitives/std",
 ]
 runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
