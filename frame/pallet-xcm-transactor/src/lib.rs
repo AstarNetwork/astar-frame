@@ -71,6 +71,19 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod chain_extension;
+pub mod traits;
+pub mod weights;
+pub use chain_extension::weights::*;
+pub use traits::*;
+pub use weights::*;
+
 use frame_support::{pallet_prelude::*, PalletId};
 use frame_system::{pallet_prelude::*, Config as SysConfig};
 pub use pallet::*;
@@ -81,8 +94,6 @@ use sp_runtime::traits::{AccountIdConversion, Zero};
 use sp_std::prelude::*;
 use xcm::prelude::*;
 use xcm_executor::traits::WeightBounds;
-
-pub mod chain_extension;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -121,7 +132,8 @@ pub mod pallet {
 
         /// The overaching origin type
         type RuntimeOrigin: Into<Result<pallet_xcm::Origin, <Self as Config>::RuntimeOrigin>>
-            + IsType<<Self as frame_system::Config>::RuntimeOrigin>;
+            + IsType<<Self as frame_system::Config>::RuntimeOrigin>
+            + From<<Self as pallet_xcm::Config>::RuntimeOrigin>;
 
         /// Query Handler for creating quries and handling response
         type CallbackHandler: OnCallback<
@@ -135,6 +147,9 @@ pub mod pallet {
             <Self as SysConfig>::RuntimeOrigin,
             Success = MultiLocation,
         >;
+
+        /// Weights for pallet
+        type WeightInfo: WeightInfo;
 
         /// Max weight for callback
         #[pallet::constant]
@@ -151,7 +166,11 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// successfully handled callback
-        CallbackSuccess(QueryType<T::AccountId>),
+        CallbackSuccess {
+            query_type: QueryType<T::AccountId>,
+            query_id: QueryId,
+            weight: Weight,
+        },
         CallbackFailed {
             query_type: QueryType<T::AccountId>,
             query_id: QueryId,
@@ -165,6 +184,7 @@ pub mod pallet {
         ResponseTaken(QueryId),
     }
 
+    #[derive(PartialEq)]
     #[pallet::error]
     pub enum Error<T> {
         /// The version of the Versioned value used is not able to be interpreted.
@@ -172,7 +192,7 @@ pub mod pallet {
         /// Origin not allow for registering queries
         InvalidOrigin,
         /// Query not found in storage
-        UnexpectedQueryResponse,
+        UnexpectedQuery,
         /// Does not support the given query type
         NotSupported,
         /// Querier mismatch
@@ -197,8 +217,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Dispatch for recieving callback from pallet_xcm's notify
         /// and handle their routing
-        /// TODO: Weights,
-        ///       (max callback weight) + 1 DB read + 1 event + some extra (from benchmarking)
         #[pallet::call_index(0)]
         #[pallet::weight(T::MaxCallbackWeight::get())]
         pub fn on_callback_recieved(
@@ -210,12 +228,13 @@ pub mod pallet {
             let responder = ensure_response(<T as Config>::RuntimeOrigin::from(origin))?;
             // fetch the query
             let QueryInfo { query_type, .. } =
-                CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQueryResponse)?;
+                CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQuery)?;
+
             // handle the response routing
             // TODO: in case of error, maybe save the response for manual
             // polling as fallback. This will require taking into weight of storing
             // response in the weights of `prepare_new_query` dispatch
-            if let Err(e) = T::CallbackHandler::on_callback(
+            match T::CallbackHandler::on_callback(
                 responder,
                 ResponseInfo {
                     query_id,
@@ -223,50 +242,27 @@ pub mod pallet {
                     response,
                 },
             ) {
-                Self::deposit_event(Event::<T>::CallbackFailed {
-                    query_type,
-                    query_id,
-                });
-                return Err(e.into());
+                Ok(weight) => {
+                    // deposit success event
+                    Self::deposit_event(Event::<T>::CallbackSuccess {
+                        query_type,
+                        query_id,
+                        weight,
+                    });
+                    // remove the query
+                    CallbackQueries::<T>::remove(query_id);
+                    Ok(())
+                }
+                Err(e) => {
+                    Self::deposit_event(Event::<T>::CallbackFailed {
+                        query_type,
+                        query_id,
+                    });
+                    Err(e.into())
+                }
             }
-
-            // remove query from storage
-            CallbackQueries::<T>::remove(query_id);
-
-            // deposit success event
-            Self::deposit_event(Event::<T>::CallbackSuccess(query_type));
-            Ok(())
         }
     }
-}
-
-/// Handle the incoming xcm notify callback from ResponseHandler (pallet_xcm)
-pub trait OnCallback {
-    /// error type, that can be converted to dispatch error
-    type Error: Into<DispatchError>;
-    /// account id type
-    type AccountId;
-    /// blocknumber type
-    type BlockNumber;
-
-    // TODO: Query type itself should be generic like
-    //
-    // type QueryType: Member + Parameter + MaybeSerializeDeserialize + MaxEncodedLen + Convert<Self, Weight>
-    // type CallbackHandler: OnResponse<QueryType = T::QueryType>
-    //
-    // #[derive(RuntimeDebug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen)]
-    // enum MyQueryType {}
-    //
-    // impl Convert<Self, Weight> for MyQueryType {}
-
-    /// Check whether query type is supported or not
-    fn can_handle(query_type: &QueryType<Self::AccountId>) -> bool;
-
-    /// handle the xcm response
-    fn on_callback(
-        responder: impl Into<MultiLocation>,
-        response_info: ResponseInfo<Self::AccountId>,
-    ) -> Result<Weight, Self::Error>;
 }
 
 impl<T: Config> OnCallback for Pallet<T> {
@@ -436,8 +432,7 @@ impl<T: Config> Pallet<T> {
         if !(T::CallbackHandler::can_handle(&query_type)) {
             return Err(Error::NotSupported);
         }
-
-        Ok(match query_type.clone() {
+        let id = match query_type.clone() {
             QueryType::NoCallback => PalletXcm::<T>::new_query(dest, timeout, querier),
             QueryType::WASMContractCallback { .. } | QueryType::EVMContractCallback { .. } => {
                 let call: <T as Config>::RuntimeCall = Call::on_callback_recieved {
@@ -445,25 +440,25 @@ impl<T: Config> Pallet<T> {
                     response: Response::Null,
                 }
                 .into();
-                let id = PalletXcm::<T>::new_notify_query(dest, call, timeout, querier.clone());
-                CallbackQueries::<T>::insert(
-                    id,
-                    QueryInfo {
-                        query_type,
-                        querier,
-                    },
-                );
-                id
+                PalletXcm::<T>::new_notify_query(dest, call, timeout, querier.clone())
             }
-        })
+        };
+
+        CallbackQueries::<T>::insert(
+            id,
+            QueryInfo {
+                query_type,
+                querier,
+            },
+        );
+        Ok(id)
     }
 
     fn do_take_response(
         querier: impl Into<Junctions>,
         query_id: QueryId,
     ) -> Result<Option<(Response, T::BlockNumber)>, Error<T>> {
-        let query_info =
-            CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQueryResponse)?;
+        let query_info = CallbackQueries::<T>::get(query_id).ok_or(Error::<T>::UnexpectedQuery)?;
 
         if querier.into() == query_info.querier {
             let response = pallet_xcm::Pallet::<T>::take_response(query_id);
