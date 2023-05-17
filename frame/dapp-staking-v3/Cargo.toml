@@ -1,7 +1,7 @@
 [package]
-name = "pallet-dapps-staking-v3"
+name = "pallet-dapp-staking-v3"
 version = "0.0.1-alpha"
-description = "FRAME pallet to staking for dapps"
+description = "Pallet for dApp staking v3 protocol"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

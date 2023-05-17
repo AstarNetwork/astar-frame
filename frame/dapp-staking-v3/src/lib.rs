@@ -113,7 +113,7 @@ pub enum DAppState {
     Unregistered(EraNumber),
 }
 
-/// TODO
+/// General information about dApp.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
 pub struct DAppInfo<AccountId, Balance> {
     /// Owner of the dApp, default reward beneficiary.
@@ -122,10 +122,10 @@ pub struct DAppInfo<AccountId, Balance> {
     pub id: u16,
     /// Current state of the dApp.
     pub state: DAppState,
-    // TODO: Should we get rid of this?
     /// Reserved amount during registration of the dApp.
+    /// Sort of a rent fee for all the storage items required to have the dApp registered.
     pub reserved: Balance,
-    // If `None`, rewards goes to the owner, otherwise to the account Id
+    // If `None`, rewards goes to the developer account, otherwise to the account Id in `Some`.
     pub reward_destination: Option<AccountId>,
 }
 
@@ -155,6 +155,13 @@ pub mod pallet {
         /// Privileged origin for managing dApp staking pallet.
         type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
+        /// Maximum number of contracts that can be integrated into dApp staking at once.
+        /// TODO: maybe this can be reworded or improved later on - but we want a ceiling!
+        type MaxNumberOfContracts: Get<DAppId>;
+
+        /// Deposit reserved for registering a new smart contract. It will be reserved from the developers's account.
+        #[pallet::constant]
+        type RegistrationDeposit: Get<BalanceOf<Self>>;
     }
 
     #[pallet::event]
@@ -162,9 +169,9 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// A smart contract has been registered for dApp staking
         ContractRegistered {
-            developer: T::AccountId,
+            owner: T::AccountId,
             smart_contract: T::SmartContract,
-            id: DAppId,
+            dapp_id: DAppId,
         },
     }
 
@@ -176,6 +183,15 @@ pub mod pallet {
         ContractAlreadyExists,
         /// Maximum number of smart contracts has been reached.
         ExcededMaxNumberOfContracts,
+        /// Not possible to assign a new dApp Id.
+        /// This should never happen since current type can support up to 65536 - 1 unique dApps.
+        NewDAppIdUnavailable,
+        /// Developer account balance insufficent to pay for the dApp registration deposit.
+        InsufficientOwnerBalance,
+        /// Specified smart contract does not exist in dApp staking.
+        ContractNotFound,
+        /// Call origin is not dApp owner.
+        OriginNotDAppOwner,
     }
 
     /// General information about dApp staking protocol state.
@@ -184,7 +200,7 @@ pub mod pallet {
 
     /// Counter for unique dApp identifiers.
     #[pallet::storage]
-    pub type DappIdCounter<T: Config> = StorageValue<_, DAppId, ValueQuery>;
+    pub type NextDAppId<T: Config> = StorageValue<_, DAppId, ValueQuery>;
 
     /// Map of all dApps integrated into dApp staking protocol.
     #[pallet::storage]
@@ -198,29 +214,87 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Used to register contract for dApp staking, with the developer account as the owner.
+        /// Used to register contract for dApp staking, with the owner account as the owner.
         ///
         /// If successful, smart contract will be assigned a simple, unique numerical identifier.
+        /// Requires register deposit to be paid by the owner account.
         #[pallet::call_index(0)]
         #[pallet::weight(Weight::zero())]
         pub fn register(
             origin: OriginFor<T>,
-            developer: T::AccountId,
-            contract_id: T::SmartContract,
+            owner: T::AccountId,
+            smart_contract: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             T::ManagerOrigin::ensure_origin(origin)?;
 
             ensure!(
-                !IntegratedDApps::<T>::contains_key(&contract_id),
+                !IntegratedDApps::<T>::contains_key(&smart_contract),
                 Error::<T>::ContractAlreadyExists,
             );
 
-            let dapp_id = DappIdCounter::<T>::get();
+            ensure!(
+                !IntegratedDApps::<T>::count() < T::MaxNumberOfContracts::get().into(),
+                Error::<T>::ExcededMaxNumberOfContracts
+            );
 
-            // RegisteredDapps::<T>::insert(contract_id.clone(), DAppInfo::new(developer.clone()));
+            let dapp_id = NextDAppId::<T>::get();
+            // MAX value must never be assigned as a dApp Id since it serves as a sentinel value.
+            ensure!(dapp_id < DAppId::MAX, Error::<T>::NewDAppIdUnavailable);
 
-            // Self::deposit_event(Event::<T>::NewContract(developer, contract_id));
+            T::Currency::reserve(&owner, T::RegistrationDeposit::get())
+                .map_err(|_| Error::<T>::InsufficientOwnerBalance)?;
+
+            IntegratedDApps::<T>::insert(
+                &smart_contract,
+                DAppInfo {
+                    owner: owner.clone(),
+                    id: dapp_id,
+                    state: DAppState::Registered,
+                    reserved: T::RegistrationDeposit::get(),
+                    reward_destination: None,
+                },
+            );
+
+            NextDAppId::<T>::put(dapp_id.saturating_add(1));
+
+            Self::deposit_event(Event::<T>::ContractRegistered {
+                owner,
+                smart_contract,
+                dapp_id,
+            });
+
+            Ok(().into())
+        }
+
+        /// Used to modify the reward destination account for a dApp.
+        #[pallet::call_index(1)]
+        #[pallet::weight(Weight::zero())]
+        pub fn set_dapp_reward_destination(
+            origin: OriginFor<T>,
+            smart_contract: T::SmartContract,
+            beneficiary: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let dev_account = ensure_signed(origin)?;
+
+            IntegratedDApps::<T>::try_mutate(
+                smart_contract,
+                |maybe_dapp_info| -> DispatchResult {
+                    let dapp_info = maybe_dapp_info
+                        .as_mut()
+                        .ok_or(Error::<T>::ContractNotFound)?;
+
+                    ensure!(
+                        dapp_info.owner == dev_account,
+                        Error::<T>::OriginNotDAppOwner
+                    );
+
+                    dapp_info.reward_destination = Some(beneficiary);
+
+                    Ok(().into())
+                },
+            )?;
 
             Ok(().into())
         }
