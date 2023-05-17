@@ -43,10 +43,10 @@ pallet-timestamp = { workspace = true }
 polkadot-core-primitives = { workspace = true }
 polkadot-parachain = { workspace = true }
 polkadot-runtime-parachains = { workspace = true }
-xcm-builder = { workspace = true, features = ["std", "runtime-benchmarks"] }
+xcm-builder = { workspace = true, features = ["std"] }
 
 [features]
-default = ["std", "runtime-benchmarks"]
+default = ["std"]
 std = [
 	"num_enum/std",
 	"parity-scale-codec/std",
@@ -70,6 +70,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"pallet-contracts/runtime-benchmarks",
+	"xcm-builder/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

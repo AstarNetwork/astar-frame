@@ -57,7 +57,6 @@ pub trait OnCallback {
     ) -> Result<Weight, Self::Error>;
 }
 
-
 /// OnCallback implementation that does not supports any callback
 /// Use this to disable callbacks
 pub struct NoCallback<T: Config>(PhantomData<T>);
