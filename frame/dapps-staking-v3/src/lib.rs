@@ -29,10 +29,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::pallet_prelude::*;
 use frame_support::{
     pallet_prelude::*,
     traits::{Currency, LockableCurrency, ReservableCurrency, StorageVersion},
+    weights::Weight,
 };
 use frame_system::pallet_prelude::*;
 
@@ -50,6 +50,9 @@ pub type PeriodNumber = u32;
 
 /// TODO: just a placeholder, associated type should be used
 pub type BlockNumber = u64;
+
+/// TODO: change/improve name
+pub type DAppId = u16;
 
 /// Distinct period types in dApp staking protocol.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
@@ -145,26 +148,92 @@ pub mod pallet {
         /// Currency used for staking.
         type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>
             + ReservableCurrency<Self::AccountId>;
+
+        /// Describes smart contract in the context required by dApp staking.
+        type SmartContract: Parameter + Member + MaxEncodedLen;
+
+        /// Privileged origin for managing dApp staking pallet.
+        type ManagerOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
+
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
-        // TODO: Add events
+        /// A smart contract has been registered for dApp staking
+        ContractRegistered {
+            developer: T::AccountId,
+            smart_contract: T::SmartContract,
+            id: DAppId,
+        },
     }
 
     #[pallet::error]
     pub enum Error<T> {
-        // TODO: Add errors
+        /// Pallet is disabled/in maintenance mode.
+        Disabled,
+        /// Smart contract already exists within dApp staking protocol.
+        ContractAlreadyExists,
+        /// Maximum number of smart contracts has been reached.
+        ExcededMaxNumberOfContracts,
     }
 
-    /// <>
+    /// General information about dApp staking protocol state.
     #[pallet::storage]
     pub type ActiveProtocolState<T: Config> = StorageValue<_, ProtocolState, ValueQuery>;
 
-    // <>
-    // #[pallet::storage]
-    // #[pallet::getter(fn registered_smart_contract)]
-    // pub type RegisteredSmartContracts<T: Config> =
-    //     StorageMap<_, Blake2_128Concat, T::SmartContract, DAppInfo<T::AccountId, BalanceOf<T>>, OptionQuery>;
+    /// Counter for unique dApp identifiers.
+    #[pallet::storage]
+    pub type DappIdCounter<T: Config> = StorageValue<_, DAppId, ValueQuery>;
+
+    /// Map of all dApps integrated into dApp staking protocol.
+    #[pallet::storage]
+    pub type IntegratedDApps<T: Config> = CountedStorageMap<
+        _,
+        Blake2_128Concat,
+        T::SmartContract,
+        DAppInfo<T::AccountId, BalanceOf<T>>,
+        OptionQuery,
+    >;
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// Used to register contract for dApp staking, with the developer account as the owner.
+        ///
+        /// If successful, smart contract will be assigned a simple, unique numerical identifier.
+        #[pallet::call_index(0)]
+        #[pallet::weight(Weight::zero())]
+        pub fn register(
+            origin: OriginFor<T>,
+            developer: T::AccountId,
+            contract_id: T::SmartContract,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            T::ManagerOrigin::ensure_origin(origin)?;
+
+            ensure!(
+                !IntegratedDApps::<T>::contains_key(&contract_id),
+                Error::<T>::ContractAlreadyExists,
+            );
+
+            let dapp_id = DappIdCounter::<T>::get();
+
+            // RegisteredDapps::<T>::insert(contract_id.clone(), DAppInfo::new(developer.clone()));
+
+            // Self::deposit_event(Event::<T>::NewContract(developer, contract_id));
+
+            Ok(().into())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        /// `Err` if pallet disabled for maintenance, `Ok` otherwise
+        pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
+            if ActiveProtocolState::<T>::get().pallet_disabled {
+                Err(Error::<T>::Disabled)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
