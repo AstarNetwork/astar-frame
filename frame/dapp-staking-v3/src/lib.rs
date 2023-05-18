@@ -6,7 +6,7 @@
 // You should have received a copy of the PolyForm-Noncommercial license with this crate.
 // If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
 
-//! # Dapps Staking v3 Pallet
+//! # dApp Staking v3 Pallet
 //!
 //! - [`Config`]
 //!
@@ -35,6 +35,7 @@ use frame_support::{
     weights::Weight,
 };
 use frame_system::pallet_prelude::*;
+use sp_runtime::traits::BadOrigin;
 
 pub use pallet::*;
 
@@ -124,7 +125,7 @@ pub struct DAppInfo<AccountId, Balance> {
     pub state: DAppState,
     /// Reserved amount during registration of the dApp.
     /// Sort of a rent fee for all the storage items required to have the dApp registered.
-    pub reserved: Balance,
+    pub deposit: Balance,
     // If `None`, rewards goes to the developer account, otherwise to the account Id in `Some`.
     pub reward_destination: Option<AccountId>,
 }
@@ -173,6 +174,16 @@ pub mod pallet {
             smart_contract: T::SmartContract,
             dapp_id: DAppId,
         },
+        /// dApp reward destination has been updated.
+        DAppRewardDestination {
+            smart_contract: T::SmartContract,
+            beneficiary: Option<T::AccountId>,
+        },
+        /// dApp owner has been changed.
+        DAppOwnerChanged {
+            smart_contract: T::SmartContract,
+            new_owner: T::AccountId,
+        },
     }
 
     #[pallet::error]
@@ -214,7 +225,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Used to register contract for dApp staking, with the owner account as the owner.
+        /// Used to register a new contract for dApp staking.
         ///
         /// If successful, smart contract will be assigned a simple, unique numerical identifier.
         /// Requires register deposit to be paid by the owner account.
@@ -251,7 +262,7 @@ pub mod pallet {
                     owner: owner.clone(),
                     id: dapp_id,
                     state: DAppState::Registered,
-                    reserved: T::RegistrationDeposit::get(),
+                    deposit: T::RegistrationDeposit::get(),
                     reward_destination: None,
                 },
             );
@@ -268,18 +279,21 @@ pub mod pallet {
         }
 
         /// Used to modify the reward destination account for a dApp.
+        ///
+        /// Caller has to be dApp owner.
+        /// If set to `None`, rewards will be deposited to the dApp owner.
         #[pallet::call_index(1)]
         #[pallet::weight(Weight::zero())]
         pub fn set_dapp_reward_destination(
             origin: OriginFor<T>,
             smart_contract: T::SmartContract,
-            beneficiary: T::AccountId,
+            beneficiary: Option<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
             let dev_account = ensure_signed(origin)?;
 
             IntegratedDApps::<T>::try_mutate(
-                smart_contract,
+                &smart_contract,
                 |maybe_dapp_info| -> DispatchResult {
                     let dapp_info = maybe_dapp_info
                         .as_mut()
@@ -290,11 +304,72 @@ pub mod pallet {
                         Error::<T>::OriginNotDAppOwner
                     );
 
-                    dapp_info.reward_destination = Some(beneficiary);
+                    dapp_info.reward_destination = beneficiary.clone();
 
                     Ok(().into())
                 },
             )?;
+
+            Self::deposit_event(Event::<T>::DAppRewardDestination {
+                smart_contract,
+                beneficiary,
+            });
+
+            Ok(().into())
+        }
+
+        /// Used to change dApp owner.
+        ///
+        /// The old owner will have reservation deposit returned to them,
+        /// while the new owner will need to pay for the new deposit.
+        /// NOTE: it's possible deposits won't be the same, but original owner will always get back exactly
+        /// what they paid for during registration.
+        ///
+        /// Can be called by dApp owner or dApp staking manager origin.
+        /// This is useful in two cases:
+        /// 1. when the dApp owner account is compromised, manager can change the owner to a new account
+        /// 2. if project wants to transfer ownership to a new account (DAO, multisig, etc.).
+        #[pallet::call_index(2)]
+        #[pallet::weight(Weight::zero())]
+        #[transactional] // TODO: Is this even needed nowdays?
+        pub fn set_dapp_owner(
+            origin: OriginFor<T>,
+            smart_contract: T::SmartContract,
+            new_owner: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let origin = Self::ensure_signed_or_manager(origin)?;
+
+            IntegratedDApps::<T>::try_mutate(
+                &smart_contract,
+                |maybe_dapp_info| -> DispatchResult {
+                    let dapp_info = maybe_dapp_info
+                        .as_mut()
+                        .ok_or(Error::<T>::ContractNotFound)?;
+
+                    // If manager origin, `None`, no need to check if caller is dApp owner.
+                    if let Some(caller) = origin {
+                        ensure!(dapp_info.owner == caller, Error::<T>::OriginNotDAppOwner);
+                    }
+
+                    // Return deposit to old owner, and charge the new owner.
+                    T::Currency::unreserve(&dapp_info.owner, &dapp_info.deposit);
+
+                    // TODO: is it ok to allow someone to just reserve the deposit for the new owner?
+                    // Maybe the new owner should `whitelist` itself first?
+                    T::Currency::reserve(&new_owner, T::RegistrationDeposit::get())
+                        .map_err(|_| Error::<T>::InsufficientOwnerBalance)?;
+
+                    dapp_info.owner = new_owner.clone();
+
+                    Ok(().into())
+                },
+            )?;
+
+            Self::deposit_event(Event::<T>::DAppOwnerChanged {
+                smart_contract,
+                new_owner,
+            });
 
             Ok(().into())
         }
@@ -302,12 +377,23 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         /// `Err` if pallet disabled for maintenance, `Ok` otherwise
-        pub fn ensure_pallet_enabled() -> Result<(), Error<T>> {
+        pub(crate) fn ensure_pallet_enabled() -> Result<(), Error<T>> {
             if ActiveProtocolState::<T>::get().pallet_disabled {
                 Err(Error::<T>::Disabled)
             } else {
                 Ok(())
             }
+        }
+
+        /// Ensure that the origin is either the `ManagerOrigin` or a signed origin.
+        pub(crate) fn ensure_signed_or_manager(
+            origin: T::RuntimeOrigin,
+        ) -> Result<Option<T::AccountId>, BadOrigin> {
+            if T::ManagerOrigin::ensure_origin(origin.clone()).is_ok() {
+                return Ok(None);
+            }
+            let who = ensure_signed(origin)?;
+            Ok(Some(who))
         }
     }
 }
