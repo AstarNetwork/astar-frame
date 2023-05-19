@@ -49,7 +49,7 @@ pub type EraNumber = u32;
 /// TODO: change/improve name
 pub type PeriodNumber = u32;
 
-/// TODO: just a placeholder, associated type should be used
+/// TODO: just a placeholder, associated type should be used?
 pub type BlockNumber = u64;
 
 /// TODO: change/improve name
@@ -162,7 +162,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(crate) fn deposit_event)]
     pub enum Event<T: Config> {
         /// A smart contract has been registered for dApp staking
-        ContractRegistered {
+        DAppRegistered {
             owner: T::AccountId,
             smart_contract: T::SmartContract,
             dapp_id: DAppId,
@@ -176,6 +176,16 @@ pub mod pallet {
         DAppOwnerChanged {
             smart_contract: T::SmartContract,
             new_owner: T::AccountId,
+        },
+        /// dApp owner has been changed.
+        DAppOwnerChanged {
+            smart_contract: T::SmartContract,
+            new_owner: T::AccountId,
+        },
+        /// dApp has been unregistered
+        DAppUnregistered {
+            smart_contract: T::SmartContract,
+            era: EraNumber,
         },
     }
 
@@ -193,7 +203,9 @@ pub mod pallet {
         /// Specified smart contract does not exist in dApp staking.
         ContractNotFound,
         /// Call origin is not dApp owner.
-        OriginNotDAppOwner,
+        OriginNotOwner,
+        /// dApp is part of dApp staking but isn't active anymore.
+        NotOperatedDApp,
     }
 
     /// General information about dApp staking protocol state.
@@ -255,7 +267,7 @@ pub mod pallet {
 
             NextDAppId::<T>::put(dapp_id.saturating_add(1));
 
-            Self::deposit_event(Event::<T>::ContractRegistered {
+            Self::deposit_event(Event::<T>::DAppRegistered {
                 owner,
                 smart_contract,
                 dapp_id,
@@ -285,10 +297,7 @@ pub mod pallet {
                         .as_mut()
                         .ok_or(Error::<T>::ContractNotFound)?;
 
-                    ensure!(
-                        dapp_info.owner == dev_account,
-                        Error::<T>::OriginNotDAppOwner
-                    );
+                    ensure!(dapp_info.owner == dev_account, Error::<T>::OriginNotOwner);
 
                     dapp_info.reward_destination = beneficiary.clone();
 
@@ -305,11 +314,6 @@ pub mod pallet {
         }
 
         /// Used to change dApp owner.
-        ///
-        /// The old owner will have reservation deposit returned to them,
-        /// while the new owner will need to pay for the new deposit.
-        /// NOTE: it's possible deposits won't be the same, but original owner will always get back exactly
-        /// what they paid for during registration.
         ///
         /// Can be called by dApp owner or dApp staking manager origin.
         /// This is useful in two cases:
@@ -332,9 +336,9 @@ pub mod pallet {
                         .as_mut()
                         .ok_or(Error::<T>::ContractNotFound)?;
 
-                    // If manager origin, `None`, no need to check if caller is dApp owner.
+                    // If manager origin, `None`, no need to check if caller is the owner.
                     if let Some(caller) = origin {
-                        ensure!(dapp_info.owner == caller, Error::<T>::OriginNotDAppOwner);
+                        ensure!(dapp_info.owner == caller, Error::<T>::OriginNotOwner);
                     }
 
                     dapp_info.owner = new_owner.clone();
@@ -346,6 +350,48 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::DAppOwnerChanged {
                 smart_contract,
                 new_owner,
+            });
+
+            Ok(().into())
+        }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(Weight::zero())]
+        pub fn unregister(
+            origin: OriginFor<T>,
+            smart_contract: T::SmartContract,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+            let origin = Self::ensure_signed_or_manager(origin)?;
+
+            let current_era = ActiveProtocolState::<T>::get().era;
+
+            IntegratedDApps::<T>::try_mutate(
+                &smart_contract,
+                |maybe_dapp_info| -> DispatchResult {
+                    let dapp_info = maybe_dapp_info
+                        .as_mut()
+                        .ok_or(Error::<T>::ContractNotFound)?;
+
+                    // If manager origin, `None`, no need to check if caller is the owner.
+                    if let Some(caller) = origin {
+                        ensure!(dapp_info.owner == caller, Error::<T>::OriginNotOwner);
+                    }
+
+                    ensure!(
+                        dapp_info.state == DAppState::Registered,
+                        Error::<T>::NotOperatedContract
+                    );
+
+                    dapp_info.state = DAppState::Unregistered(current_era);
+
+                    Ok(().into())
+                },
+            )?;
+
+            Self::deposit_event(Event::<T>::DAppUnregistered {
+                smart_contract,
+                era: current_era,
             });
 
             Ok(().into())
