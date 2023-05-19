@@ -116,16 +116,13 @@ pub enum DAppState {
 
 /// General information about dApp.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
-pub struct DAppInfo<AccountId, Balance> {
+pub struct DAppInfo<AccountId> {
     /// Owner of the dApp, default reward beneficiary.
     pub owner: AccountId,
     /// dApp's unique identifier in dApp staking.
     pub id: u16,
     /// Current state of the dApp.
     pub state: DAppState,
-    /// Reserved amount during registration of the dApp.
-    /// Sort of a rent fee for all the storage items required to have the dApp registered.
-    pub deposit: Balance,
     // If `None`, rewards goes to the developer account, otherwise to the account Id in `Some`.
     pub reward_destination: Option<AccountId>,
 }
@@ -159,10 +156,6 @@ pub mod pallet {
         /// Maximum number of contracts that can be integrated into dApp staking at once.
         /// TODO: maybe this can be reworded or improved later on - but we want a ceiling!
         type MaxNumberOfContracts: Get<DAppId>;
-
-        /// Deposit reserved for registering a new smart contract. It will be reserved from the developers's account.
-        #[pallet::constant]
-        type RegistrationDeposit: Get<BalanceOf<Self>>;
     }
 
     #[pallet::event]
@@ -197,8 +190,6 @@ pub mod pallet {
         /// Not possible to assign a new dApp Id.
         /// This should never happen since current type can support up to 65536 - 1 unique dApps.
         NewDAppIdUnavailable,
-        /// Developer account balance insufficent to pay for the dApp registration deposit.
-        InsufficientOwnerBalance,
         /// Specified smart contract does not exist in dApp staking.
         ContractNotFound,
         /// Call origin is not dApp owner.
@@ -219,7 +210,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::SmartContract,
-        DAppInfo<T::AccountId, BalanceOf<T>>,
+        DAppInfo<T::AccountId>,
         OptionQuery,
     >;
 
@@ -228,7 +219,6 @@ pub mod pallet {
         /// Used to register a new contract for dApp staking.
         ///
         /// If successful, smart contract will be assigned a simple, unique numerical identifier.
-        /// Requires register deposit to be paid by the owner account.
         #[pallet::call_index(0)]
         #[pallet::weight(Weight::zero())]
         pub fn register(
@@ -253,16 +243,12 @@ pub mod pallet {
             // MAX value must never be assigned as a dApp Id since it serves as a sentinel value.
             ensure!(dapp_id < DAppId::MAX, Error::<T>::NewDAppIdUnavailable);
 
-            T::Currency::reserve(&owner, T::RegistrationDeposit::get())
-                .map_err(|_| Error::<T>::InsufficientOwnerBalance)?;
-
             IntegratedDApps::<T>::insert(
                 &smart_contract,
                 DAppInfo {
                     owner: owner.clone(),
                     id: dapp_id,
                     state: DAppState::Registered,
-                    deposit: T::RegistrationDeposit::get(),
                     reward_destination: None,
                 },
             );
@@ -331,7 +317,6 @@ pub mod pallet {
         /// 2. if project wants to transfer ownership to a new account (DAO, multisig, etc.).
         #[pallet::call_index(2)]
         #[pallet::weight(Weight::zero())]
-        #[transactional] // TODO: Is this even needed nowdays?
         pub fn set_dapp_owner(
             origin: OriginFor<T>,
             smart_contract: T::SmartContract,
@@ -351,14 +336,6 @@ pub mod pallet {
                     if let Some(caller) = origin {
                         ensure!(dapp_info.owner == caller, Error::<T>::OriginNotDAppOwner);
                     }
-
-                    // Return deposit to old owner, and charge the new owner.
-                    T::Currency::unreserve(&dapp_info.owner, &dapp_info.deposit);
-
-                    // TODO: is it ok to allow someone to just reserve the deposit for the new owner?
-                    // Maybe the new owner should `whitelist` itself first?
-                    T::Currency::reserve(&new_owner, T::RegistrationDeposit::get())
-                        .map_err(|_| Error::<T>::InsufficientOwnerBalance)?;
 
                     dapp_info.owner = new_owner.clone();
 
