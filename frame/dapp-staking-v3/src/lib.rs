@@ -31,10 +31,11 @@
 
 use frame_support::{
     pallet_prelude::*,
-    traits::{Currency, LockableCurrency, ReservableCurrency, StorageVersion},
+    traits::{Currency, LockableCurrency, StorageVersion},
     weights::Weight,
 };
 use frame_system::pallet_prelude::*;
+use parity_scale_codec::HasCompact;
 use sp_runtime::traits::BadOrigin;
 
 pub use pallet::*;
@@ -60,10 +61,10 @@ pub type DAppId = u16;
 pub enum PeriodType {
     /// Period during which the focus is on voting.
     /// Inner value is the era in which the voting period ends.
-    VotingPeriod(EraNumber),
+    VotingPeriod(#[codec(compact)] EraNumber),
     /// Period during which dApps and stakers earn rewards.
     /// Inner value is the era in which the Build&Eearn period ends.
-    BuildAndEarnPeriod(EraNumber),
+    BuildAndEarnPeriod(#[codec(compact)] EraNumber),
 }
 
 /// Force types to speed up the next era, and even period.
@@ -79,12 +80,15 @@ pub enum ForcingTypes {
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
 pub struct ProtocolState {
     /// Ongoing era number.
+    #[codec(compact)]
     pub era: EraNumber,
     /// Block number at which the next era should start.
     /// TODO: instead of abusing on-initialize and wasting block-space,
     /// I believe we should utilize `pallet-scheduler` to schedule the next era. Make an item for this.
+    /// TODO2: can this be compact?
     pub next_era_start: Option<BlockNumber>,
     /// Ongoing period number.
+    #[codec(compact)]
     pub period: PeriodNumber,
     /// Ongoing period type and when is it expected to end.
     pub period_type: PeriodType,
@@ -111,7 +115,7 @@ pub enum DAppState {
     /// dApp is registered and active.
     Registered,
     /// dApp has been unregistered in the contained era
-    Unregistered(EraNumber),
+    Unregistered(#[codec(compact)] EraNumber),
 }
 
 /// General information about dApp.
@@ -120,12 +124,40 @@ pub struct DAppInfo<AccountId> {
     /// Owner of the dApp, default reward beneficiary.
     pub owner: AccountId,
     /// dApp's unique identifier in dApp staking.
+    #[codec(compact)]
     pub id: u16,
     /// Current state of the dApp.
     pub state: DAppState,
     // If `None`, rewards goes to the developer account, otherwise to the account Id in `Some`.
     pub reward_destination: Option<AccountId>,
 }
+
+/// How much was locked in each era
+#[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
+pub struct LockedBalance<Balance: HasCompact + MaxEncodedLen> {
+    #[codec(compact)]
+    amount: Balance,
+    #[codec(compact)]
+    era: EraNumber,
+}
+
+// TODO: would users get better UX if we kept using eras? Using blocks is more precise though.
+/// How much was unlocked in some block.
+#[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
+pub struct UnlockingChunk<Balance: HasCompact + MaxEncodedLen> {
+    #[codec(compact)]
+    amount: Balance,
+    #[codec(compact)]
+    unlock_block: BlockNumber,
+}
+
+//   /// General info about user's stakes
+//   struct AccountLedger {
+//     locked: WeakBoundedVec<LockedBalance>,
+//     unlocking_chunks: WeakBoundedVec<UnlockingChunk>
+//     // How much user had staked in some period
+//     staked: (Balance, Period),
+//   }
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -144,8 +176,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Currency used for staking.
-        type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>
-            + ReservableCurrency<Self::AccountId>;
+        type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 
         /// Describes smart contract in the context required by dApp staking.
         type SmartContract: Parameter + Member + MaxEncodedLen;
@@ -171,11 +202,6 @@ pub mod pallet {
         DAppRewardDestination {
             smart_contract: T::SmartContract,
             beneficiary: Option<T::AccountId>,
-        },
-        /// dApp owner has been changed.
-        DAppOwnerChanged {
-            smart_contract: T::SmartContract,
-            new_owner: T::AccountId,
         },
         /// dApp owner has been changed.
         DAppOwnerChanged {
@@ -355,6 +381,10 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Unregister dApp from dApp staking protocol, making it ineligible for future rewards.
+        /// This doesn't remove the dApp completely from the system just yet, but it can no longer be used for staking.
+        ///
+        /// Can be called by dApp owner or dApp staking manager origin.
         #[pallet::call_index(3)]
         #[pallet::weight(Weight::zero())]
         pub fn unregister(
@@ -380,7 +410,7 @@ pub mod pallet {
 
                     ensure!(
                         dapp_info.state == DAppState::Registered,
-                        Error::<T>::NotOperatedContract
+                        Error::<T>::NotOperatedDApp
                     );
 
                     dapp_info.state = DAppState::Unregistered(current_era);
@@ -389,10 +419,26 @@ pub mod pallet {
                 },
             )?;
 
+            // TODO: might require some modification later on, like additional checks to ensure contract can be unregistered.
+
             Self::deposit_event(Event::<T>::DAppUnregistered {
                 smart_contract,
                 era: current_era,
             });
+
+            Ok(().into())
+        }
+
+        /// TODO
+        #[pallet::call_index(4)]
+        #[pallet::weight(Weight::zero())]
+        pub fn lock(
+            origin: OriginFor<T>,
+            #[pallet::compact] amount: BalanceOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            Self::ensure_pallet_enabled()?;
+
+            let staker = ensure_signed(origin)?;
 
             Ok(().into())
         }
