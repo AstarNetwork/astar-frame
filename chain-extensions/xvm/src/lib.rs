@@ -68,7 +68,9 @@ where
             XvmFuncId::XvmCall => {
                 // We need to immediately charge for the worst case scenario. Gas equals Weight in pallet-contracts context.
                 let remaining_weight = env.ext().gas_meter().gas_left();
-                let charged_weight = env.charge_weight(remaining_weight.set_proof_size(0))?;
+                // We don't track used proof size, because we can't refund after.
+                // So we will charge a 32KB dummy value as a temporary replacement. 
+                let charged_weight = env.charge_weight(remaining_weight.set_proof_size(32 * 1024))?;
 
                 let caller = env.ext().caller().clone();
 
@@ -86,6 +88,7 @@ where
                     pallet_xvm::Pallet::<T>::xvm_bare_call(xvm_context, caller, to, input);
 
                 let actual_weight = pallet_xvm::consumed_weight(&call_result);
+                // TODO: implement proof of size refund.
                 env.adjust_weight(charged_weight, Weight::from_ref_time(actual_weight));
 
                 match call_result {
