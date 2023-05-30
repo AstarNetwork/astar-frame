@@ -34,6 +34,15 @@ pub fn new_origin_works() {
             Some(NativeAndEVM::Native(ALICE_D1_NATIVE.into())),
         );
         assert_eq!(AccountOrigin::<TestRuntime>::get(ALICE, 1), None,);
+        assert_matches!(
+            System::events()
+                .last()
+                .expect("events expected")
+                .event
+                .clone(),
+            RuntimeEvent::Account(Event::NewOrigin{origin, ..})
+            if origin == NativeAndEVM::Native(ALICE_D1_NATIVE.into())
+        );
         // Create EVM origin
         assert_ok!(Account::new_origin(
             RuntimeOrigin::signed(ALICE).into(),
@@ -42,6 +51,15 @@ pub fn new_origin_works() {
         assert_eq!(
             AccountOrigin::<TestRuntime>::get(ALICE, 1),
             Some(NativeAndEVM::H160(ALICE_D2_H160.into())),
+        );
+        assert_matches!(
+            System::events()
+                .last()
+                .expect("events expected")
+                .event
+                .clone(),
+            RuntimeEvent::Account(Event::NewOrigin{origin, ..})
+            if origin == NativeAndEVM::H160(ALICE_D2_H160.into())
         );
     })
 }
@@ -76,6 +94,15 @@ pub fn proxy_call_works() {
                 .clone(),
             RuntimeEvent::Account(Event::ProxyCall{origin, ..})
             if origin == NativeAndEVM::Native(ALICE_D1_NATIVE.into())
+        );
+        assert_matches!(
+            System::events()
+                .get(System::events().len() - 2)
+                .expect("events expected")
+                .event
+                .clone(),
+            RuntimeEvent::Balances(pallet_balances::Event::Transfer{from, ..})
+            if from == ALICE_D1_NATIVE.into()
         );
     })
 }
