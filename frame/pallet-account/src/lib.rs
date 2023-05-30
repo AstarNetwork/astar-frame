@@ -76,7 +76,7 @@ pub mod pallet {
     pub trait Config: frame_system::Config {
         /// Custom origin type.
         type CustomOrigin: Parameter + TryInto<Self::AccountId> + MaxEncodedLen;
-        /// Parameter that defin different origin options and how to create it.
+        /// Parameter that defines different origin options and how to create it.
         type CustomOriginKind: Parameter + OriginDeriving<Self::AccountId, Self::CustomOrigin>;
         /// The runtime origin type.
         type RuntimeOrigin: From<Self::CustomOrigin>
