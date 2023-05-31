@@ -59,13 +59,16 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::{
         dispatch::{Dispatchable, GetDispatchInfo},
-        traits::IsSubType,
+        traits::{Currency, IsSubType, OnKilledAccount, ReservableCurrency},
     };
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
 
     /// The current storage version.                                                                                      
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
+    /// Maximum origins that account can hold.
+    const MAX_ORIGINS: u32 = 50;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -74,6 +77,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
+        /// Reservable currency to take origin creation deposit.
+        type Currency: ReservableCurrency<Self::AccountId>;
+        /// Origin creation security deposit.
+        #[pallet::constant]
+        type SecurityDeposit: Get<<Self::Currency as Currency<Self::AccountId>>::Balance>;
         /// Custom origin type.
         type CustomOrigin: Parameter + TryInto<Self::AccountId> + MaxEncodedLen;
         /// Parameter that defines different origin options and how to create it.
@@ -126,6 +134,13 @@ pub mod pallet {
     pub type AccountLastOrigin<T: Config> =
         StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
 
+    impl<T: Config> OnKilledAccount<T::AccountId> for Pallet<T> {
+        fn on_killed_account(who: &T::AccountId) {
+            let _ = <AccountOrigin<T>>::clear_prefix(who, MAX_ORIGINS, None);
+            <AccountLastOrigin<T>>::remove(who);
+        }
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Derive new origin for account.
@@ -142,7 +157,15 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
+            // reserve security deposit
+            T::Currency::reserve(&who, T::SecurityDeposit::get())?;
+
             let next_index = AccountLastOrigin::<T>::get(&who);
+            ensure!(
+                next_index < MAX_ORIGINS,
+                "account has maximum origins count"
+            );
+
             let new_origin = origin_kind.derive(&who, next_index);
             AccountOrigin::<T>::insert(&who, next_index, new_origin.clone());
             AccountLastOrigin::<T>::insert(&who, next_index + 1);

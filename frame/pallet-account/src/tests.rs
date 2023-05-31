@@ -25,10 +25,14 @@ use mock::*;
 pub fn new_origin_works() {
     ExternalityBuilder::build().execute_with(|| {
         // Create native origin
+        assert_eq!(Balances::free_balance(&ALICE), 9000);
         assert_ok!(Account::new_origin(
             RuntimeOrigin::signed(ALICE).into(),
             NativeAndEVMKind::Native,
         ));
+        // check that security deposit consumed
+        assert_eq!(Balances::free_balance(&ALICE), 8900);
+        // check that origin created
         assert_eq!(
             AccountOrigin::<TestRuntime>::get(ALICE, 0),
             Some(NativeAndEVM::Native(ALICE_D1_NATIVE.into())),

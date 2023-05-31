@@ -112,7 +112,13 @@ impl pallet_balances::Config for TestRuntime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const SecurityDeposit: Balance = 100;
+}
+
 impl pallet_account::Config for TestRuntime {
+    type Currency = Balances;
+    type SecurityDeposit = SecurityDeposit;
     type CustomOrigin = super::NativeAndEVM;
     type CustomOriginKind = super::NativeAndEVMKind;
     type RuntimeOrigin = RuntimeOrigin;
