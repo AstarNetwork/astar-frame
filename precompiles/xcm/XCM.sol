@@ -61,12 +61,13 @@ interface XCM {
      * @return bool confirmation whether the XCM message sent.
      */
     function remote_transact(
-        uint256 parachain_id,
+        uint256 dest_parachain_id,
         bool is_relay,
         address payment_asset_id,
         uint256 payment_amount,
         bytes calldata call,
-        uint64 transact_weight
+        uint64 transact_weight,
+        uint256 self_parachain_id
     ) external returns (bool);
 
     /**

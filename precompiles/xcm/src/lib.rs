@@ -38,7 +38,6 @@ use precompile_utils::{
     revert, succeed, Address, Bytes, EvmDataWriter, EvmResult, FunctionModifier,
     PrecompileHandleExt, RuntimeHelper,
 };
-
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -70,6 +69,7 @@ where
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
         From<Option<R::AccountId>>,
+    <R as frame_system::Config>::AccountId: Into<[u8; 32]>,
     <R as frame_system::Config>::RuntimeCall:
         From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
@@ -106,17 +106,19 @@ enum BeneficiaryType {
     Account20,
 }
 
-impl<R, C> XcmPrecompile<R, C>
+impl<Runtime, C> XcmPrecompile<Runtime, C>
 where
-    R: pallet_evm::Config
+    Runtime: pallet_evm::Config
         + pallet_xcm::Config
         + pallet_assets::Config
-        + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
-    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
-        From<Option<R::AccountId>>,
-    <R as frame_system::Config>::RuntimeCall:
-        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
+        + AddressToAssetId<<Runtime as pallet_assets::Config>::AssetId>,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<Runtime::AccountId>>,
+    <Runtime as frame_system::Config>::AccountId: Into<[u8; 32]>,
+    <Runtime as frame_system::Config>::RuntimeCall: From<pallet_xcm::Call<Runtime>>
+        + Dispatchable<PostInfo = PostDispatchInfo>
+        + GetDispatchInfo,
+    C: Convert<MultiLocation, <Runtime as pallet_assets::Config>::AssetId>,
 {
     fn assets_withdraw(
         handle: &mut impl PrecompileHandle,
@@ -131,7 +133,7 @@ where
             .iter()
             .cloned()
             .filter_map(|address| {
-                R::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
+                Runtime::address_to_asset_id(address.into()).and_then(|x| C::reverse_ref(x).ok())
             })
             .collect();
         let amounts_raw = input.read::<Vec<U256>>()?;
@@ -189,8 +191,11 @@ where
             .into();
 
         // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::reserve_withdraw_assets {
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+        let call = pallet_xcm::Call::<Runtime>::reserve_withdraw_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
@@ -198,7 +203,7 @@ where
         };
 
         // Dispatch a call.
-        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
@@ -216,6 +221,8 @@ where
 
         let remote_call: Vec<u8> = input.read::<Bytes>()?.into();
         let transact_weight = input.read::<u64>()?;
+        let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+        let self_para_id = input.read::<U256>()?.low_u32();
 
         log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
          fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
@@ -235,7 +242,7 @@ where
             if address == NATIVE_ADDRESS {
                 Here.into()
             } else {
-                let fee_asset_id = R::address_to_asset_id(address)
+                let fee_asset_id = Runtime::address_to_asset_id(address)
                     .ok_or(revert("Failed to resolve fee asset id from address"))?;
                 C::reverse_ref(fee_asset_id).map_err(|_| {
                     revert("Failed to resolve fee asset multilocation from local id")
@@ -248,7 +255,7 @@ where
         }
         let fee_amount = fee_amount.low_u128();
 
-        let context = R::UniversalLocation::get();
+        let context = Runtime::UniversalLocation::get();
         let fee_multilocation = MultiAsset {
             id: Concrete(fee_asset),
             fun: Fungible(fee_amount),
@@ -259,6 +266,19 @@ where
 
         // Prepare XCM
         let xcm = Xcm(vec![
+            SetAppendix(Xcm(vec![DepositAsset {
+                assets: All.into(),
+                beneficiary: MultiLocation {
+                    parents: 1,
+                    interior: X2(
+                        Parachain(self_para_id),
+                        AccountId32 {
+                            network: None,
+                            id: origin.into(),
+                        },
+                    ),
+                },
+            }])),
             WithdrawAsset(fee_multilocation.clone().into()),
             BuyExecution {
                 fees: fee_multilocation.clone().into(),
@@ -274,14 +294,17 @@ where
         log::trace!(target: "xcm-precompile:remote_transact", "Processed arguments: dest: {:?}, fee asset: {:?}, XCM: {:?}", dest, fee_multilocation, xcm);
 
         // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::send {
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+        let call = pallet_xcm::Call::<Runtime>::send {
             dest: Box::new(dest.into()),
             message: Box::new(xcm::VersionedXcm::V3(xcm)),
         };
 
         // Dispatch a call.
-        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
@@ -305,7 +328,7 @@ where
                 if address == NATIVE_ADDRESS {
                     Some(Here.into())
                 } else {
-                    R::address_to_asset_id(address).and_then(|x| C::reverse_ref(x).ok())
+                    Runtime::address_to_asset_id(address).and_then(|x| C::reverse_ref(x).ok())
                 }
             })
             .collect();
@@ -366,8 +389,11 @@ where
             .into();
 
         // Build call with origin.
-        let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::reserve_transfer_assets {
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+        let call = pallet_xcm::Call::<Runtime>::reserve_transfer_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
@@ -375,7 +401,7 @@ where
         };
 
         // Dispatch a call.
-        RuntimeHelper::<R>::try_dispatch(handle, origin, call)?;
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }

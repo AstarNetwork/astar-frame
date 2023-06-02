@@ -120,6 +120,7 @@ fn remote_transact_works() {
                     .write(U256::from(367))
                     .write(vec![0xff_u8, 0xaa, 0x77, 0x00])
                     .write(U256::from(3_000_000_000u64))
+                    .write(U256::from(1_u64))
                     .build(),
             )
             .expect_no_logs()
