@@ -33,10 +33,11 @@ use frame_support::{
     pallet_prelude::*,
     traits::{Currency, LockableCurrency, StorageVersion},
     weights::Weight,
+    BoundedVec,
 };
 use frame_system::pallet_prelude::*;
-use parity_scale_codec::HasCompact;
-use sp_runtime::traits::BadOrigin;
+use parity_scale_codec::{Decode, Encode};
+use sp_runtime::traits::{AtLeast32BitUnsigned, BadOrigin, Saturating, Zero};
 
 pub use pallet::*;
 
@@ -132,32 +133,121 @@ pub struct DAppInfo<AccountId> {
     pub reward_destination: Option<AccountId>,
 }
 
-/// How much was locked in each era
+/// How much was locked in a specific era
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
-pub struct LockedBalance<Balance: HasCompact + MaxEncodedLen> {
+pub struct LockedChunk<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
     #[codec(compact)]
     amount: Balance,
     #[codec(compact)]
     era: EraNumber,
 }
 
+impl<Balance> Default for LockedChunk<Balance>
+where
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+{
+    fn default() -> Self {
+        Self {
+            amount: Balance::zero(),
+            era: EraNumber::zero(),
+        }
+    }
+}
+
 // TODO: would users get better UX if we kept using eras? Using blocks is more precise though.
 /// How much was unlocked in some block.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
-pub struct UnlockingChunk<Balance: HasCompact + MaxEncodedLen> {
+pub struct UnlockingChunk<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
     #[codec(compact)]
     amount: Balance,
     #[codec(compact)]
     unlock_block: BlockNumber,
 }
 
-//   /// General info about user's stakes
-//   struct AccountLedger {
-//     locked: WeakBoundedVec<LockedBalance>,
-//     unlocking_chunks: WeakBoundedVec<UnlockingChunk>
-//     // How much user had staked in some period
-//     staked: (Balance, Period),
-//   }
+impl<Balance> Default for UnlockingChunk<Balance>
+where
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+{
+    fn default() -> Self {
+        Self {
+            amount: Balance::zero(),
+            unlock_block: BlockNumber::zero(),
+        }
+    }
+}
+
+// TODO: Can this be solved in a more elegant way? Without having dep towards Config?
+// Perhaps a custom trait which provides this kind of data, but seems like an overkill.
+// TODO2: it seems this isn't even supported - I should check how the macro expansion works to better understand why.
+// Right now, the best course of action is to include additional generics with bounds on Get<u32>.
+
+/// General info about user's stakes
+#[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo)]
+#[scale_info(skip_type_params(LockedLen, UnlockingLen))]
+pub struct AccountLedger<
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    LockedLen: Get<u32>,
+    UnlockingLen: Get<u32>,
+> {
+    /// How much was staked in each era
+    locked: BoundedVec<LockedChunk<Balance>, LockedLen>,
+    /// How much started unlocking on a certain block
+    unlocking: BoundedVec<UnlockingChunk<Balance>, UnlockingLen>,
+    //TODO, make this a compact struct!!!
+    /// How much user had staked in some period
+    // #[codec(compact)]
+    staked: (Balance, PeriodNumber),
+}
+
+impl<Balance, LockedLen, UnlockingLen> Default for AccountLedger<Balance, LockedLen, UnlockingLen>
+where
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    LockedLen: Get<u32>,
+    UnlockingLen: Get<u32>,
+{
+    fn default() -> Self {
+        Self {
+            locked: BoundedVec::<LockedChunk<Balance>, LockedLen>::default(),
+            unlocking: BoundedVec::<UnlockingChunk<Balance>, UnlockingLen>::default(),
+            staked: (Balance::zero(), 0),
+        }
+    }
+}
+
+impl<Balance, LockedLen, UnlockingLen> AccountLedger<Balance, LockedLen, UnlockingLen>
+where
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    LockedLen: Get<u32>,
+    UnlockingLen: Get<u32>,
+{
+    /// Empty if no locked/unlocking/staked info exists.
+    pub fn is_empty(&self) -> bool {
+        self.locked.is_empty() && self.unlocking.is_empty() && self.staked.0.is_zero()
+    }
+
+    /// Returns locked amount.
+    /// If `zero`, means that associated account hasn't locked any funds.
+    pub fn locked_amount(&self) -> Balance {
+        self.locked
+            .last()
+            .map_or(Balance::zero(), |locked| locked.amount)
+    }
+
+    /// Adds the specified amount to the total locked amount, if possible.
+    ///
+    /// In case TODO
+    pub fn add_lock_amount(&mut self, amount: Balance, era: EraNumber) -> Result<(), ()> {
+        let locked_chunk = if let Some(&locked_chunk) = self.locked.last() {
+            locked_chunk
+        } else {
+            LockedChunk::default()
+        };
+
+        // TODO: continue here
+
+        Ok(())
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -167,6 +257,7 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
 
     #[pallet::pallet]
+    #[pallet::generate_store(pub(crate) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(_);
 
@@ -186,7 +277,14 @@ pub mod pallet {
 
         /// Maximum number of contracts that can be integrated into dApp staking at once.
         /// TODO: maybe this can be reworded or improved later on - but we want a ceiling!
+        #[pallet::constant]
         type MaxNumberOfContracts: Get<DAppId>;
+
+        #[pallet::constant]
+        type MaxLockedChunks: Get<u32>;
+
+        #[pallet::constant]
+        type MaxUnlockingChunks: Get<u32>;
     }
 
     #[pallet::event]
@@ -250,6 +348,16 @@ pub mod pallet {
         T::SmartContract,
         DAppInfo<T::AccountId>,
         OptionQuery,
+    >;
+
+    /// General locked/staked information for each account.
+    #[pallet::storage]
+    pub type Ledger<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        AccountLedger<BalanceOf<T>, T::MaxLockedChunks, T::MaxUnlockingChunks>,
+        ValueQuery,
     >;
 
     #[pallet::call]
@@ -437,8 +545,13 @@ pub mod pallet {
             #[pallet::compact] amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
+            let caller = ensure_signed(origin)?;
 
-            let staker = ensure_signed(origin)?;
+            let mut ledger = Ledger::<T>::get(&caller);
+
+            let available_balance =
+                T::Currency::free_balance(&caller).saturating_sub(ledger.locked_amount());
+            let amount_to_lock = available_balance.min(amount);
 
             Ok(().into())
         }
