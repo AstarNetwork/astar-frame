@@ -61,18 +61,18 @@ const NATIVE_ADDRESS: H160 = H160::zero();
 /// A precompile that expose XCM related functions.
 pub struct XcmPrecompile<T, C>(PhantomData<(T, C)>);
 
-impl<R, C> Precompile for XcmPrecompile<R, C>
+impl<Runtime, C> Precompile for XcmPrecompile<Runtime, C>
 where
-    R: pallet_evm::Config
+    Runtime: pallet_evm::Config
         + pallet_xcm::Config
         + pallet_assets::Config
-        + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
-    <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
-        From<Option<R::AccountId>>,
-    <R as frame_system::Config>::AccountId: Into<[u8; 32]>,
-    <R as frame_system::Config>::RuntimeCall:
-        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-    C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
+        + AddressToAssetId<<Runtime as pallet_assets::Config>::AssetId>,
+    <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
+        From<Option<Runtime::AccountId>>,
+    <Runtime as frame_system::Config>::AccountId: Into<[u8; 32]>,
+    <Runtime as frame_system::Config>::RuntimeCall:
+        From<pallet_xcm::Call<Runtime>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    C: Convert<MultiLocation, <Runtime as pallet_assets::Config>::AssetId>,
 {
     fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         log::trace!(target: "xcm-precompile", "In XCM precompile");
