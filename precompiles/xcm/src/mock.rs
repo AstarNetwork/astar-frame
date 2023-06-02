@@ -182,18 +182,18 @@ impl frame_system::Config for Runtime {
 #[derive(Debug, Clone, Copy)]
 pub struct TestPrecompileSet<R>(PhantomData<R>);
 
-impl<R> PrecompileSet for TestPrecompileSet<R>
+impl<Runtime> PrecompileSet for TestPrecompileSet<Runtime>
 where
-    R: pallet_evm::Config
+    Runtime: pallet_evm::Config
         + pallet_xcm::Config
         + pallet_assets::Config
-        + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
-    XcmPrecompile<R, AssetIdConverter<AssetId>>: Precompile,
+        + AddressToAssetId<<Runtime as pallet_assets::Config>::AssetId>,
+    XcmPrecompile<Runtime, AssetIdConverter<AssetId>>: Precompile,
 {
     fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
         match handle.code_address() {
             a if a == PRECOMPILE_ADDRESS => Some(
-                XcmPrecompile::<R, AssetIdConverter<AssetId>>::execute(handle),
+                XcmPrecompile::<Runtime, AssetIdConverter<AssetId>>::execute(handle),
             ),
             _ => None,
         }
@@ -312,9 +312,9 @@ impl pallet_evm::Config for Runtime {
 }
 
 parameter_types! {
-    pub const RelayLocation: MultiLocation = Here.into_location();
+    pub RelayNetwork: Option<NetworkId> = Some(NetworkId::Polkadot);
     pub const AnyNetwork: Option<NetworkId> = None;
-    pub UniversalLocation: InteriorMultiLocation = Here;
+    pub UniversalLocation: InteriorMultiLocation = X2(GlobalConsensus(RelayNetwork::get().unwrap()), Parachain(123));
     pub Ancestry: MultiLocation = Here.into();
     pub UnitWeightCost: u64 = 1_000;
     pub const MaxAssetsIntoHolding: u32 = 64;

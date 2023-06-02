@@ -222,7 +222,6 @@ where
         let remote_call: Vec<u8> = input.read::<Bytes>()?.into();
         let transact_weight = input.read::<u64>()?;
         let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-        let self_para_id = input.read::<U256>()?.low_u32();
 
         log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
          fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
@@ -263,6 +262,7 @@ where
         let fee_multilocation = fee_multilocation
             .reanchored(&dest, context)
             .map_err(|_| revert("Failed to reanchor fee asset"))?;
+        println!("Context {:?}",context);
 
         // Prepare XCM
         let xcm = Xcm(vec![
@@ -271,7 +271,9 @@ where
                 beneficiary: MultiLocation {
                     parents: 1,
                     interior: X2(
-                        Parachain(self_para_id),
+                        // last() returns the last Juction Enum in Junctions
+                        // for Univeral Location it is the Parachain() variant
+                        *context.last().unwrap(),
                         AccountId32 {
                             network: None,
                             id: origin.into(),

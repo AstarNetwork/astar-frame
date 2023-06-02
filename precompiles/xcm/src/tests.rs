@@ -120,7 +120,6 @@ fn remote_transact_works() {
                     .write(U256::from(367))
                     .write(vec![0xff_u8, 0xaa, 0x77, 0x00])
                     .write(U256::from(3_000_000_000u64))
-                    .write(U256::from(1_u64))
                     .build(),
             )
             .expect_no_logs()
@@ -255,7 +254,7 @@ fn reserve_transfer_currency_works() {
             fun: Fungible(42000),
             id: xcm::v3::AssetId::from(MultiLocation {
                 parents: 0,
-                interior: X1(OnlyChild),
+                interior: X1(Parachain(123)),
             }),
         };
 
