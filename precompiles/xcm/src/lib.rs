@@ -262,7 +262,6 @@ where
         let fee_multilocation = fee_multilocation
             .reanchored(&dest, context)
             .map_err(|_| revert("Failed to reanchor fee asset"))?;
-        println!("Context {:?}",context);
 
         // Prepare XCM
         let xcm = Xcm(vec![
