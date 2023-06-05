@@ -235,15 +235,27 @@ where
 
     /// Adds the specified amount to the total locked amount, if possible.
     ///
-    /// In case TODO
+    /// If entry for the specified era already exists, it's updated.
+    ///
+    /// If entry for the specified era doesn't exist, it's created and insertion is attempted.
+    /// In case vector has no more capacity, error is returned, and whole operation is a noop.
     pub fn add_lock_amount(&mut self, amount: Balance, era: EraNumber) -> Result<(), ()> {
-        let locked_chunk = if let Some(&locked_chunk) = self.locked.last() {
+        let mut locked_chunk = if let Some(&locked_chunk) = self.locked.last() {
             locked_chunk
         } else {
             LockedChunk::default()
         };
 
-        // TODO: continue here
+        locked_chunk.amount.saturating_accrue(amount);
+
+        if locked_chunk.era == era && !self.locked.is_empty() {
+            if let Some(last) = self.locked.last_mut() {
+                *last = locked_chunk;
+            }
+        } else {
+            locked_chunk.era = era;
+            self.locked.try_push(locked_chunk).map_err(|_| ())?;
+        }
 
         Ok(())
     }
@@ -280,11 +292,17 @@ pub mod pallet {
         #[pallet::constant]
         type MaxNumberOfContracts: Get<DAppId>;
 
+        /// Maximum number of locked chunks that can exist per account at a time.
         #[pallet::constant]
         type MaxLockedChunks: Get<u32>;
 
+        /// Maximum number of unlocking chunks that can exist per account at a time.
         #[pallet::constant]
         type MaxUnlockingChunks: Get<u32>;
+
+        /// Minimum amount an account has to lock in dApp staking in order to participate.
+        #[pallet::constant]
+        type MinimumLockedAmount: Get<BalanceOf<Self>>;
     }
 
     #[pallet::event]
@@ -311,6 +329,11 @@ pub mod pallet {
             smart_contract: T::SmartContract,
             era: EraNumber,
         },
+        /// Account has locked some amount into dApp staking.
+        Locked {
+            account: T::AccountId,
+            amount: BalanceOf<T>,
+        },
     }
 
     #[pallet::error]
@@ -330,6 +353,12 @@ pub mod pallet {
         OriginNotOwner,
         /// dApp is part of dApp staking but isn't active anymore.
         NotOperatedDApp,
+        /// Performing locking or staking with 0 amount.
+        ZeroAmount,
+        /// Total locked amount for staker is below minimum threshold.
+        LockedAmountBelowThreshold,
+        /// Cannot add additional locked balance chunks due to size limit.
+        TooManyLockedBalanceChunks,
     }
 
     /// General information about dApp staking protocol state.
@@ -547,11 +576,34 @@ pub mod pallet {
             Self::ensure_pallet_enabled()?;
             let caller = ensure_signed(origin)?;
 
+            let state = ActiveProtocolState::<T>::get();
             let mut ledger = Ledger::<T>::get(&caller);
 
+            // Calculate & check amount available for locking
             let available_balance =
                 T::Currency::free_balance(&caller).saturating_sub(ledger.locked_amount());
             let amount_to_lock = available_balance.min(amount);
+            let lock_era = state.era.saturating_add(1);
+
+            // Ensure new lock amount & TVL for the account are legal.
+            ensure!(!amount_to_lock.is_zero(), Error::<T>::ZeroAmount);
+            ensure!(
+                ledger.locked_amount().saturating_add(amount_to_lock)
+                    > T::MinimumLockedAmount::get(),
+                Error::<T>::LockedAmountBelowThreshold
+            );
+
+            ledger
+                .add_lock_amount(amount_to_lock, lock_era)
+                .map_err(|_| Error::<T>::TooManyLockedBalanceChunks)?;
+
+            // TODO: continue here
+            // TODO: update TVL for the next era, write both items back to storage
+
+            Self::deposit_event(Event::<T>::Locked {
+                account: caller,
+                amount: amount_to_lock,
+            });
 
             Ok(().into())
         }
