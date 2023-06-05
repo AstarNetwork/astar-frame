@@ -31,7 +31,7 @@
 
 use frame_support::{
     pallet_prelude::*,
-    traits::{Currency, LockableCurrency, StorageVersion},
+    traits::{Currency, LockIdentifier, LockableCurrency, StorageVersion, WithdrawReasons},
     weights::Weight,
     BoundedVec,
 };
@@ -41,20 +41,21 @@ use sp_runtime::traits::{AtLeast32BitUnsigned, BadOrigin, Saturating, Zero};
 
 pub use pallet::*;
 
+const STAKING_ID: LockIdentifier = *b"dapstake";
+
 /// The balance type used by the currency system.
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// TODO: change/improve name
+/// Concenience type for `AccountLedger` usage.
+pub type AccountLedgerOf<T> =
+    AccountLedger<BalanceOf<T>, <T as Config>::MaxLockedChunks, <T as Config>::MaxUnlockingChunks>;
+
+/// Era number type
 pub type EraNumber = u32;
-
-/// TODO: change/improve name
+/// Period number type
 pub type PeriodNumber = u32;
-
-/// TODO: just a placeholder, associated type should be used?
-pub type BlockNumber = u64;
-
-/// TODO: change/improve name
+/// Dapp Id type
 pub type DAppId = u16;
 
 /// Distinct period types in dApp staking protocol.
@@ -79,15 +80,15 @@ pub enum ForcingTypes {
 
 /// General information & state of the dApp staking protocol.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
-pub struct ProtocolState {
+pub struct ProtocolState<BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen> {
     /// Ongoing era number.
     #[codec(compact)]
     pub era: EraNumber,
     /// Block number at which the next era should start.
     /// TODO: instead of abusing on-initialize and wasting block-space,
     /// I believe we should utilize `pallet-scheduler` to schedule the next era. Make an item for this.
-    /// TODO2: can this be compact?
-    pub next_era_start: Option<BlockNumber>,
+    #[codec(compact)]
+    pub next_era_start: BlockNumber,
     /// Ongoing period number.
     #[codec(compact)]
     pub period: PeriodNumber,
@@ -98,11 +99,14 @@ pub struct ProtocolState {
     pub pallet_disabled: bool,
 }
 
-impl Default for ProtocolState {
+impl<BlockNumber> Default for ProtocolState<BlockNumber>
+where
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
+{
     fn default() -> Self {
         Self {
             era: 0,
-            next_era_start: None,
+            next_era_start: BlockNumber::from(1_u32),
             period: 0,
             period_type: PeriodType::VotingPeriod(0),
             pallet_disabled: false,
@@ -126,7 +130,7 @@ pub struct DAppInfo<AccountId> {
     pub owner: AccountId,
     /// dApp's unique identifier in dApp staking.
     #[codec(compact)]
-    pub id: u16,
+    pub id: DAppId,
     /// Current state of the dApp.
     pub state: DAppState,
     // If `None`, rewards goes to the developer account, otherwise to the account Id in `Some`.
@@ -175,11 +179,6 @@ where
         }
     }
 }
-
-// TODO: Can this be solved in a more elegant way? Without having dep towards Config?
-// Perhaps a custom trait which provides this kind of data, but seems like an overkill.
-// TODO2: it seems this isn't even supported - I should check how the macro expansion works to better understand why.
-// Right now, the best course of action is to include additional generics with bounds on Get<u32>.
 
 /// General info about user's stakes
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo)]
@@ -259,6 +258,35 @@ where
 
         Ok(())
     }
+}
+
+/// Rewards pool for lock participants  & dApps
+#[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
+pub struct RewardInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
+    /// Rewards pool for accounts which have locked funds in dApp staking
+    #[codec(compact)]
+    participants: Balance,
+    /// Reward pool for dApps
+    #[codec(compact)]
+    dapps: Balance,
+}
+
+/// Info about current era, including the rewards, how much is locked, unlocking, etc.
+#[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
+pub struct EraInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
+    /// Info about era rewards
+    rewards: RewardInfo<Balance>,
+    /// How much balance is considered to be locked in the current era.
+    /// This value influences the reward distribution.
+    #[codec(compact)]
+    active_era_locked: Balance,
+    /// How much balance is locked in dApp staking, in total.
+    /// For rewards, this amount isn't relevant for the current era, but only from the next one.
+    #[codec(compact)]
+    total_locked: Balance,
+    /// How much balance is undergoing unlocking process (still counts into locked amount)
+    #[codec(compact)]
+    unlocking: Balance,
 }
 
 #[frame_support::pallet]
@@ -363,7 +391,8 @@ pub mod pallet {
 
     /// General information about dApp staking protocol state.
     #[pallet::storage]
-    pub type ActiveProtocolState<T: Config> = StorageValue<_, ProtocolState, ValueQuery>;
+    pub type ActiveProtocolState<T: Config> =
+        StorageValue<_, ProtocolState<BlockNumberFor<T>>, ValueQuery>;
 
     /// Counter for unique dApp identifiers.
     #[pallet::storage]
@@ -388,6 +417,10 @@ pub mod pallet {
         AccountLedger<BalanceOf<T>, T::MaxLockedChunks, T::MaxUnlockingChunks>,
         ValueQuery,
     >;
+
+    /// General information about the current era.
+    #[pallet::storage]
+    pub type CurrentEraInfo<T: Config> = StorageValue<_, EraInfo<BalanceOf<T>>, ValueQuery>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -566,7 +599,13 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// TODO
+        /// Locks additional funds into dApp staking.
+        ///
+        /// In case caller account doesn't have sufficient balance to cover the specified amount, everything is locked.
+        /// After adjustment, lock amount must be greater than zero and in total must be equal or greater than the minimum locked amount.
+        ///
+        /// It is possible for call to fail due to caller account already having too many locked balance chunks in storage. To solve this,
+        /// caller should claim pending rewards, before retrying to lock additional funds.
         #[pallet::call_index(4)]
         #[pallet::weight(Weight::zero())]
         pub fn lock(
@@ -583,22 +622,23 @@ pub mod pallet {
             let available_balance =
                 T::Currency::free_balance(&caller).saturating_sub(ledger.locked_amount());
             let amount_to_lock = available_balance.min(amount);
-            let lock_era = state.era.saturating_add(1);
-
-            // Ensure new lock amount & TVL for the account are legal.
             ensure!(!amount_to_lock.is_zero(), Error::<T>::ZeroAmount);
+
+            // Only lock for the next era onwards.
+            let lock_era = state.era.saturating_add(1);
+            ledger
+                .add_lock_amount(amount_to_lock, lock_era)
+                .map_err(|_| Error::<T>::TooManyLockedBalanceChunks)?;
             ensure!(
                 ledger.locked_amount().saturating_add(amount_to_lock)
                     > T::MinimumLockedAmount::get(),
                 Error::<T>::LockedAmountBelowThreshold
             );
 
-            ledger
-                .add_lock_amount(amount_to_lock, lock_era)
-                .map_err(|_| Error::<T>::TooManyLockedBalanceChunks)?;
-
-            // TODO: continue here
-            // TODO: update TVL for the next era, write both items back to storage
+            Self::update_ledger(&caller, ledger);
+            CurrentEraInfo::<T>::mutate(|era_info| {
+                era_info.total_locked.saturating_accrue(amount_to_lock);
+            });
 
             Self::deposit_event(Event::<T>::Locked {
                 account: caller,
@@ -610,7 +650,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// `Err` if pallet disabled for maintenance, `Ok` otherwise
+        /// `Err` if pallet disabled for maintenance, `Ok` otherwise.
         pub(crate) fn ensure_pallet_enabled() -> Result<(), Error<T>> {
             if ActiveProtocolState::<T>::get().pallet_disabled {
                 Err(Error::<T>::Disabled)
@@ -620,6 +660,8 @@ pub mod pallet {
         }
 
         /// Ensure that the origin is either the `ManagerOrigin` or a signed origin.
+        ///
+        /// In case of manager, `Ok(None)` is returned, and if signed origin `Ok(Some(AccountId))` is returned.
         pub(crate) fn ensure_signed_or_manager(
             origin: T::RuntimeOrigin,
         ) -> Result<Option<T::AccountId>, BadOrigin> {
@@ -628,6 +670,24 @@ pub mod pallet {
             }
             let who = ensure_signed(origin)?;
             Ok(Some(who))
+        }
+
+        /// Update the account ledger, and dApp staking balance lock.
+        ///
+        /// In case account ledger is empty, entries from the DB are removed and lock is released.
+        pub(crate) fn update_ledger(account: &T::AccountId, ledger: AccountLedgerOf<T>) {
+            if ledger.is_empty() {
+                Ledger::<T>::remove(&account);
+                T::Currency::remove_lock(STAKING_ID, account);
+            } else {
+                T::Currency::set_lock(
+                    STAKING_ID,
+                    account,
+                    ledger.locked_amount(),
+                    WithdrawReasons::all(),
+                );
+                Ledger::<T>::insert(account, ledger);
+            }
         }
     }
 }
