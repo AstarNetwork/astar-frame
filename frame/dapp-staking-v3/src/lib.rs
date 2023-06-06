@@ -47,9 +47,13 @@ const STAKING_ID: LockIdentifier = *b"dapstake";
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// Concenience type for `AccountLedger` usage.
-pub type AccountLedgerOf<T> =
-    AccountLedger<BalanceOf<T>, <T as Config>::MaxLockedChunks, <T as Config>::MaxUnlockingChunks>;
+/// Convenience type for `AccountLedger` usage.
+pub type AccountLedgerOf<T> = AccountLedger<
+    BalanceOf<T>,
+    BlockNumberFor<T>,
+    <T as Config>::MaxLockedChunks,
+    <T as Config>::MaxUnlockingChunks,
+>;
 
 /// Era number type
 pub type EraNumber = u32;
@@ -161,16 +165,20 @@ where
 // TODO: would users get better UX if we kept using eras? Using blocks is more precise though.
 /// How much was unlocked in some block.
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Copy, Debug, PartialEq, Eq, TypeInfo)]
-pub struct UnlockingChunk<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
+pub struct UnlockingChunk<
+    Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
+> {
     #[codec(compact)]
     amount: Balance,
     #[codec(compact)]
     unlock_block: BlockNumber,
 }
 
-impl<Balance> Default for UnlockingChunk<Balance>
+impl<Balance, BlockNumber> Default for UnlockingChunk<Balance, BlockNumber>
 where
     Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
 {
     fn default() -> Self {
         Self {
@@ -185,37 +193,42 @@ where
 #[scale_info(skip_type_params(LockedLen, UnlockingLen))]
 pub struct AccountLedger<
     Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
     LockedLen: Get<u32>,
     UnlockingLen: Get<u32>,
 > {
     /// How much was staked in each era
     locked: BoundedVec<LockedChunk<Balance>, LockedLen>,
     /// How much started unlocking on a certain block
-    unlocking: BoundedVec<UnlockingChunk<Balance>, UnlockingLen>,
+    unlocking: BoundedVec<UnlockingChunk<Balance, BlockNumber>, UnlockingLen>,
     //TODO, make this a compact struct!!!
     /// How much user had staked in some period
     // #[codec(compact)]
     staked: (Balance, PeriodNumber),
 }
 
-impl<Balance, LockedLen, UnlockingLen> Default for AccountLedger<Balance, LockedLen, UnlockingLen>
+impl<Balance, BlockNumber, LockedLen, UnlockingLen> Default
+    for AccountLedger<Balance, BlockNumber, LockedLen, UnlockingLen>
 where
     Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
     LockedLen: Get<u32>,
     UnlockingLen: Get<u32>,
 {
     fn default() -> Self {
         Self {
             locked: BoundedVec::<LockedChunk<Balance>, LockedLen>::default(),
-            unlocking: BoundedVec::<UnlockingChunk<Balance>, UnlockingLen>::default(),
+            unlocking: BoundedVec::<UnlockingChunk<Balance, BlockNumber>, UnlockingLen>::default(),
             staked: (Balance::zero(), 0),
         }
     }
 }
 
-impl<Balance, LockedLen, UnlockingLen> AccountLedger<Balance, LockedLen, UnlockingLen>
+impl<Balance, BlockNumber, LockedLen, UnlockingLen>
+    AccountLedger<Balance, BlockNumber, LockedLen, UnlockingLen>
 where
     Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy,
+    BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen,
     LockedLen: Get<u32>,
     UnlockingLen: Get<u32>,
 {
@@ -414,7 +427,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        AccountLedger<BalanceOf<T>, T::MaxLockedChunks, T::MaxUnlockingChunks>,
+        AccountLedger<BalanceOf<T>, BlockNumberFor<T>, T::MaxLockedChunks, T::MaxUnlockingChunks>,
         ValueQuery,
     >;
 
