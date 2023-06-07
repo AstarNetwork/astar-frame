@@ -21,6 +21,9 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
+[dev-dependencies]
+pallet-balances = { workspace = true }
+
 [features]
 default = ["std"]
 std = [
@@ -35,4 +38,5 @@ std = [
 	"sp-std/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-balances/std",
 ]

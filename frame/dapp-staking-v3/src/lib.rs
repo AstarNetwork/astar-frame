@@ -3,8 +3,18 @@
 // Copyright (C) 2019-2023 Stake Technologies Pte.Ltd.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// You should have received a copy of the PolyForm-Noncommercial license with this crate.
-// If not, see <https://polyformproject.org/licenses/noncommercial/1.0.0//>.
+// Astar is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Astar is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Astar. If not, see <http://www.gnu.org/licenses/>.
 
 //! # dApp Staking v3 Pallet
 //!
@@ -41,14 +51,19 @@ use sp_runtime::traits::{AtLeast32BitUnsigned, BadOrigin, Saturating, Zero};
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod test;
+
 const STAKING_ID: LockIdentifier = *b"dapstake";
+
+// TODO: move all structs & types into a separate `types.rs` file, after receiving first review batch
 
 /// The balance type used by the currency system.
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Convenience type for `AccountLedger` usage.
-pub type AccountLedgerOf<T> = AccountLedger<
+pub type AccountLedgerFor<T> = AccountLedger<
     BalanceOf<T>,
     BlockNumberFor<T>,
     <T as Config>::MaxLockedChunks,
@@ -237,12 +252,22 @@ where
         self.locked.is_empty() && self.unlocking.is_empty() && self.staked.0.is_zero()
     }
 
+    /// Returns latest locked chunk if it exists, `None` otherwise
+    pub fn latest_locked_chunk(&self) -> Option<&LockedChunk<Balance>> {
+        self.locked.last()
+    }
+
     /// Returns locked amount.
     /// If `zero`, means that associated account hasn't locked any funds.
     pub fn locked_amount(&self) -> Balance {
-        self.locked
-            .last()
+        self.latest_locked_chunk()
             .map_or(Balance::zero(), |locked| locked.amount)
+    }
+
+    /// Returns latest era in which locked amount was updated or zero in case no lock amount exists
+    pub fn era(&self) -> EraNumber {
+        self.latest_locked_chunk()
+            .map_or(EraNumber::zero(), |locked| locked.era)
     }
 
     /// Adds the specified amount to the total locked amount, if possible.
@@ -252,6 +277,10 @@ where
     /// If entry for the specified era doesn't exist, it's created and insertion is attempted.
     /// In case vector has no more capacity, error is returned, and whole operation is a noop.
     pub fn add_lock_amount(&mut self, amount: Balance, era: EraNumber) -> Result<(), ()> {
+        if amount.is_zero() {
+            return Ok(());
+        }
+
         let mut locked_chunk = if let Some(&locked_chunk) = self.locked.last() {
             locked_chunk
         } else {
@@ -423,13 +452,8 @@ pub mod pallet {
 
     /// General locked/staked information for each account.
     #[pallet::storage]
-    pub type Ledger<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        AccountLedger<BalanceOf<T>, BlockNumberFor<T>, T::MaxLockedChunks, T::MaxUnlockingChunks>,
-        ValueQuery,
-    >;
+    pub type Ledger<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, AccountLedgerFor<T>, ValueQuery>;
 
     /// General information about the current era.
     #[pallet::storage]
@@ -456,7 +480,7 @@ pub mod pallet {
             );
 
             ensure!(
-                !IntegratedDApps::<T>::count() < T::MaxNumberOfContracts::get().into(),
+                IntegratedDApps::<T>::count() < T::MaxNumberOfContracts::get().into(),
                 Error::<T>::ExcededMaxNumberOfContracts
             );
 
@@ -688,7 +712,7 @@ pub mod pallet {
         /// Update the account ledger, and dApp staking balance lock.
         ///
         /// In case account ledger is empty, entries from the DB are removed and lock is released.
-        pub(crate) fn update_ledger(account: &T::AccountId, ledger: AccountLedgerOf<T>) {
+        pub(crate) fn update_ledger(account: &T::AccountId, ledger: AccountLedgerFor<T>) {
             if ledger.is_empty() {
                 Ledger::<T>::remove(&account);
                 T::Currency::remove_lock(STAKING_ID, account);
