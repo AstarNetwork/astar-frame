@@ -66,7 +66,7 @@ interface XCM {
         address payment_asset_id,
         uint256 payment_amount,
         bytes calldata call,
-        uint64 transact_weight,
+        uint64 transact_weight
     ) external returns (bool);
 
     /**
@@ -124,7 +124,7 @@ interface XCM {
      **/
     function send_xcm(
         bytes32  xcm_call,
-        bool is_realy,
-        uint256[] destination_parachain_id
+        bool is_relay,
+        uint256[] calldata destination_parachain_id
     ) external returns (bool);
 }
