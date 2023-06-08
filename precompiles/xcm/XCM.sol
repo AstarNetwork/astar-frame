@@ -125,6 +125,6 @@ interface XCM {
     function send_xcm(
         bytes32  xcm_call,
         bool is_relay,
-        uint256[] calldata destination_parachain_id
+        uint256 destination_parachain_id
     ) external returns (bool);
 }
