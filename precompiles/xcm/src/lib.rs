@@ -270,6 +270,11 @@ where
 
         // Prepare XCM
         let xcm = Xcm(vec![
+            WithdrawAsset(fee_multilocation.clone().into()),
+            BuyExecution {
+                fees: fee_multilocation.clone().into(),
+                weight_limit: WeightLimit::Unlimited,
+            },
             SetAppendix(Xcm(vec![DepositAsset {
                 assets: All.into(),
                 beneficiary: MultiLocation {
@@ -285,11 +290,6 @@ where
                     ),
                 },
             }])),
-            WithdrawAsset(fee_multilocation.clone().into()),
-            BuyExecution {
-                fees: fee_multilocation.clone().into(),
-                weight_limit: WeightLimit::Unlimited,
-            },
             Transact {
                 origin_kind: OriginKind::SovereignAccount,
                 require_weight_at_most: Weight::from_ref_time(transact_weight),
