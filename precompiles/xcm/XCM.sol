@@ -114,4 +114,17 @@ interface XCM {
         uint256   parachain_id,
         uint256   fee_index
     ) external returns (bool);
+
+    /**
+     * @dev Reserve transfer using PalletXCM call.
+     * @param xcm_call - encoded xcm call you want to send to destination
+     * @param is_relay - set `true` for using relay chain as destination
+     * @param destination_parachain_id - set parachain id of destination parachain (when is_relay set to false)
+     * @return A boolean confirming whether the XCM message sent.
+     **/
+    function send_xcm(
+        bytes32  xcm_call,
+        bool is_realy,
+        uint256[] destination_parachain_id
+    ) external returns (bool);
 }

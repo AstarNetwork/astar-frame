@@ -25,12 +25,13 @@ use frame_support::{
     pallet_prelude::Weight,
     traits::Get,
 };
+use parity_scale_codec::{DecodeLimit, MaxEncodedLen};
 use pallet_evm::{AddressMapping, Precompile};
 use sp_core::{H160, H256, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
-use xcm::latest::prelude::*;
+use xcm::{latest::prelude::*,VersionedXcm,MAX_XCM_DECODE_DEPTH};
 use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
@@ -53,6 +54,7 @@ pub enum Action {
         "assets_reserve_transfer(address[],uint256[],bytes32,bool,uint256,uint256)",
     AssetsReserveTransferEvm =
         "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
+    SendXCM = "send_xcm(bytes32,bool,uint256[])"
 }
 
 /// Dummy H160 address representing native currency (e.g. ASTR or SDN)
@@ -93,6 +95,9 @@ where
             }
             Action::AssetsReserveTransferEvm => {
                 Self::assets_reserve_transfer(handle, BeneficiaryType::Account20)
+            }
+            Action::SendXCM => {
+                Self::send_xcm(handle)
             }
         }
     }
@@ -401,6 +406,48 @@ where
             fee_asset_item,
         };
 
+        // Dispatch a call.
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn send_xcm(
+        handle: &mut impl PrecompileHandle
+    ) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(3)?;
+
+        // Raw call arguments
+        let xcm_call : Vec<u8> = input.read::<Bytes>()?.into();
+        let is_relay = input.read::<bool>()?;
+        let dest_para_id: u32 = input.read::<U256>()?.low_u32();
+
+        let xcm = xcm::VersionedXcm::<()>::decode_all_with_depth_limit(
+			xcm::MAX_XCM_DECODE_DEPTH,
+			&mut xcm_call.as_slice(),
+		).map_err(|_| {
+            revert("Failed to decode xcm instructions")
+        })?;
+
+        log::trace!(target: "xcm-precompile:send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
+
+        let dest = if is_relay {
+            MultiLocation::parent()
+        } else {
+            X1(Junction::Parachain(dest_para_id)).into_exterior(1)
+        };
+
+         // Build call with origin.
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+        let call = pallet_xcm::Call::<Runtime>::send {
+            dest: Box::new(dest.into()),
+            message: Box::new(xcm),
+        };
+        log::trace!(target: "xcm-precompile:send_xcm", "Processed arguments:  XCM call: {:?}", call);
         // Dispatch a call.
         RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
 
