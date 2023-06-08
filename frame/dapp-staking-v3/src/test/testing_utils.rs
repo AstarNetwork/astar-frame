@@ -48,7 +48,7 @@ impl MemorySnapshot {
     }
 }
 
-/// Used to register contract for staking and assert success.
+/// Register contract for staking and assert success.
 pub(crate) fn assert_register(owner: AccountId, smart_contract: &MockSmartContract) {
     // Init check to ensure smart contract hasn't already been integrated
     assert!(!IntegratedDApps::<Test>::contains_key(smart_contract));
@@ -77,5 +77,57 @@ pub(crate) fn assert_register(owner: AccountId, smart_contract: &MockSmartContra
     assert_eq!(
         pre_snapshot.integrated_dapps.len() + 1,
         IntegratedDApps::<Test>::count() as usize
+    );
+}
+
+/// Update dApp reward destination and assert success
+pub(crate) fn assert_set_dapp_reward_destination(
+    owner: AccountId,
+    smart_contract: &MockSmartContract,
+    beneficiary: Option<AccountId>,
+) {
+    // Change reward destination
+    assert_ok!(DappStaking::set_dapp_reward_destination(
+        RuntimeOrigin::signed(owner),
+        smart_contract.clone(),
+        beneficiary,
+    ));
+    System::assert_last_event(RuntimeEvent::DappStaking(Event::DAppRewardDestination {
+        smart_contract: smart_contract.clone(),
+        beneficiary: beneficiary,
+    }));
+
+    // Sanity check & reward destination update
+    assert_eq!(
+        IntegratedDApps::<Test>::get(&smart_contract)
+            .unwrap()
+            .reward_destination,
+        beneficiary
+    );
+}
+
+/// Update dApp owner and assert success.
+/// if `caller` is `None`, `Root` origin is used, otherwise standard `Signed` origin is used.
+pub(crate) fn assert_set_dapp_owner(
+    caller: Option<AccountId>,
+    smart_contract: &MockSmartContract,
+    new_owner: AccountId,
+) {
+    let origin = caller.map_or(RuntimeOrigin::root(), |owner| RuntimeOrigin::signed(owner));
+
+    assert_ok!(DappStaking::set_dapp_owner(
+        origin,
+        smart_contract.clone(),
+        new_owner,
+    ));
+    System::assert_last_event(RuntimeEvent::DappStaking(Event::DAppOwnerChanged {
+        smart_contract: smart_contract.clone(),
+        new_owner,
+    }));
+
+    // Verify post-state
+    assert_eq!(
+        IntegratedDApps::<Test>::get(&smart_contract).unwrap().owner,
+        new_owner
     );
 }
