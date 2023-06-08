@@ -123,7 +123,7 @@ interface XCM {
      * @return A boolean confirming whether the XCM message sent.
      **/
     function send_xcm(
-        bytes32  xcm_call,
+        bytes calldata xcm_call,
         bool is_relay,
         uint256 destination_parachain_id
     ) external returns (bool);
