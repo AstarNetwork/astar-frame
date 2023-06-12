@@ -46,6 +46,14 @@ impl MemorySnapshot {
             ledger: Ledger::<Test>::iter().collect(),
         }
     }
+
+    /// Returns locked balance in dApp staking for the specified account.
+    /// In case no balance is locked, returns zero.
+    pub fn locked_balance(&self, account: &AccountId) -> Balance {
+        self.ledger
+            .get(&account)
+            .map_or(Balance::zero(), |ledger| ledger.locked_amount())
+    }
 }
 
 /// Register contract for staking and assert success.
@@ -115,6 +123,7 @@ pub(crate) fn assert_set_dapp_owner(
 ) {
     let origin = caller.map_or(RuntimeOrigin::root(), |owner| RuntimeOrigin::signed(owner));
 
+    // Change dApp owner
     assert_ok!(DappStaking::set_dapp_owner(
         origin,
         smart_contract.clone(),
@@ -129,5 +138,74 @@ pub(crate) fn assert_set_dapp_owner(
     assert_eq!(
         IntegratedDApps::<Test>::get(&smart_contract).unwrap().owner,
         new_owner
+    );
+}
+
+/// Update dApp status to unregistered and assert success.
+pub(crate) fn assert_unregister(smart_contract: &MockSmartContract) {
+    let pre_snapshot = MemorySnapshot::new();
+
+    // Unregister dApp
+    assert_ok!(DappStaking::unregister(
+        RuntimeOrigin::root(),
+        smart_contract.clone(),
+    ));
+    System::assert_last_event(RuntimeEvent::DappStaking(Event::DAppUnregistered {
+        smart_contract: smart_contract.clone(),
+        era: pre_snapshot.active_protocol_state.era,
+    }));
+
+    // Verify post-state
+    assert_eq!(
+        IntegratedDApps::<Test>::get(&smart_contract).unwrap().state,
+        DAppState::Unregistered(pre_snapshot.active_protocol_state.era),
+    );
+}
+
+/// Lock funds into dApp staking and assert success.
+pub(crate) fn assert_lock(account: AccountId, amount: Balance) {
+    let pre_snapshot = MemorySnapshot::new();
+
+    let free_balance = Balances::free_balance(&account);
+    let locked_balance = pre_snapshot.locked_balance(&account);
+    let available_balance = free_balance
+        .checked_sub(locked_balance)
+        .expect("Locked amount cannot be greater than available free balance");
+    let expected_lock_amount = available_balance.min(amount);
+    assert!(!expected_lock_amount.is_zero());
+
+    // Lock funds
+    assert_ok!(DappStaking::lock(RuntimeOrigin::signed(account), amount,));
+    System::assert_last_event(RuntimeEvent::DappStaking(Event::Locked {
+        account,
+        amount: expected_lock_amount,
+    }));
+
+    // Verify post-state
+    let post_snapshot = MemorySnapshot::new();
+
+    assert_eq!(
+        post_snapshot.locked_balance(&account),
+        locked_balance + expected_lock_amount,
+        "Locked balance should be increased by the amount locked."
+    );
+    assert_eq!(
+        post_snapshot
+            .ledger
+            .get(&account)
+            .expect("Ledger entry has to exist after succcessful lock call")
+            .era(),
+        post_snapshot.active_protocol_state.era + 1
+    );
+
+    assert_eq!(
+        post_snapshot.current_era_info.total_locked,
+        pre_snapshot.current_era_info.total_locked + expected_lock_amount,
+        "Total locked balance should be increased by the amount locked."
+    );
+    assert_eq!(
+        post_snapshot.current_era_info.active_era_locked,
+        pre_snapshot.current_era_info.active_era_locked,
+        "Active era locked amount should remain exactly the same."
     );
 }

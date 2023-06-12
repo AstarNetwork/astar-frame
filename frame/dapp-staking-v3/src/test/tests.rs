@@ -18,8 +18,12 @@
 
 use crate::test::mock::*;
 use crate::test::testing_utils::*;
-use crate::{pallet as pallet_dapp_staking, DAppId, Error, IntegratedDApps, NextDAppId};
+use crate::{
+    pallet as pallet_dapp_staking, ActiveProtocolState, DAppId, Error, IntegratedDApps, NextDAppId,
+};
+
 use frame_support::{assert_noop, error::BadOrigin, traits::Get};
+use sp_runtime::traits::Zero;
 
 #[test]
 fn register_is_ok() {
@@ -197,6 +201,136 @@ fn set_dapp_owner_fails() {
                 owner + 1
             ),
             Error::<Test>::OriginNotOwner
+        );
+    })
+}
+
+#[test]
+fn unregister_is_ok() {
+    ExtBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Prepare dApp
+        let owner = 1;
+        let smart_contract = MockSmartContract::Wasm(3);
+        assert_register(owner, &smart_contract);
+
+        assert_unregister(&smart_contract);
+    })
+}
+
+#[test]
+fn unregister_fails() {
+    ExtBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let owner = 1;
+        let smart_contract = MockSmartContract::Wasm(3);
+
+        // Cannot unregister contract which doesn't exist
+        assert_noop!(
+            DappStaking::unregister(RuntimeOrigin::root(), smart_contract),
+            Error::<Test>::ContractNotFound
+        );
+
+        // Cannot unregister with incorrect origin
+        assert_register(owner, &smart_contract);
+        assert_noop!(
+            DappStaking::unregister(RuntimeOrigin::signed(owner), smart_contract),
+            BadOrigin
+        );
+
+        // Cannot unregister same contract twice
+        assert_unregister(&smart_contract);
+        assert_noop!(
+            DappStaking::unregister(RuntimeOrigin::root(), smart_contract),
+            Error::<Test>::NotOperatedDApp
+        );
+    })
+}
+
+#[test]
+fn lock_is_ok() {
+    ExtBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Lock some amount
+        let locker = 2;
+        let free_balance = Balances::free_balance(&locker);
+        assert!(free_balance > 500, "Sanity check");
+        assert_lock(locker, 100);
+        assert_lock(locker, 200);
+
+        // Attempt to lock more than is available
+        assert_lock(locker, free_balance - 200);
+
+        // Ensure minimum lock amount works
+        let locker = 3;
+        assert_lock(
+            locker,
+            <Test as pallet_dapp_staking::Config>::MinimumLockedAmount::get(),
+        );
+    })
+}
+
+#[test]
+fn lock_with_incorrect_amount_fails() {
+    ExtBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        // Cannot lock "nothing"
+        assert_noop!(
+            DappStaking::lock(RuntimeOrigin::signed(1), Balance::zero()),
+            Error::<Test>::ZeroAmount,
+        );
+
+        // Attempting to lock something after everything has been locked is same
+        // as attempting to lock with "nothing"
+        let locker = 1;
+        assert_lock(locker, Balances::free_balance(&locker));
+        assert_noop!(
+            DappStaking::lock(RuntimeOrigin::signed(locker), 1),
+            Error::<Test>::ZeroAmount,
+        );
+
+        // Locking just below the minimum amount should fail
+        let locker = 2;
+        let minimum_locked_amount: Balance =
+            <Test as pallet_dapp_staking::Config>::MinimumLockedAmount::get();
+        assert_noop!(
+            DappStaking::lock(RuntimeOrigin::signed(locker), minimum_locked_amount - 1),
+            Error::<Test>::LockedAmountBelowThreshold,
+        );
+    })
+}
+
+#[test]
+fn lock_with_too_many_chunks_fails() {
+    ExtBuilder::build().execute_with(|| {
+        initialize_first_block();
+
+        let max_locked_chunks = <Test as pallet_dapp_staking::Config>::MaxLockedChunks::get();
+        let minimum_locked_amount: Balance =
+            <Test as pallet_dapp_staking::Config>::MinimumLockedAmount::get();
+
+        // Fill up the locked chunks to the limit
+        let locker = 1;
+        assert_lock(locker, minimum_locked_amount);
+        for current_era in 1..max_locked_chunks {
+            advance_to_era(current_era + 1);
+            assert_lock(locker, 1);
+        }
+
+        // Ensure we can still lock in the current era since number of chunks should not increase
+        for _ in 0..10 {
+            assert_lock(locker, 1);
+        }
+
+        // Advance to the next era and ensure it's not possible to add additional chunks
+        advance_to_era(ActiveProtocolState::<Test>::get().era + 1);
+        assert_noop!(
+            DappStaking::lock(RuntimeOrigin::signed(locker), 1),
+            Error::<Test>::TooManyLockedBalanceChunks,
         );
     })
 }

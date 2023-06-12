@@ -599,7 +599,7 @@ pub mod pallet {
             smart_contract: T::SmartContract,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
-            let origin = Self::ensure_signed_or_manager(origin)?;
+            T::ManagerOrigin::ensure_origin(origin)?;
 
             let current_era = ActiveProtocolState::<T>::get().era;
 
@@ -609,11 +609,6 @@ pub mod pallet {
                     let dapp_info = maybe_dapp_info
                         .as_mut()
                         .ok_or(Error::<T>::ContractNotFound)?;
-
-                    // If manager origin, `None`, no need to check if caller is the owner.
-                    if let Some(caller) = origin {
-                        ensure!(dapp_info.owner == caller, Error::<T>::OriginNotOwner);
-                    }
 
                     ensure!(
                         dapp_info.state == DAppState::Registered,
@@ -650,14 +645,14 @@ pub mod pallet {
             #[pallet::compact] amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_pallet_enabled()?;
-            let caller = ensure_signed(origin)?;
+            let account = ensure_signed(origin)?;
 
             let state = ActiveProtocolState::<T>::get();
-            let mut ledger = Ledger::<T>::get(&caller);
+            let mut ledger = Ledger::<T>::get(&account);
 
             // Calculate & check amount available for locking
             let available_balance =
-                T::Currency::free_balance(&caller).saturating_sub(ledger.locked_amount());
+                T::Currency::free_balance(&account).saturating_sub(ledger.locked_amount());
             let amount_to_lock = available_balance.min(amount);
             ensure!(!amount_to_lock.is_zero(), Error::<T>::ZeroAmount);
 
@@ -667,18 +662,17 @@ pub mod pallet {
                 .add_lock_amount(amount_to_lock, lock_era)
                 .map_err(|_| Error::<T>::TooManyLockedBalanceChunks)?;
             ensure!(
-                ledger.locked_amount().saturating_add(amount_to_lock)
-                    > T::MinimumLockedAmount::get(),
+                ledger.locked_amount() >= T::MinimumLockedAmount::get(),
                 Error::<T>::LockedAmountBelowThreshold
             );
 
-            Self::update_ledger(&caller, ledger);
+            Self::update_ledger(&account, ledger);
             CurrentEraInfo::<T>::mutate(|era_info| {
                 era_info.total_locked.saturating_accrue(amount_to_lock);
             });
 
             Self::deposit_event(Event::<T>::Locked {
-                account: caller,
+                account,
                 amount: amount_to_lock,
             });
 

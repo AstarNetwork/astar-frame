@@ -166,7 +166,7 @@ pub(crate) fn _run_for_blocks(n: u64) {
 /// Advance blocks until the specified era has been reached.
 ///
 /// Function has no effect if era is already passed.
-pub(crate) fn _advance_to_era(era: EraNumber) {
+pub(crate) fn advance_to_era(era: EraNumber) {
     // TODO: Properly implement this later when additional logic has been implemented
     ActiveProtocolState::<Test>::mutate(|state| state.era = era);
 }
