@@ -422,6 +422,10 @@ where
         let xcm_call : Vec<u8> = input.read::<Bytes>()?.into();
         let is_relay = input.read::<bool>()?;
         let dest_para_id: u32 = input.read::<U256>()?.low_u32();
+        
+        log::trace!(target:"xcm-precompile:send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
+        
+        let xcm_call: Vec<_> = xcm_call.to_vec();
 
         let xcm = xcm::VersionedXcm::<()>::decode_all_with_depth_limit(
 			xcm::MAX_XCM_DECODE_DEPTH,
@@ -430,7 +434,6 @@ where
             revert("Failed to decode xcm instructions")
         })?;
 
-        log::trace!(target: "xcm-precompile:send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
 
         let dest = if is_relay {
             MultiLocation::parent()

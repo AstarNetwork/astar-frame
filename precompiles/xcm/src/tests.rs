@@ -24,6 +24,7 @@ use crate::*;
 use precompile_utils::testing::*;
 use precompile_utils::EvmDataWriter;
 use sp_core::H160;
+use parity_scale_codec::{Encode,Decode};
 
 fn precompiles() -> TestPrecompileSet<Runtime> {
     PrecompilesValue::get()
@@ -279,4 +280,28 @@ fn reserve_transfer_currency_works() {
             if fees.contains(&native_asset) && assets.contains(&native_asset)
         );
     }
+}
+
+#[test]
+fn test_send_clear_origin() {
+	ExtBuilder::default().build().execute_with(|| {
+		let xcm_to_send = VersionedXcm::<()>::V3(Xcm(vec![ClearOrigin])).encode();
+		precompiles()
+			.prepare_test(TestAccount::Alice, PRECOMPILE_ADDRESS, 
+                EvmDataWriter::new_with_selector(Action::SendXCM)
+                .write(xcm_to_send)
+                .write(false)
+                .write(U256::from(1_u64))
+                .build(),
+            )
+			// Fixed: TestWeightInfo + (BaseXcmWeight * MessageLen)
+			.expect_cost(100001000)
+			.expect_no_logs()
+			.execute_returns(EvmDataWriter::new().write(true).build());
+
+		let sent_messages = take_sent_xcm();
+		let (_, sent_message) = sent_messages.first().unwrap();
+		// Lets make sure the message is as expected
+		assert!(sent_message.0.contains(&ClearOrigin));
+	})
 }
