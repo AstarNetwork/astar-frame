@@ -289,7 +289,7 @@ fn test_send_clear_origin() {
 		precompiles()
 			.prepare_test(TestAccount::Alice, PRECOMPILE_ADDRESS, 
                 EvmDataWriter::new_with_selector(Action::SendXCM)
-                .write(xcm_to_send)
+                .write(Bytes::from(xcm_to_send.as_slice()))
                 .write(false)
                 .write(U256::from(1_u64))
                 .build(),

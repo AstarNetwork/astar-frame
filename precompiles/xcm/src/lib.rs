@@ -423,7 +423,7 @@ where
         let is_relay = input.read::<bool>()?;
         let dest_para_id: u32 = input.read::<U256>()?.low_u32();
         
-        log::trace!(target:"xcm-precompile:send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
+        log::trace!(target:"xcm-send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
         
         let xcm_call: Vec<_> = xcm_call.to_vec();
 
@@ -450,7 +450,7 @@ where
             dest: Box::new(dest.into()),
             message: Box::new(xcm),
         };
-        log::trace!(target: "xcm-precompile:send_xcm", "Processed arguments:  XCM call: {:?}", call);
+        log::trace!(target: "xcm-send_xcm", "Processed arguments:  XCM call: {:?}", call);
         // Dispatch a call.
         RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
 
