@@ -100,10 +100,12 @@ pub(crate) fn assert_set_dapp_reward_destination(
         smart_contract.clone(),
         beneficiary,
     ));
-    System::assert_last_event(RuntimeEvent::DappStaking(Event::DAppRewardDestination {
-        smart_contract: smart_contract.clone(),
-        beneficiary: beneficiary,
-    }));
+    System::assert_last_event(RuntimeEvent::DappStaking(
+        Event::DAppRewardDestinationUpdated {
+            smart_contract: smart_contract.clone(),
+            beneficiary: beneficiary,
+        },
+    ));
 
     // Sanity check & reward destination update
     assert_eq!(

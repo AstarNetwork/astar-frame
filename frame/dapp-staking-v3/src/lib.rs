@@ -82,10 +82,10 @@ pub type DAppId = u16;
 pub enum PeriodType {
     /// Period during which the focus is on voting.
     /// Inner value is the era in which the voting period ends.
-    VotingPeriod(#[codec(compact)] EraNumber),
+    Voting(#[codec(compact)] EraNumber),
     /// Period during which dApps and stakers earn rewards.
     /// Inner value is the era in which the Build&Eearn period ends.
-    BuildAndEarnPeriod(#[codec(compact)] EraNumber),
+    BuildAndEarn(#[codec(compact)] EraNumber),
 }
 
 /// Force types to speed up the next era, and even period.
@@ -127,7 +127,7 @@ where
             era: 0,
             next_era_start: BlockNumber::from(1_u32),
             period: 0,
-            period_type: PeriodType::VotingPeriod(0),
+            period_type: PeriodType::Voting(0),
             pallet_disabled: false,
         }
     }
@@ -302,7 +302,7 @@ where
     }
 }
 
-/// Rewards pool for lock participants  & dApps
+/// Rewards pool for lock participants & dApps
 #[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
 pub struct RewardInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
     /// Rewards pool for accounts which have locked funds in dApp staking
@@ -385,7 +385,7 @@ pub mod pallet {
             dapp_id: DAppId,
         },
         /// dApp reward destination has been updated.
-        DAppRewardDestination {
+        DAppRewardDestinationUpdated {
             smart_contract: T::SmartContract,
             beneficiary: Option<T::AccountId>,
         },
@@ -470,7 +470,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             owner: T::AccountId,
             smart_contract: T::SmartContract,
-        ) -> DispatchResultWithPostInfo {
+        ) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
             T::ManagerOrigin::ensure_origin(origin)?;
 
@@ -519,7 +519,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             smart_contract: T::SmartContract,
             beneficiary: Option<T::AccountId>,
-        ) -> DispatchResultWithPostInfo {
+        ) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
             let dev_account = ensure_signed(origin)?;
 
@@ -538,7 +538,7 @@ pub mod pallet {
                 },
             )?;
 
-            Self::deposit_event(Event::<T>::DAppRewardDestination {
+            Self::deposit_event(Event::<T>::DAppRewardDestinationUpdated {
                 smart_contract,
                 beneficiary,
             });
@@ -558,7 +558,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             smart_contract: T::SmartContract,
             new_owner: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
+        ) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
             let origin = Self::ensure_signed_or_manager(origin)?;
 
@@ -597,7 +597,7 @@ pub mod pallet {
         pub fn unregister(
             origin: OriginFor<T>,
             smart_contract: T::SmartContract,
-        ) -> DispatchResultWithPostInfo {
+        ) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
             T::ManagerOrigin::ensure_origin(origin)?;
 
@@ -643,7 +643,7 @@ pub mod pallet {
         pub fn lock(
             origin: OriginFor<T>,
             #[pallet::compact] amount: BalanceOf<T>,
-        ) -> DispatchResultWithPostInfo {
+        ) -> DispatchResult {
             Self::ensure_pallet_enabled()?;
             let account = ensure_signed(origin)?;
 
