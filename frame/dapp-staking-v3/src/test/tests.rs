@@ -22,14 +22,68 @@ use crate::{
     pallet as pallet_dapp_staking, ActiveProtocolState, DAppId, Error, IntegratedDApps, NextDAppId,
 };
 
-use frame_support::{assert_noop, error::BadOrigin, traits::Get};
+use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Get};
 use sp_runtime::traits::Zero;
+
+#[test]
+fn maintenace_mode_works() {
+    ExtBuilder::build().execute_with(|| {
+        // Check that maintenance mode is disabled by default
+        assert!(!ActiveProtocolState::<Test>::get().maintenance);
+
+        // Enable maintenance mode & check post-state
+        assert_ok!(DappStaking::maintenance_mode(RuntimeOrigin::root(), true));
+        assert!(ActiveProtocolState::<Test>::get().maintenance);
+
+        // Call still works, even in maintenance mode
+        assert_ok!(DappStaking::maintenance_mode(RuntimeOrigin::root(), true));
+        assert!(ActiveProtocolState::<Test>::get().maintenance);
+
+        // Incorrect origin doesn't work
+        assert_noop!(
+            DappStaking::maintenance_mode(RuntimeOrigin::signed(1), false),
+            BadOrigin
+        );
+    })
+}
+
+#[test]
+fn maintenace_mode_call_filtering_works() {
+    ExtBuilder::build().execute_with(|| {
+        // Enable maintenance mode & check post-state
+        assert_ok!(DappStaking::maintenance_mode(RuntimeOrigin::root(), true));
+        assert!(ActiveProtocolState::<Test>::get().maintenance);
+
+        assert_noop!(
+            DappStaking::register(RuntimeOrigin::root(), 1, MockSmartContract::Wasm(1)),
+            Error::<Test>::Disabled
+        );
+        assert_noop!(
+            DappStaking::set_dapp_reward_destination(
+                RuntimeOrigin::signed(1),
+                MockSmartContract::Wasm(1),
+                Some(2)
+            ),
+            Error::<Test>::Disabled
+        );
+        assert_noop!(
+            DappStaking::set_dapp_owner(RuntimeOrigin::signed(1), MockSmartContract::Wasm(1), 2),
+            Error::<Test>::Disabled
+        );
+        assert_noop!(
+            DappStaking::unregister(RuntimeOrigin::root(), MockSmartContract::Wasm(1)),
+            Error::<Test>::Disabled
+        );
+        assert_noop!(
+            DappStaking::lock(RuntimeOrigin::signed(1), 100),
+            Error::<Test>::Disabled
+        );
+    })
+}
 
 #[test]
 fn register_is_ok() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Basic test
         assert_register(5, &MockSmartContract::Wasm(1));
 
@@ -42,8 +96,6 @@ fn register_is_ok() {
 #[test]
 fn register_with_incorrect_origin_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         assert_noop!(
             DappStaking::register(RuntimeOrigin::signed(1), 3, MockSmartContract::Wasm(2)),
             BadOrigin
@@ -54,8 +106,6 @@ fn register_with_incorrect_origin_fails() {
 #[test]
 fn register_already_registered_contract_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let smart_contract = MockSmartContract::Wasm(1);
         assert_register(2, &smart_contract);
         assert_noop!(
@@ -68,8 +118,6 @@ fn register_already_registered_contract_fails() {
 #[test]
 fn register_past_max_number_of_contracts_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let limit = <Test as pallet_dapp_staking::Config>::MaxNumberOfContracts::get();
         for id in 1..=limit {
             assert_register(1, &MockSmartContract::Wasm(id.into()));
@@ -81,7 +129,7 @@ fn register_past_max_number_of_contracts_fails() {
                 2,
                 MockSmartContract::Wasm((limit + 1).into())
             ),
-            Error::<Test>::ExcededMaxNumberOfContracts
+            Error::<Test>::ExceededMaxNumberOfContracts
         );
     })
 }
@@ -89,8 +137,6 @@ fn register_past_max_number_of_contracts_fails() {
 #[test]
 fn register_past_sentinel_value_of_id_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // hacky approach, but good enough for test
         NextDAppId::<Test>::put(DAppId::MAX - 1);
 
@@ -109,8 +155,6 @@ fn register_past_sentinel_value_of_id_fails() {
 #[test]
 fn set_dapp_reward_destination_for_contract_is_ok() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Prepare & register smart contract
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
@@ -130,8 +174,6 @@ fn set_dapp_reward_destination_for_contract_is_ok() {
 #[test]
 fn set_dapp_reward_destination_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
 
@@ -161,8 +203,6 @@ fn set_dapp_reward_destination_fails() {
 #[test]
 fn set_dapp_owner_is_ok() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Prepare & register smart contract
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
@@ -181,8 +221,6 @@ fn set_dapp_owner_is_ok() {
 #[test]
 fn set_dapp_owner_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
 
@@ -208,8 +246,6 @@ fn set_dapp_owner_fails() {
 #[test]
 fn unregister_is_ok() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Prepare dApp
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
@@ -222,8 +258,6 @@ fn unregister_is_ok() {
 #[test]
 fn unregister_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let owner = 1;
         let smart_contract = MockSmartContract::Wasm(3);
 
@@ -252,8 +286,6 @@ fn unregister_fails() {
 #[test]
 fn lock_is_ok() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Lock some amount
         let locker = 2;
         let free_balance = Balances::free_balance(&locker);
@@ -276,8 +308,6 @@ fn lock_is_ok() {
 #[test]
 fn lock_with_incorrect_amount_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         // Cannot lock "nothing"
         assert_noop!(
             DappStaking::lock(RuntimeOrigin::signed(1), Balance::zero()),
@@ -307,8 +337,6 @@ fn lock_with_incorrect_amount_fails() {
 #[test]
 fn lock_with_too_many_chunks_fails() {
     ExtBuilder::build().execute_with(|| {
-        initialize_first_block();
-
         let max_locked_chunks = <Test as pallet_dapp_staking::Config>::MaxLockedChunks::get();
         let minimum_locked_amount: Balance =
             <Test as pallet_dapp_staking::Config>::MinimumLockedAmount::get();

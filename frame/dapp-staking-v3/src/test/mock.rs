@@ -141,14 +141,18 @@ impl ExtBuilder {
             .ok();
 
         let mut ext = TestExternalities::from(storage);
-        ext.execute_with(|| System::set_block_number(1));
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            DappStaking::on_initialize(System::block_number());
+        });
+
         ext
     }
 }
 
 /// Run to the specified block number.
 /// Function assumes first block has been initialized.
-pub(crate) fn run_to_block(n: u64) {
+pub(crate) fn _run_to_block(n: u64) {
     while System::block_number() < n {
         DappStaking::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
@@ -160,7 +164,7 @@ pub(crate) fn run_to_block(n: u64) {
 /// Run for the specified number of blocks.
 /// Function assumes first block has been initialized.
 pub(crate) fn _run_for_blocks(n: u64) {
-    run_to_block(System::block_number() + n);
+    _run_to_block(System::block_number() + n);
 }
 
 /// Advance blocks until the specified era has been reached.
@@ -169,14 +173,4 @@ pub(crate) fn _run_for_blocks(n: u64) {
 pub(crate) fn advance_to_era(era: EraNumber) {
     // TODO: Properly implement this later when additional logic has been implemented
     ActiveProtocolState::<Test>::mutate(|state| state.era = era);
-}
-
-/// Initialize first block.
-/// This method should only be called once in a UT otherwise the first block will get initialized multiple times.
-pub(crate) fn initialize_first_block() {
-    // This assert prevents method misuse
-    assert_eq!(System::block_number(), 1 as BlockNumber);
-
-    DappStaking::on_initialize(System::block_number());
-    run_to_block(2);
 }

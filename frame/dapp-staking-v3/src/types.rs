@@ -82,7 +82,7 @@ pub struct ProtocolState<BlockNumber: AtLeast32BitUnsigned + MaxEncodedLen> {
     pub period_type: PeriodType,
     /// `true` if pallet is in maintenance mode (disabled), `false` otherwise.
     /// TODO: provide some configurable barrier to handle this on the runtime level instead? Make an item for this?
-    pub pallet_disabled: bool,
+    pub maintenance: bool,
 }
 
 impl<BlockNumber> Default for ProtocolState<BlockNumber>
@@ -95,7 +95,7 @@ where
             next_era_start: BlockNumber::from(1_u32),
             period: 0,
             period_type: PeriodType::Voting(0),
-            pallet_disabled: false,
+            maintenance: false,
         }
     }
 }

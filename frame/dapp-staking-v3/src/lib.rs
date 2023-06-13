@@ -187,10 +187,20 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Used to enable or disable maintenance mode.
+        /// Can only be called by manager origin.
+        #[pallet::call_index(0)]
+        #[pallet::weight(Weight::zero())]
+        pub fn maintenance_mode(origin: OriginFor<T>, enabled: bool) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            ActiveProtocolState::<T>::mutate(|state| state.maintenance = enabled);
+            Ok(())
+        }
+
         /// Used to register a new contract for dApp staking.
         ///
         /// If successful, smart contract will be assigned a simple, unique numerical identifier.
-        #[pallet::call_index(0)]
+        #[pallet::call_index(1)]
         #[pallet::weight(Weight::zero())]
         pub fn register(
             origin: OriginFor<T>,
@@ -207,7 +217,7 @@ pub mod pallet {
 
             ensure!(
                 IntegratedDApps::<T>::count() < T::MaxNumberOfContracts::get().into(),
-                Error::<T>::ExcededMaxNumberOfContracts
+                Error::<T>::ExceededMaxNumberOfContracts
             );
 
             let dapp_id = NextDAppId::<T>::get();
@@ -232,14 +242,14 @@ pub mod pallet {
                 dapp_id,
             });
 
-            Ok(().into())
+            Ok(())
         }
 
         /// Used to modify the reward destination account for a dApp.
         ///
         /// Caller has to be dApp owner.
         /// If set to `None`, rewards will be deposited to the dApp owner.
-        #[pallet::call_index(1)]
+        #[pallet::call_index(2)]
         #[pallet::weight(Weight::zero())]
         pub fn set_dapp_reward_destination(
             origin: OriginFor<T>,
@@ -260,7 +270,7 @@ pub mod pallet {
 
                     dapp_info.reward_destination = beneficiary.clone();
 
-                    Ok(().into())
+                    Ok(())
                 },
             )?;
 
@@ -269,7 +279,7 @@ pub mod pallet {
                 beneficiary,
             });
 
-            Ok(().into())
+            Ok(())
         }
 
         /// Used to change dApp owner.
@@ -278,7 +288,7 @@ pub mod pallet {
         /// This is useful in two cases:
         /// 1. when the dApp owner account is compromised, manager can change the owner to a new account
         /// 2. if project wants to transfer ownership to a new account (DAO, multisig, etc.).
-        #[pallet::call_index(2)]
+        #[pallet::call_index(3)]
         #[pallet::weight(Weight::zero())]
         pub fn set_dapp_owner(
             origin: OriginFor<T>,
@@ -302,7 +312,7 @@ pub mod pallet {
 
                     dapp_info.owner = new_owner.clone();
 
-                    Ok(().into())
+                    Ok(())
                 },
             )?;
 
@@ -311,14 +321,14 @@ pub mod pallet {
                 new_owner,
             });
 
-            Ok(().into())
+            Ok(())
         }
 
         /// Unregister dApp from dApp staking protocol, making it ineligible for future rewards.
         /// This doesn't remove the dApp completely from the system just yet, but it can no longer be used for staking.
         ///
         /// Can be called by dApp owner or dApp staking manager origin.
-        #[pallet::call_index(3)]
+        #[pallet::call_index(4)]
         #[pallet::weight(Weight::zero())]
         pub fn unregister(
             origin: OriginFor<T>,
@@ -343,7 +353,7 @@ pub mod pallet {
 
                     dapp_info.state = DAppState::Unregistered(current_era);
 
-                    Ok(().into())
+                    Ok(())
                 },
             )?;
 
@@ -354,7 +364,7 @@ pub mod pallet {
                 era: current_era,
             });
 
-            Ok(().into())
+            Ok(())
         }
 
         /// Locks additional funds into dApp staking.
@@ -364,7 +374,7 @@ pub mod pallet {
         ///
         /// It is possible for call to fail due to caller account already having too many locked balance chunks in storage. To solve this,
         /// caller should claim pending rewards, before retrying to lock additional funds.
-        #[pallet::call_index(4)]
+        #[pallet::call_index(5)]
         #[pallet::weight(Weight::zero())]
         pub fn lock(
             origin: OriginFor<T>,
@@ -402,14 +412,14 @@ pub mod pallet {
                 amount: amount_to_lock,
             });
 
-            Ok(().into())
+            Ok(())
         }
     }
 
     impl<T: Config> Pallet<T> {
         /// `Err` if pallet disabled for maintenance, `Ok` otherwise.
         pub(crate) fn ensure_pallet_enabled() -> Result<(), Error<T>> {
-            if ActiveProtocolState::<T>::get().pallet_disabled {
+            if ActiveProtocolState::<T>::get().maintenance {
                 Err(Error::<T>::Disabled)
             } else {
                 Ok(())
