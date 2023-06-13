@@ -1,18 +1,24 @@
-// Copyright 2019-2022 PureStake Inc.
-// This file is part of Moonbeam.
+// This file is part of Astar.
 
-// Moonbeam is free software: you can redistribute it and/or modify
+// Copyright 2019-2022 PureStake Inc.
+// Copyright (C) 2022-2023 Stake Technologies Pte.Ltd.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This file is part of Utils package, originally developed by Purestake Inc.
+// Utils package used in Astar Network in terms of GPLv3.
+//
+// Utils is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Moonbeam is distributed in the hope that it will be useful,
+// Utils is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
+// along with Utils.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Encoding of XCM types for solidity
 
@@ -27,8 +33,6 @@ use {
 pub const JUNCTION_SIZE_LIMIT: u32 = 2u32.pow(16);
 
 // Function to convert network id to bytes
-// We don't implement solidity::Codec here as these bytes will be appended only
-// to certain Junction variants
 // Each NetworkId variant is represented as bytes
 // The first byte represents the enum variant to be used.
 // 		- Indexes 0,2,3 represent XCM V2 variants
