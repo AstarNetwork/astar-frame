@@ -20,7 +20,7 @@ use crate::{self as pallet_dapp_staking, *};
 
 use frame_support::{
     construct_runtime, parameter_types,
-    traits::{ConstU128, ConstU16, ConstU32},
+    traits::{ConstU128, ConstU16, ConstU32, ConstU64},
     weights::Weight,
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -109,6 +109,7 @@ impl pallet_dapp_staking::Config for Test {
     type MaxLockedChunks = ConstU32<5>;
     type MaxUnlockingChunks = ConstU32<5>;
     type MinimumLockedAmount = ConstU128<MINIMUM_LOCK_AMOUNT>;
+    type UnlockingPeriod = ConstU64<20>;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug, TypeInfo, MaxEncodedLen, Hash)]

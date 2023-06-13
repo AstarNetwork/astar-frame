@@ -52,7 +52,7 @@ impl MemorySnapshot {
     pub fn locked_balance(&self, account: &AccountId) -> Balance {
         self.ledger
             .get(&account)
-            .map_or(Balance::zero(), |ledger| ledger.locked_amount())
+            .map_or(Balance::zero(), |ledger| ledger.active_locked_amount())
     }
 }
 
@@ -196,7 +196,7 @@ pub(crate) fn assert_lock(account: AccountId, amount: Balance) {
             .ledger
             .get(&account)
             .expect("Ledger entry has to exist after succcessful lock call")
-            .era(),
+            .lock_era(),
         post_snapshot.active_protocol_state.era + 1
     );
 
