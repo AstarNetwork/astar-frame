@@ -192,9 +192,9 @@ where
 {
     fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
         match handle.code_address() {
-            a if a == PRECOMPILE_ADDRESS => Some(
-                XcmPrecompile::<Runtime, AssetIdConverter<AssetId>>::execute(handle),
-            ),
+            a if a == PRECOMPILE_ADDRESS => {
+                Some(XcmPrecompile::<Runtime, AssetIdConverter<AssetId>>::execute(handle))
+            }
             _ => None,
         }
     }

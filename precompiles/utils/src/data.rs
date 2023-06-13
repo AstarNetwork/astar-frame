@@ -174,6 +174,9 @@ impl<'a> EvmDataReader<'a> {
             cursor: 0,
         })
     }
+    pub fn input(&mut self) -> &[u8] {
+        self.input
+    }
 
     /// Read remaining bytes
     pub fn read_till_end(&mut self) -> EvmResult<&[u8]> {
@@ -190,7 +193,7 @@ impl<'a> EvmDataReader<'a> {
     /// Move the reading cursor with provided length, and return a range from the previous cursor
     /// location to the new one.
     /// Checks cursor overflows.
-    fn move_cursor(&mut self, len: usize) -> EvmResult<Range<usize>> {
+    pub fn move_cursor(&mut self, len: usize) -> EvmResult<Range<usize>> {
         let start = self.cursor;
         let end = self
             .cursor
@@ -285,7 +288,7 @@ impl EvmDataWriter {
 
     /// Write arbitrary bytes.
     /// Doesn't handle any alignement checks, prefer using `write` instead if possible.
-    fn write_raw_bytes(mut self, value: &[u8]) -> Self {
+    pub fn write_raw_bytes(mut self, value: &[u8]) -> Self {
         self.data.extend_from_slice(value);
         self
     }

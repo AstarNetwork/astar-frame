@@ -21,10 +21,11 @@ use core::assert_matches::assert_matches;
 use crate::mock::*;
 use crate::*;
 
+use parity_scale_codec::Encode;
 use precompile_utils::testing::*;
 use precompile_utils::EvmDataWriter;
-use sp_core::H160;
-use parity_scale_codec::{Encode,Decode};
+use sp_core::{H160, H256};
+use xcm::VersionedXcm;
 
 fn precompiles() -> TestPrecompileSet<Runtime> {
     PrecompilesValue::get()
@@ -33,16 +34,27 @@ fn precompiles() -> TestPrecompileSet<Runtime> {
 #[test]
 fn wrong_assets_len_or_fee_index_reverts() {
     ExtBuilder::default().build().execute_with(|| {
+        let dest: MultiLocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::X1(Junction::Parachain(2000u32)),
+        };
+
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountId32 {
+                network: None,
+                id: H256::repeat_byte(0xF1).into(),
+            }),
+        };
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
                     .write(vec![Address::from(H160::repeat_byte(0xF1))])
                     .write(Vec::<U256>::new())
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -53,12 +65,11 @@ fn wrong_assets_len_or_fee_index_reverts() {
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(2_u64))
                     .build(),
             )
@@ -70,17 +81,29 @@ fn wrong_assets_len_or_fee_index_reverts() {
 #[test]
 fn assets_withdraw_works() {
     ExtBuilder::default().build().execute_with(|| {
+        let dest: MultiLocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::Here,
+        };
+
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountId32 {
+                network: None,
+                id: H256::repeat_byte(0xF1).into(),
+            }),
+        };
+
         // SS58
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawNative)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -88,16 +111,22 @@ fn assets_withdraw_works() {
             .execute_returns(EvmDataWriter::new().write(true).build());
 
         // H160
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountKey20 {
+                network: None,
+                key: H160::repeat_byte(0xDE).into(),
+            }),
+        };
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsWithdrawEvm)
+                EvmDataWriter::new_with_selector(Action::AssetsWithdraw)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
-                    .write(Address::from(H160::repeat_byte(0xDE)))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -109,14 +138,17 @@ fn assets_withdraw_works() {
 #[test]
 fn remote_transact_works() {
     ExtBuilder::default().build().execute_with(|| {
+        let multilocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::X1(Junction::Parachain(2000u32)),
+        };
         // SS58
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
                 EvmDataWriter::new_with_selector(Action::RemoteTransact)
-                    .write(U256::from(0_u64))
-                    .write(true)
+                    .write(multilocation)
                     .write(Address::from(Runtime::asset_id_to_address(1_u128)))
                     .write(U256::from(367))
                     .write(vec![0xff_u8, 0xaa, 0x77, 0x00])
@@ -131,17 +163,28 @@ fn remote_transact_works() {
 #[test]
 fn reserve_transfer_assets_works() {
     ExtBuilder::default().build().execute_with(|| {
+        let dest: MultiLocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::Here,
+        };
+
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountId32 {
+                network: None,
+                id: H256::repeat_byte(0xF1).into(),
+            }),
+        };
         // SS58
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferNative)
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransfer)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -149,16 +192,22 @@ fn reserve_transfer_assets_works() {
             .execute_returns(EvmDataWriter::new().write(true).build());
 
         // H160
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountKey20 {
+                network: None,
+                key: H160::repeat_byte(0xDE).into(),
+            }),
+        };
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferEvm)
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransfer)
                     .write(vec![Address::from(Runtime::asset_id_to_address(1u128))])
                     .write(vec![U256::from(42000u64)])
-                    .write(Address::from(H160::repeat_byte(0xDE)))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -209,32 +258,49 @@ fn reserve_transfer_assets_works() {
 #[test]
 fn reserve_transfer_currency_works() {
     ExtBuilder::default().build().execute_with(|| {
+        let dest: MultiLocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::Here,
+        };
+
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountId32 {
+                network: None,
+                id: H256::repeat_byte(0xF1).into(),
+            }),
+        };
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferNative)
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransfer)
                     .write(vec![Address::from(H160::zero())]) // zero address by convention
                     .write(vec![U256::from(42000u64)])
-                    .write(H256::repeat_byte(0xF1))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
             .expect_no_logs()
             .execute_returns(EvmDataWriter::new().write(true).build());
 
+        let beneficiary: MultiLocation = MultiLocation {
+            parents: 0,
+            interior: Junctions::X1(AccountKey20 {
+                network: None,
+                key: H160::repeat_byte(0xDE).into(),
+            }),
+        };
         precompiles()
             .prepare_test(
                 TestAccount::Alice,
                 PRECOMPILE_ADDRESS,
-                EvmDataWriter::new_with_selector(Action::AssetsReserveTransferEvm)
+                EvmDataWriter::new_with_selector(Action::AssetsReserveTransfer)
                     .write(vec![Address::from(H160::zero())]) // zero address by convention
                     .write(vec![U256::from(42000u64)])
-                    .write(Address::from(H160::repeat_byte(0xDE)))
-                    .write(true)
-                    .write(U256::from(0_u64))
+                    .write(beneficiary)
+                    .write(dest)
                     .write(U256::from(0_u64))
                     .build(),
             )
@@ -284,24 +350,32 @@ fn reserve_transfer_currency_works() {
 
 #[test]
 fn test_send_clear_origin() {
-	ExtBuilder::default().build().execute_with(|| {
-		let xcm_to_send = VersionedXcm::<()>::V3(Xcm(vec![ClearOrigin])).encode();
-		precompiles()
-			.prepare_test(TestAccount::Alice, PRECOMPILE_ADDRESS, 
+    ExtBuilder::default().build().execute_with(|| {
+        let dest: MultiLocation = MultiLocation {
+            parents: 1,
+            interior: Junctions::X1(Junction::AccountId32 {
+                network: None,
+                id: H256::repeat_byte(0xF1).into(),
+            }),
+        };
+        let xcm_to_send = VersionedXcm::<()>::V3(Xcm(vec![ClearOrigin])).encode();
+        precompiles()
+            .prepare_test(
+                TestAccount::Alice,
+                PRECOMPILE_ADDRESS,
                 EvmDataWriter::new_with_selector(Action::SendXCM)
-                .write(Bytes::from(xcm_to_send.as_slice()))
-                .write(false)
-                .write(U256::from(1_u64))
-                .build(),
+                    .write(dest)
+                    .write(Bytes::from(xcm_to_send.as_slice()))
+                    .build(),
             )
-			// Fixed: TestWeightInfo + (BaseXcmWeight * MessageLen)
-			.expect_cost(100001000)
-			.expect_no_logs()
-			.execute_returns(EvmDataWriter::new().write(true).build());
+            // Fixed: TestWeightInfo + (BaseXcmWeight * MessageLen)
+            .expect_cost(100001000)
+            .expect_no_logs()
+            .execute_returns(EvmDataWriter::new().write(true).build());
 
-		let sent_messages = take_sent_xcm();
-		let (_, sent_message) = sent_messages.first().unwrap();
-		// Lets make sure the message is as expected
-		assert!(sent_message.0.contains(&ClearOrigin));
-	})
+        let sent_messages = take_sent_xcm();
+        let (_, sent_message) = sent_messages.first().unwrap();
+        // Lets make sure the message is as expected
+        assert!(sent_message.0.contains(&ClearOrigin));
+    })
 }

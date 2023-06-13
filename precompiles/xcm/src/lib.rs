@@ -25,13 +25,13 @@ use frame_support::{
     pallet_prelude::Weight,
     traits::Get,
 };
-use parity_scale_codec::{DecodeLimit, MaxEncodedLen};
 use pallet_evm::{AddressMapping, Precompile};
-use sp_core::{H160, H256, U256};
+use parity_scale_codec::DecodeLimit;
+use sp_core::{H160, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
-use xcm::{latest::prelude::*,VersionedXcm,MAX_XCM_DECODE_DEPTH};
+use xcm::latest::prelude::*;
 use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
@@ -47,14 +47,11 @@ mod tests;
 #[precompile_utils::generate_function_selector]
 #[derive(Debug, PartialEq)]
 pub enum Action {
-    AssetsWithdrawNative = "assets_withdraw(address[],uint256[],bytes32,bool,uint256,uint256)",
-    AssetsWithdrawEvm = "assets_withdraw(address[],uint256[],address,bool,uint256,uint256)",
-    RemoteTransact = "remote_transact(uint256,bool,address,uint256,bytes,uint64)",
-    AssetsReserveTransferNative =
-        "assets_reserve_transfer(address[],uint256[],bytes32,bool,uint256,uint256)",
-    AssetsReserveTransferEvm =
-        "assets_reserve_transfer(address[],uint256[],address,bool,uint256,uint256)",
-    SendXCM = "send_xcm(bytes32,bool,uint256[])"
+    AssetsWithdraw = "assets_withdraw(address[],uint256[],(uint8,bytes[]),(uint8,bytes[]),uint256)",
+    RemoteTransact = "remote_transact((uint8,bytes[]),address,uint256,bytes,uint64)",
+    AssetsReserveTransfer =
+        "assets_reserve_transfer(address[],uint256[],(uint8,bytes[]),(uint8,bytes[]),uint256)",
+    SendXCM = "send_xcm((uint8,bytes[]),bytes)",
 }
 
 /// Dummy H160 address representing native currency (e.g. ASTR or SDN)
@@ -72,8 +69,9 @@ where
     <<Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
         From<Option<Runtime::AccountId>>,
     <Runtime as frame_system::Config>::AccountId: Into<[u8; 32]>,
-    <Runtime as frame_system::Config>::RuntimeCall:
-        From<pallet_xcm::Call<Runtime>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+    <Runtime as frame_system::Config>::RuntimeCall: From<pallet_xcm::Call<Runtime>>
+        + Dispatchable<PostInfo = PostDispatchInfo>
+        + GetDispatchInfo,
     C: Convert<MultiLocation, <Runtime as pallet_assets::Config>::AssetId>,
 {
     fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
@@ -85,31 +83,21 @@ where
 
         // Dispatch the call
         match selector {
-            Action::AssetsWithdrawNative => {
-                Self::assets_withdraw(handle, BeneficiaryType::Account32)
-            }
-            Action::AssetsWithdrawEvm => Self::assets_withdraw(handle, BeneficiaryType::Account20),
+            Action::AssetsWithdraw => Self::assets_withdraw(handle),
             Action::RemoteTransact => Self::remote_transact(handle),
-            Action::AssetsReserveTransferNative => {
-                Self::assets_reserve_transfer(handle, BeneficiaryType::Account32)
-            }
-            Action::AssetsReserveTransferEvm => {
-                Self::assets_reserve_transfer(handle, BeneficiaryType::Account20)
-            }
-            Action::SendXCM => {
-                Self::send_xcm(handle)
-            }
+            Action::AssetsReserveTransfer => Self::assets_reserve_transfer(handle),
+            Action::SendXCM => Self::send_xcm(handle),
         }
     }
 }
 
 /// The supported beneficiary account types
-enum BeneficiaryType {
-    /// 256 bit (32 byte) public key
-    Account32,
-    /// 160 bit (20 byte) address is expected
-    Account20,
-}
+// enum BeneficiaryType {
+//     /// 256 bit (32 byte) public key
+//     Account32,
+//     /// 160 bit (20 byte) address is expected
+//     Account20,
+// }
 
 impl<Runtime, C> XcmPrecompile<Runtime, C>
 where
@@ -125,10 +113,7 @@ where
         + GetDispatchInfo,
     C: Convert<MultiLocation, <Runtime as pallet_assets::Config>::AssetId>,
 {
-    fn assets_withdraw(
-        handle: &mut impl PrecompileHandle,
-        beneficiary_type: BeneficiaryType,
-    ) -> EvmResult<PrecompileOutput> {
+    fn assets_withdraw(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(6)?;
 
@@ -154,38 +139,14 @@ where
             return Err(revert("Assets resolution failure."));
         }
 
-        let beneficiary: MultiLocation = match beneficiary_type {
-            BeneficiaryType::Account32 => {
-                let recipient: [u8; 32] = input.read::<H256>()?.into();
-                X1(Junction::AccountId32 {
-                    network: None,
-                    id: recipient,
-                })
-            }
-            BeneficiaryType::Account20 => {
-                let recipient: H160 = input.read::<Address>()?.into();
-                X1(Junction::AccountKey20 {
-                    network: None,
-                    key: recipient.to_fixed_bytes(),
-                })
-            }
-        }
-        .into();
+        let beneficiary: MultiLocation = input.read::<MultiLocation>()?;
+        let dest: MultiLocation = input.read::<MultiLocation>()?;
 
-        let is_relay = input.read::<bool>()?;
-        let parachain_id: u32 = input.read::<U256>()?.low_u32();
         let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
 
         if fee_asset_item as usize > assets.len() {
             return Err(revert("Bad fee index."));
         }
-
-        // Prepare pallet-xcm call arguments
-        let dest = if is_relay {
-            MultiLocation::parent()
-        } else {
-            X1(Junction::Parachain(parachain_id)).into_exterior(1)
-        };
 
         let assets: MultiAssets = assets
             .iter()
@@ -218,9 +179,10 @@ where
         input.expect_arguments(6)?;
 
         // Raw call arguments
-        let para_id: u32 = input.read::<U256>()?.low_u32();
-        let is_relay = input.read::<bool>()?;
+        // let para_id: u32 = input.read::<U256>()?.low_u32();
+        // let is_relay = input.read::<bool>()?;
 
+        let dest: MultiLocation = input.read::<MultiLocation>()?;
         let fee_asset_addr = input.read::<Address>()?;
         let fee_amount = input.read::<U256>()?;
 
@@ -228,16 +190,16 @@ where
         let transact_weight = input.read::<u64>()?;
         let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
 
-        log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
-         fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
-        para_id, is_relay, fee_asset_addr, fee_amount, remote_call, transact_weight);
+        // log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
+        //  fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
+        // para_id, is_relay, fee_asset_addr, fee_amount, remote_call, transact_weight);
 
         // Process arguments
-        let dest = if is_relay {
-            MultiLocation::parent()
-        } else {
-            X1(Junction::Parachain(para_id)).into_exterior(1)
-        };
+        // let dest = if is_relay {
+        //     MultiLocation::parent()
+        // } else {
+        //     X1(Junction::Parachain(para_id)).into_exterior(1)
+        // };
 
         let fee_asset = {
             let address: H160 = fee_asset_addr.into();
@@ -315,10 +277,7 @@ where
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
-    fn assets_reserve_transfer(
-        handle: &mut impl PrecompileHandle,
-        beneficiary_type: BeneficiaryType,
-    ) -> EvmResult<PrecompileOutput> {
+    fn assets_reserve_transfer(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(6)?;
 
@@ -353,38 +312,21 @@ where
             return Err(revert("Assets resolution failure."));
         }
 
-        let beneficiary: MultiLocation = match beneficiary_type {
-            BeneficiaryType::Account32 => {
-                let recipient: [u8; 32] = input.read::<H256>()?.into();
-                X1(Junction::AccountId32 {
-                    network: None,
-                    id: recipient,
-                })
-            }
-            BeneficiaryType::Account20 => {
-                let recipient: H160 = input.read::<Address>()?.into();
-                X1(Junction::AccountKey20 {
-                    network: None,
-                    key: recipient.to_fixed_bytes(),
-                })
-            }
-        }
-        .into();
+        let beneficiary: MultiLocation = input.read::<MultiLocation>()?;
+        let dest: MultiLocation = input.read::<MultiLocation>()?;
 
-        let is_relay = input.read::<bool>()?;
-        let parachain_id: u32 = input.read::<U256>()?.low_u32();
         let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
 
         if fee_asset_item as usize > assets.len() {
             return Err(revert("Bad fee index."));
         }
 
-        // Prepare pallet-xcm call arguments
-        let dest = if is_relay {
-            MultiLocation::parent()
-        } else {
-            X1(Junction::Parachain(parachain_id)).into_exterior(1)
-        };
+        // // Prepare pallet-xcm call arguments
+        // let dest = if is_relay {
+        //     MultiLocation::parent()
+        // } else {
+        //     X1(Junction::Parachain(parachain_id)).into_exterior(1)
+        // };
 
         let assets: MultiAssets = assets
             .iter()
@@ -412,36 +354,29 @@ where
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
-    fn send_xcm(
-        handle: &mut impl PrecompileHandle
-    ) -> EvmResult<PrecompileOutput> {
+    fn send_xcm(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(3)?;
 
         // Raw call arguments
-        let xcm_call : Vec<u8> = input.read::<Bytes>()?.into();
-        let is_relay = input.read::<bool>()?;
-        let dest_para_id: u32 = input.read::<U256>()?.low_u32();
-        
-        log::trace!(target:"xcm-send_xcm", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
-        
-        let xcm_call: Vec<_> = xcm_call.to_vec();
+        let dest: MultiLocation = input.read::<MultiLocation>()?;
+        let xcm_call: Vec<u8> = input.read::<Bytes>()?.into();
+
+        // log::trace!(target:"xcm-precompile", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
 
         let xcm = xcm::VersionedXcm::<()>::decode_all_with_depth_limit(
-			xcm::MAX_XCM_DECODE_DEPTH,
-			&mut xcm_call.as_slice(),
-		).map_err(|_| {
-            revert("Failed to decode xcm instructions")
-        })?;
+            xcm::MAX_XCM_DECODE_DEPTH,
+            &mut xcm_call.as_slice(),
+        )
+        .map_err(|_| revert("Failed to decode xcm instructions"))?;
 
+        // let dest = if is_relay {
+        //     MultiLocation::parent()
+        // } else {
+        //     X1(Junction::Parachain(dest_para_id)).into_exterior(1)
+        // };
 
-        let dest = if is_relay {
-            MultiLocation::parent()
-        } else {
-            X1(Junction::Parachain(dest_para_id)).into_exterior(1)
-        };
-
-         // Build call with origin.
+        // Build call with origin.
         let origin = Some(Runtime::AddressMapping::into_account_id(
             handle.context().caller,
         ))

@@ -37,7 +37,9 @@ use pallet_evm::{GasWeightMapping, Log};
 use sp_core::{H160, H256, U256};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
 
+mod bytes;
 mod data;
+mod xcm;
 
 pub use data::{Address, Bytes, EvmData, EvmDataReader, EvmDataWriter};
 pub use precompile_utils_macro::{generate_function_selector, keccak256};
