@@ -139,7 +139,7 @@ pub mod pallet {
         /// Smart contract already exists within dApp staking protocol.
         ContractAlreadyExists,
         /// Maximum number of smart contracts has been reached.
-        ExcededMaxNumberOfContracts,
+        ExceededMaxNumberOfContracts,
         /// Not possible to assign a new dApp Id.
         /// This should never happen since current type can support up to 65536 - 1 unique dApps.
         NewDAppIdUnavailable,
