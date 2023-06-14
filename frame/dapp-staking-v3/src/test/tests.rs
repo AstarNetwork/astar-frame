@@ -78,6 +78,10 @@ fn maintenace_mode_call_filtering_works() {
             DappStaking::lock(RuntimeOrigin::signed(1), 100),
             Error::<Test>::Disabled
         );
+        assert_noop!(
+            DappStaking::unlock(RuntimeOrigin::signed(1), 100),
+            Error::<Test>::Disabled
+        );
     })
 }
 
@@ -360,5 +364,19 @@ fn lock_with_too_many_chunks_fails() {
             DappStaking::lock(RuntimeOrigin::signed(locker), 1),
             Error::<Test>::TooManyLockedBalanceChunks,
         );
+    })
+}
+
+#[test]
+fn unlock_is_ok() {
+    ExtBuilder::build().execute_with(|| {
+        // Lock some amount
+        let account = 2;
+        let lock_amount = 101;
+        assert_lock(account, lock_amount);
+
+        // Unlock some amount
+        let first_unlock_amount = 7;
+        assert_unlock(account, first_unlock_amount);
     })
 }

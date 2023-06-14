@@ -321,7 +321,7 @@ where
     /// If entry for the specified era doesn't exist, it's created and insertion is attempted.
     /// In case vector has no more capacity, error is returned, and whole operation is a noop.
     pub fn subtract_lock_amount(&mut self, amount: Balance, era: EraNumber) -> Result<(), ()> {
-        if amount.is_zero() {
+        if amount.is_zero() || self.locked.is_empty() {
             return Ok(());
         }
         // TODO: this method can surely be optimized (avoid too many iters) but focus on that later, when it's all working fine.
@@ -330,7 +330,11 @@ where
         let index = if let Some(index) = self.locked.iter().rposition(|&chunk| chunk.era <= era) {
             index
         } else {
-            // Means argument or state is incorrect, we just ignore it since it's a noop
+            // Covers scenario when there's only 1 chunk for the next era
+            // TODO test this too!
+            self.locked
+                .iter_mut()
+                .for_each(|chunk| chunk.amount.saturating_reduce(amount));
             return Ok(());
         };
 
@@ -375,21 +379,23 @@ where
             return Ok(());
         }
 
-        let mut unlocking_chunk = if let Some(&unlocking_chunk) = self.unlocking.last() {
-            unlocking_chunk
-        } else {
-            UnlockingChunk::default()
-        };
+        let idx = self
+            .unlocking
+            .binary_search_by(|chunk| chunk.unlock_block.cmp(&unlock_block));
 
-        unlocking_chunk.amount.saturating_accrue(amount);
-
-        if unlocking_chunk.unlock_block == unlock_block && !self.unlocking.is_empty() {
-            if let Some(last) = self.unlocking.last_mut() {
-                *last = unlocking_chunk;
+        match idx {
+            Ok(idx) => {
+                self.unlocking[idx].amount.saturating_accrue(amount);
             }
-        } else {
-            unlocking_chunk.unlock_block = unlock_block;
-            self.unlocking.try_push(unlocking_chunk).map_err(|_| ())?;
+            Err(idx) => {
+                let new_unlocking_chunk = UnlockingChunk {
+                    amount,
+                    unlock_block,
+                };
+                self.unlocking
+                    .try_insert(idx, new_unlocking_chunk)
+                    .map_err(|_| ())?;
+            }
         }
 
         Ok(())
@@ -403,7 +409,7 @@ where
 }
 
 /// Rewards pool for lock participants & dApps
-#[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, Copy, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
 pub struct RewardInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
     /// Rewards pool for accounts which have locked funds in dApp staking
     #[codec(compact)]
@@ -414,7 +420,7 @@ pub struct RewardInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
 }
 
 /// Info about current era, including the rewards, how much is locked, unlocking, etc.
-#[derive(Encode, Decode, MaxEncodedLen, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, Copy, Clone, Debug, PartialEq, Eq, TypeInfo, Default)]
 pub struct EraInfo<Balance: AtLeast32BitUnsigned + MaxEncodedLen + Copy> {
     /// Info about era rewards
     pub rewards: RewardInfo<Balance>,

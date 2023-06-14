@@ -145,6 +145,15 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
             DappStaking::on_initialize(System::block_number());
+
+            // TODO: remove this after proper on_init handling is implemented
+            pallet_dapp_staking::ActiveProtocolState::<Test>::put(ProtocolState {
+                era: 1,
+                next_era_start: BlockNumber::from(101_u32),
+                period: 1,
+                period_type: PeriodType::Voting(16),
+                maintenance: false,
+            });
         });
 
         ext
