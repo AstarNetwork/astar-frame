@@ -22,8 +22,8 @@
 
 use super::*;
 use alloc::borrow::ToOwned;
-use sp_core::{ConstU32, Get};
 pub use alloc::string::String;
+use sp_core::{ConstU32, Get};
 
 type ConstU32Max = ConstU32<{ u32::MAX }>;
 
