@@ -37,7 +37,7 @@ use xcm_builder::{
 };
 use xcm_executor::XcmExecutor;
 
-use crate::{self as pallet_xcm, TestWeightInfo};
+use crate::{self as astar_xcm, TestWeightInfo};
 
 pub type AccountId = AccountId32;
 pub type Balance = u128;
