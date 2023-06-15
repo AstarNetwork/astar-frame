@@ -185,7 +185,7 @@ pub struct TestPrecompileSet<R>(PhantomData<R>);
 impl<R> PrecompileSet for TestPrecompileSet<R>
 where
     R: pallet_evm::Config
-        + pallet_xcm::Config
+        + astar_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     XcmPrecompile<R, AssetIdConverter<AssetId>>: Precompile,
@@ -422,7 +422,7 @@ parameter_types! {
     pub ReachableDest: Option<MultiLocation> = Some(Parachain(1000).into());
 }
 
-impl pallet_xcm::Config for Runtime {
+impl astar_xcm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmRouter = StoringRouter;
@@ -443,7 +443,7 @@ impl pallet_xcm::Config for Runtime {
     type Currency = Balances;
     type CurrencyMatcher = ();
     type MaxLockers = frame_support::traits::ConstU32<8>;
-    type WeightInfo = pallet_xcm::TestWeightInfo;
+    type WeightInfo = astar_xcm::TestWeightInfo;
     #[cfg(feature = "runtime-benchmarks")]
     type ReachableDest = ReachableDest;
 }

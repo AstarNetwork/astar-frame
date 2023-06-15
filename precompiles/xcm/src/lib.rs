@@ -65,13 +65,13 @@ pub struct XcmPrecompile<T, C>(PhantomData<(T, C)>);
 impl<R, C> Precompile for XcmPrecompile<R, C>
 where
     R: pallet_evm::Config
-        + pallet_xcm::Config
+        + astar_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
         From<Option<R::AccountId>>,
     <R as frame_system::Config>::RuntimeCall:
-        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+        From<astar_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
     fn execute(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
@@ -109,13 +109,13 @@ enum BeneficiaryType {
 impl<R, C> XcmPrecompile<R, C>
 where
     R: pallet_evm::Config
-        + pallet_xcm::Config
+        + astar_xcm::Config
         + pallet_assets::Config
         + AddressToAssetId<<R as pallet_assets::Config>::AssetId>,
     <<R as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin:
         From<Option<R::AccountId>>,
     <R as frame_system::Config>::RuntimeCall:
-        From<pallet_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
+        From<astar_xcm::Call<R>> + Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
     C: Convert<MultiLocation, <R as pallet_assets::Config>::AssetId>,
 {
     fn assets_withdraw(
@@ -190,7 +190,7 @@ where
 
         // Build call with origin.
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::reserve_withdraw_assets {
+        let call = astar_xcm::Call::<R>::reserve_withdraw_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),
@@ -275,7 +275,7 @@ where
 
         // Build call with origin.
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::send {
+        let call = astar_xcm::Call::<R>::send {
             dest: Box::new(dest.into()),
             message: Box::new(xcm::VersionedXcm::V3(xcm)),
         };
@@ -367,7 +367,7 @@ where
 
         // Build call with origin.
         let origin = Some(R::AddressMapping::into_account_id(handle.context().caller)).into();
-        let call = pallet_xcm::Call::<R>::reserve_transfer_assets {
+        let call = astar_xcm::Call::<R>::reserve_transfer_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
             assets: Box::new(assets.into()),

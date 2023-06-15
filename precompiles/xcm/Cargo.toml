@@ -8,10 +8,10 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+astar-xcm = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }
 pallet-evm-precompile-assets-erc20 = { workspace = true }
-pallet-xcm = { workspace = true }
 precompile-utils = { workspace = true }
 
 # Substrate
@@ -53,7 +53,7 @@ std = [
 	"frame-system/std",
 	"pallet-assets/std",
 	"pallet-evm/std",
-	"pallet-xcm/std",
+	"astar-xcm/std",
 	"pallet-evm-precompile-assets-erc20/std",
 	"precompile-utils/std",
 	"sp-core/std",

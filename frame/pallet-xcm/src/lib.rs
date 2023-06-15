@@ -237,7 +237,7 @@ pub mod pallet {
         const VERSION_DISCOVERY_QUEUE_SIZE: u32;
 
         /// The latest supported version that we advertise. Generally just set it to
-        /// `pallet_xcm::CurrentXcmVersion`.
+        /// `astar_xcm::CurrentXcmVersion`.
         type AdvertisedXcmVersion: Get<XcmVersion>;
 
         /// The assets which we consider a given origin is trusted if they claim to have placed a
@@ -1811,7 +1811,7 @@ impl<T: Config> Pallet<T> {
     /// and queue it for version discovery.
     fn note_unknown_version(dest: &MultiLocation) {
         log::trace!(
-            target: "xcm::pallet_xcm::note_unknown_version",
+            target: "xcm::astar_xcm::note_unknown_version",
             "XCM version is unknown for destination: {:?}",
             dest,
         );
@@ -2082,7 +2082,7 @@ impl<T: Config> WrapVersion for Pallet<T> {
             })
             .ok_or_else(|| {
                 log::trace!(
-                    target: "xcm::pallet_xcm::wrap_version",
+                    target: "xcm::astar_xcm::wrap_version",
                     "Could not determine a version to wrap XCM for destination: {:?}",
                     dest,
                 );

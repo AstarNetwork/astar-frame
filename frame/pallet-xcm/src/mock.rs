@@ -143,7 +143,7 @@ construct_runtime!(
         System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         ParasOrigin: origin::{Pallet, Origin},
-        XcmPallet: pallet_xcm::{Pallet, Call, Storage, Event<T>, Origin, Config},
+        XcmPallet: astar_xcm::{Pallet, Call, Storage, Event<T>, Origin, Config},
         TestNotifier: pallet_test_notifier::{Pallet, Call, Event<T>},
     }
 );
@@ -316,7 +316,7 @@ impl xcm_executor::Config for XcmConfig {
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
 
 parameter_types! {
-    pub static AdvertisedXcmVersion: pallet_xcm::XcmVersion = 3;
+    pub static AdvertisedXcmVersion: astar_xcm::XcmVersion = 3;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -324,7 +324,7 @@ parameter_types! {
     pub ReachableDest: Option<MultiLocation> = Some(Parachain(1000).into());
 }
 
-impl pallet_xcm::Config for Test {
+impl astar_xcm::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type SendXcmOrigin = xcm_builder::EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
     type XcmRouter = (TestSendXcmErrX8, TestSendXcm);
@@ -401,8 +401,8 @@ pub(crate) fn new_test_ext_with_balances(
         .assimilate_storage(&mut t)
         .unwrap();
 
-    <pallet_xcm::GenesisConfig as frame_support::traits::GenesisBuild<Test>>::assimilate_storage(
-        &pallet_xcm::GenesisConfig {
+    <astar_xcm::GenesisConfig as frame_support::traits::GenesisBuild<Test>>::assimilate_storage(
+        &astar_xcm::GenesisConfig {
             safe_xcm_version: Some(2),
         },
         &mut t,

@@ -1,6 +1,6 @@
 [package]
 authors = ["Parity Technologies <admin@parity.io>", "Stake Technologies <devops@stake.co.jp>"]
-name = "pallet-xcm"
+name = "astar-xcm"
 version = "0.9.39"
 edition.workspace = true
 homepage.workspace = true
