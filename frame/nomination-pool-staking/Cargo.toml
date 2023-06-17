@@ -26,7 +26,6 @@ frame-benchmarking = { workspace = true, optional = true }
 
 astar-xcm = { workspace = true }
 pallet-nomination-pools = { workspace = true }
-polkadot-runtime = { workspace = true }
 xcm = { workspace = true }
 xcm-builder = { workspace = true }
 
@@ -53,7 +52,6 @@ std = [
 	"pallet-session/std",
 	"pallet-timestamp/std",
 	"pallet-nomination-pools/std",
-	"polkadot-runtime/std",
 	"sp-staking/std",
 	"xcm/std",
 	"frame-benchmarking?/std",

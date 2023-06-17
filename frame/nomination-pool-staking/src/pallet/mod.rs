@@ -27,6 +27,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use sp_std::convert::From;
+use sp_runtime::traits::StaticLookup;
 
 const _NOMINATION_POOL_STAKING_ID: LockIdentifier = *b"np_stake";
 
@@ -34,7 +35,6 @@ const _NOMINATION_POOL_STAKING_ID: LockIdentifier = *b"np_stake";
 #[allow(clippy::module_inception)]
 pub mod pallet {
     use super::*;
-    use sp_runtime::MultiAddress;
     use sp_std::vec::Vec;
     use xcm::v3::{Instruction, Junctions::Here, MultiLocation, Xcm};
 
@@ -42,15 +42,30 @@ pub mod pallet {
     pub type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+    #[derive(Encode, Decode, RuntimeDebug)]
+    pub enum NominationPoolsCall<T: Config> {
+        #[codec(index = 6)] // same to call index
+        Create(
+            #[codec(compact)] BalanceOf<T>,
+            <T::Lookup as StaticLookup>::Source,
+            <T::Lookup as StaticLookup>::Source,
+            <T::Lookup as StaticLookup>::Source,
+        )
+    }
+    
+    #[derive(Encode, Decode, RuntimeDebug)]
+    pub enum RelayChainCall<T: Config> {
+        // https://github.com/paritytech/polkadot/blob/7a19bf09147605f185421a51ec254c51d2c7d060/runtime/polkadot/src/lib.rs#L1414
+        #[codec(index = 39)]
+        NominationPools(NominationPoolsCall<T>),
+    }
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(crate) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
     pub trait Config: frame_system::Config + astar_xcm::Config {
-        /// AccountId converter
-        type AccountIdConvertor: AccountIdConvertor<Self::AccountId>;
-
         /// The staking balance.
         type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>
             + ReservableCurrency<Self::AccountId>;
@@ -116,11 +131,6 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-    }
-
-    /// Trait for converting a type A to a `sp_runtime::AccountId32`.
-    pub trait AccountIdConvertor<A> {
-        fn to_32(a: A) -> sp_runtime::AccountId32;
     }
 
     /// Denotes whether pallet is disabled (in maintenance mode) or not
@@ -229,19 +239,15 @@ pub mod pallet {
                 interior: Here,
             };
 
-            let staker_32 = T::AccountIdConvertor::to_32(staker.clone());
+            let staker_multi_address = T::Lookup::unlookup(staker.clone());
 
-            let staker_multi_address = MultiAddress::from(staker_32);
-
-            let create_nomination_pool =
-                polkadot_runtime::RuntimeCall::NominationPools(pallet_nomination_pools::Call::<
-                    polkadot_runtime::Runtime,
-                >::create {
-                    amount: 10000,
-                    root: staker_multi_address.clone(),
-                    nominator: staker_multi_address.clone(),
-                    bouncer: staker_multi_address.clone(),
-                });
+            let create_nomination_pool: NominationPoolsCall<T> =
+                NominationPoolsCall::Create(
+                    10000u32.into(),
+                    staker_multi_address.clone(),
+                    staker_multi_address.clone(),
+                    staker_multi_address.clone(),
+                );
 
             let mut calls = Vec::new();
 
@@ -281,3 +287,4 @@ impl<T: Config> Pallet<T> {
         }
     }
 }
+
