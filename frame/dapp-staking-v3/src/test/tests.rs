@@ -19,7 +19,8 @@
 use crate::test::mock::*;
 use crate::test::testing_utils::*;
 use crate::{
-    pallet as pallet_dapp_staking, ActiveProtocolState, DAppId, Error, IntegratedDApps, NextDAppId,
+    pallet as pallet_dapp_staking, ActiveProtocolState, DAppId, Error, IntegratedDApps, Ledger,
+    NextDAppId, StakeInfo,
 };
 
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Get};
@@ -368,15 +369,74 @@ fn lock_with_too_many_chunks_fails() {
 }
 
 #[test]
-fn unlock_is_ok() {
+fn unlock_basic_example_is_ok() {
     ExtBuilder::build().execute_with(|| {
         // Lock some amount
         let account = 2;
         let lock_amount = 101;
         assert_lock(account, lock_amount);
 
-        // Unlock some amount
+        // Unlock some amount in the same era that it was locked
         let first_unlock_amount = 7;
         assert_unlock(account, first_unlock_amount);
+
+        // Advance era and unlock additional amount
+        advance_to_era(ActiveProtocolState::<Test>::get().era + 1);
+        assert_unlock(account, first_unlock_amount);
+
+        // Lock a bit more, and unlock again
+        assert_lock(account, lock_amount);
+        assert_unlock(account, first_unlock_amount);
+    })
+}
+
+#[test]
+fn unlock_with_remaining_amount_below_threshold_is_ok() {
+    ExtBuilder::build().execute_with(|| {
+        // Lock some amount in a few eras
+        let account = 2;
+        let lock_amount = 101;
+        assert_lock(account, lock_amount);
+        advance_to_era(ActiveProtocolState::<Test>::get().era + 1);
+        assert_lock(account, lock_amount);
+        advance_to_era(ActiveProtocolState::<Test>::get().era + 3);
+
+        // Unlock such amount that remaining amount is below threshold, resulting in full unlock
+        let minimum_locked_amount: Balance =
+            <Test as pallet_dapp_staking::Config>::MinimumLockedAmount::get();
+        let ledger = Ledger::<Test>::get(&account);
+        assert_unlock(
+            account,
+            ledger.active_locked_amount() - minimum_locked_amount + 1,
+        );
+    })
+}
+
+#[test]
+fn unlock_with_amount_higher_than_avaiable_is_ok() {
+    ExtBuilder::build().execute_with(|| {
+        // Lock some amount in a few eras
+        let account = 2;
+        let lock_amount = 101;
+        assert_lock(account, lock_amount);
+        advance_to_era(ActiveProtocolState::<Test>::get().era + 1);
+        assert_lock(account, lock_amount);
+
+        // TODO: hacky, maybe improve later when staking is implemented?
+        let stake_amount = 91;
+        Ledger::<Test>::mutate(&account, |ledger| {
+            ledger.staked = StakeInfo {
+                amount: stake_amount,
+                period: ActiveProtocolState::<Test>::get().period,
+            }
+        });
+
+        // Try to unlock more than is available, due to active staked amount
+        assert_unlock(account, lock_amount - stake_amount + 1);
+
+        // Ensure there is no effect of staked amount once we move to the following period
+        assert_lock(account, lock_amount - stake_amount); // restore previous state
+        advance_to_period(ActiveProtocolState::<Test>::get().period + 1);
+        assert_unlock(account, lock_amount - stake_amount + 1);
     })
 }

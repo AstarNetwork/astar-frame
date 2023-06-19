@@ -257,7 +257,6 @@ pub(crate) fn assert_unlock(account: AccountId, amount: Balance) {
     // Verify ledger is as expected
     let period_number = pre_snapshot.active_protocol_state.period;
     let post_ledger = &post_snapshot.ledger[&account];
-    println!(">>> {:?}", post_ledger);
     assert_eq!(
         pre_ledger.active_locked_amount(),
         post_ledger.active_locked_amount() + expected_unlock_amount,
@@ -278,6 +277,11 @@ pub(crate) fn assert_unlock(account: AccountId, amount: Balance) {
         post_ledger.unlockable_amount(period_number) + expected_unlock_amount,
         "Unlockable amount should be decreased by the amount unlocked."
     );
+
+    // In case ledger is empty, it should have been removed from the storage
+    if post_ledger.is_empty() {
+        assert!(!Ledger::<Test>::contains_key(&account));
+    }
 
     // Verify era info post-state
     let pre_era_info = &pre_snapshot.current_era_info;

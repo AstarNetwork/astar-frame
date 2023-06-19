@@ -184,3 +184,11 @@ pub(crate) fn advance_to_era(era: EraNumber) {
     // TODO: Properly implement this later when additional logic has been implemented
     ActiveProtocolState::<Test>::mutate(|state| state.era = era);
 }
+
+/// Advance blocks until the specified period has been reached.
+///
+/// Function has no effect if period is already passed.
+pub(crate) fn advance_to_period(period: PeriodNumber) {
+    // TODO: Properly implement this later when additional logic has been implemented
+    ActiveProtocolState::<Test>::mutate(|state| state.period = period);
+}

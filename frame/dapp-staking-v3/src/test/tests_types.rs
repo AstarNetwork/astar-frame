@@ -320,6 +320,113 @@ fn account_ledger_subtract_lock_amount_with_only_one_locked_chunk() {
 }
 
 #[test]
+fn account_ledger_subtract_lock_amount_correct_zero_cleanup() {
+    get_u32_type!(LockedDummy, 5);
+    get_u32_type!(UnlockingDummy, 5);
+    let mut acc_ledger =
+        AccountLedger::<Balance, BlockNumber, LockedDummy, UnlockingDummy>::default();
+
+    // Ensure that zero entries are cleaned up correctly when required.
+    // There are a couple of distinct scenarios:
+    //    1. There is only one entry, and it's zero. The vector should be cleared & empty.
+    //    2. There are multiple entries, and the last one is zero. It's valid since it marks when someone fully unlocked.
+    //    3. Zero entry can exist in between two non-zero entries (not covered in this UT).
+
+    // 1st scenario (A) - only one zero entry, unlock is in the same era
+    let lock_amount = 17;
+    let lock_era = 2;
+    assert!(acc_ledger.add_lock_amount(lock_amount, lock_era).is_ok());
+    assert!(acc_ledger
+        .subtract_lock_amount(lock_amount, lock_era)
+        .is_ok());
+    assert!(acc_ledger.locked.is_empty());
+
+    // 1st scenario (B) - only one zero entry, unlock is in the previous era
+    assert!(acc_ledger.add_lock_amount(lock_amount, lock_era).is_ok());
+    assert!(acc_ledger
+        .subtract_lock_amount(lock_amount, lock_era - 1)
+        .is_ok());
+    assert!(acc_ledger.locked.is_empty());
+
+    // 2nd scenario - last entry is zero
+    let first_lock_era = 3;
+    let second_lock_era = 11;
+    let unlock_era = second_lock_era + 2;
+    assert!(acc_ledger
+        .add_lock_amount(lock_amount, first_lock_era)
+        .is_ok());
+    assert!(acc_ledger
+        .add_lock_amount(lock_amount, second_lock_era)
+        .is_ok());
+    // Following should add new entry, to mark when the user fully unlocked
+    assert!(acc_ledger
+        .subtract_lock_amount(acc_ledger.active_locked_amount(), unlock_era)
+        .is_ok());
+    assert_eq!(acc_ledger.locked.len(), 3);
+    assert!(acc_ledger.active_locked_amount().is_zero());
+}
+
+#[test]
+fn account_ledger_subtract_lock_amount_zero_entry_between_two_non_zero() {
+    get_u32_type!(LockedDummy, 5);
+    get_u32_type!(UnlockingDummy, 5);
+    let mut acc_ledger =
+        AccountLedger::<Balance, BlockNumber, LockedDummy, UnlockingDummy>::default();
+
+    let (first_lock_amount, second_lock_amount, third_lock_amount) = (17, 23, 29);
+    let (first_lock_era, second_lock_era, third_lock_era) = (1, 3, 7);
+
+    // Prepare scenario with 3 locked chunks
+    assert!(acc_ledger
+        .add_lock_amount(first_lock_amount, first_lock_era)
+        .is_ok());
+    assert!(acc_ledger
+        .add_lock_amount(second_lock_amount, second_lock_era)
+        .is_ok());
+    assert!(acc_ledger
+        .add_lock_amount(third_lock_amount, third_lock_era)
+        .is_ok());
+    assert_eq!(acc_ledger.locked.len(), 3);
+
+    // Unlock everything for the era right before the latest chunk era
+    // This should result in scenario like:
+    // [17, 17 + 23, 0, 29]
+    assert!(acc_ledger
+        .subtract_lock_amount(first_lock_amount + second_lock_amount, third_lock_era - 1)
+        .is_ok());
+    assert_eq!(acc_ledger.locked.len(), 4);
+    assert_eq!(acc_ledger.active_locked_amount(), third_lock_amount);
+    assert_eq!(
+        acc_ledger.locked[0],
+        LockedChunk {
+            amount: first_lock_amount,
+            era: first_lock_era
+        }
+    );
+    assert_eq!(
+        acc_ledger.locked[1],
+        LockedChunk {
+            amount: first_lock_amount + second_lock_amount,
+            era: second_lock_era
+        }
+    );
+    assert_eq!(
+        acc_ledger.locked[2],
+        LockedChunk {
+            amount: 0,
+            era: third_lock_era - 1
+        }
+    );
+    assert_eq!(
+        acc_ledger.locked[3],
+        LockedChunk {
+            amount: third_lock_amount,
+            era: third_lock_era
+        }
+    );
+}
+
+#[test]
 fn account_ledger_add_unlocking_chunk_works() {
     get_u32_type!(LockedDummy, 5);
     get_u32_type!(UnlockingDummy, 5);

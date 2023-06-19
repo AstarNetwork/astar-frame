@@ -324,17 +324,18 @@ where
         if amount.is_zero() || self.locked.is_empty() {
             return Ok(());
         }
-        // TODO: this method can surely be optimized (avoid too many iters) but focus on that later, when it's all working fine.
+        // TODO: this method can surely be optimized (avoid too many iters) but focus on that later,
+        // when it's all working fine, and we have good test coverage.
 
         // Find the most relevant locked chunk for the specified era
         let index = if let Some(index) = self.locked.iter().rposition(|&chunk| chunk.era <= era) {
             index
         } else {
-            // Covers scenario when there's only 1 chunk for the next era
-            // TODO test this too!
+            // Covers scenario when there's only 1 chunk for the next era, and remove it if it's zero.
             self.locked
                 .iter_mut()
                 .for_each(|chunk| chunk.amount.saturating_reduce(amount));
+            self.locked.retain(|chunk| !chunk.amount.is_zero());
             return Ok(());
         };
 
@@ -352,11 +353,13 @@ where
             index + 1
         };
 
-        // Update all chunks after the relevant one, and remove zero chunks
+        // Update all chunks after the relevant one, and remove eligible zero chunks
         inner[relevant_chunk_index + 1..]
             .iter_mut()
             .for_each(|chunk| chunk.amount.saturating_reduce(amount));
-        inner.retain(|chunk| !chunk.amount.is_zero());
+        if inner.len() == 1 && inner[0].amount.is_zero() {
+            inner.pop();
+        }
 
         // Update `locked` to the new vector
         self.locked = BoundedVec::try_from(inner).map_err(|_| ())?;
