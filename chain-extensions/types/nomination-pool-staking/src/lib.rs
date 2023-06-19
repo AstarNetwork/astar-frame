@@ -18,8 +18,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use frame_support::pallet_prelude::MaxEncodedLen;
-use openbrush::contracts::pausable::PausableError;
-use openbrush::traits::String;
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{DispatchError, ModuleError};
 
@@ -31,8 +29,6 @@ pub enum NPSError {
     Success = 0,
     /// Not enough balance
     NotEnoughBalance = 1,
-    /// Custom error
-    Custom(String) = 98,
     /// Unknown error
     UnknownError = 99,
 }
@@ -42,27 +38,25 @@ impl From<NPSError> for u32 {
         match error {
             NPSError::Success => 0,
             NPSError::NotEnoughBalance => 1,
-            NPSError::Custom(_) => 98,
             NPSError::UnknownError => 99,
         }
     }
 }
 
-impl From<PausableError> for NPSError {
-    fn from(pausable: PausableError) -> Self {
-        match pausable {
-            PausableError::Paused => NPSError::Custom(String::from("P::Paused")),
-            PausableError::NotPaused => NPSError::Custom(String::from("P::NotPaused")),
-        }
-    }
-}
+// impl From<PausableError> for NPSError {
+//     fn from(pausable: PausableError) -> Self {
+//         match pausable {
+//             PausableError::Paused => NPSError::Custom(String::from("P::Paused")),
+//             PausableError::NotPaused => NPSError::Custom(String::from("P::NotPaused")),
+//         }
+//     }
+// }
 
-impl ink::env::chain_extension::FromStatusCode for NPSError {
+impl ink_env::chain_extension::FromStatusCode for NPSError {
     fn from_status_code(status_code: u32) -> Result<(), Self> {
         match status_code {
             0 => Ok(()),
             1 => Err(NPSError::NotEnoughBalance),
-            98 => Err(NPSError::Custom(String::from("P::Unknown"))),
             99 => Err(NPSError::UnknownError),
             _ => Err(NPSError::UnknownError),
         }
