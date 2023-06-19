@@ -427,6 +427,30 @@ fn account_ledger_subtract_lock_amount_zero_entry_between_two_non_zero() {
 }
 
 #[test]
+fn account_ledger_subtract_lock_amount_consecutive_zeroes_merged() {
+    get_u32_type!(LockedDummy, 5);
+    get_u32_type!(UnlockingDummy, 5);
+    let mut acc_ledger =
+        AccountLedger::<Balance, BlockNumber, LockedDummy, UnlockingDummy>::default();
+
+    // Prepare scenario with 3 locked chunks, where the middle one is zero
+    let lock_amount = 61;
+    let last_era = 11;
+    assert!(acc_ledger.add_lock_amount(lock_amount, 2).is_ok());
+    assert!(acc_ledger.subtract_lock_amount(lock_amount, 5).is_ok());
+    assert!(acc_ledger.add_lock_amount(lock_amount, last_era).is_ok());
+    let second_chunk = acc_ledger.locked[1];
+
+    // Unlock everything in the era right before the latest chunk era, but that chunk should not persist
+    // [61, 0, 61] --> [61, 0, 0, 61] shouldn't happen since the 2nd zero is redundant.
+    assert!(acc_ledger
+        .subtract_lock_amount(lock_amount, last_era - 1)
+        .is_ok());
+    assert_eq!(acc_ledger.locked.len(), 3);
+    assert_eq!(acc_ledger.locked[1], second_chunk);
+}
+
+#[test]
 fn account_ledger_add_unlocking_chunk_works() {
     get_u32_type!(LockedDummy, 5);
     get_u32_type!(UnlockingDummy, 5);

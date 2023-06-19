@@ -173,7 +173,7 @@ pub(crate) fn _run_to_block(n: u64) {
 
 /// Run for the specified number of blocks.
 /// Function assumes first block has been initialized.
-pub(crate) fn _run_for_blocks(n: u64) {
+pub(crate) fn run_for_blocks(n: u64) {
     _run_to_block(System::block_number() + n);
 }
 

@@ -357,6 +357,18 @@ where
         inner[relevant_chunk_index + 1..]
             .iter_mut()
             .for_each(|chunk| chunk.amount.saturating_reduce(amount));
+
+        // Merge all consecutive zero chunks
+        let mut i = relevant_chunk_index;
+        while i < inner.len() - 1 {
+            if inner[i].amount.is_zero() && inner[i + 1].amount.is_zero() {
+                inner.remove(i + 1);
+            } else {
+                i += 1;
+            }
+        }
+
+        // Cleanup if only one zero chunk exists
         if inner.len() == 1 && inner[0].amount.is_zero() {
             inner.pop();
         }

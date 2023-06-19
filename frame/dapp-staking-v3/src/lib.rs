@@ -464,7 +464,7 @@ pub mod pallet {
             };
 
             // Sanity check
-            ensure!(!amount.is_zero(), Error::<T>::ZeroAmount);
+            ensure!(!amount_to_unlock.is_zero(), Error::<T>::ZeroAmount);
 
             // Update ledger with new lock and unlocking amounts
             ledger
