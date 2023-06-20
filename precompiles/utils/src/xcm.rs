@@ -312,10 +312,6 @@ impl EvmData for Junction {
     fn has_static_size() -> bool {
         false
     }
-
-    // fn signature() -> String {
-    // 	UnboundedBytes::signature()
-    // }
 }
 
 impl EvmData for Junctions {
@@ -339,10 +335,6 @@ impl EvmData for Junctions {
     fn has_static_size() -> bool {
         false
     }
-
-    // fn signature() -> String {
-    // 	Vec::<Junction>::signature()
-    // }
 }
 
 // Cannot used derive macro since it is a foreign struct.
@@ -359,8 +351,4 @@ impl EvmData for MultiLocation {
     fn has_static_size() -> bool {
         <(u8, Junctions)>::has_static_size()
     }
-
-    // fn signature() -> String {
-    // 	<(u8, Junctions)>::signature()
-    // }
 }

@@ -37,7 +37,7 @@ use pallet_evm::{GasWeightMapping, Log};
 use sp_core::{H160, H256, U256};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
 
-mod bytes;
+pub mod bytes;
 mod data;
 mod xcm;
 

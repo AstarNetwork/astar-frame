@@ -23,8 +23,11 @@ use fp_evm::{PrecompileHandle, PrecompileOutput};
 use frame_support::{
     dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
     pallet_prelude::Weight,
-    traits::Get,
+    traits::{ConstU32, Get},
 };
+pub const XCM_SIZE_LIMIT: u32 = 2u32.pow(16);
+type GetXcmSizeLimit = ConstU32<XCM_SIZE_LIMIT>;
+
 use pallet_evm::{AddressMapping, Precompile};
 use parity_scale_codec::DecodeLimit;
 use sp_core::{H160, U256};
@@ -36,8 +39,8 @@ use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
 use precompile_utils::{
-    revert, succeed, Address, Bytes, EvmDataWriter, EvmResult, FunctionModifier,
-    PrecompileHandleExt, RuntimeHelper,
+    bytes::BoundedBytes, revert, succeed, Address, Bytes, EvmDataWriter, EvmResult,
+    FunctionModifier, PrecompileHandleExt, RuntimeHelper,
 };
 #[cfg(test)]
 mod mock;
@@ -91,14 +94,6 @@ where
     }
 }
 
-/// The supported beneficiary account types
-// enum BeneficiaryType {
-//     /// 256 bit (32 byte) public key
-//     Account32,
-//     /// 160 bit (20 byte) address is expected
-//     Account20,
-// }
-
 impl<Runtime, C> XcmPrecompile<Runtime, C>
 where
     Runtime: pallet_evm::Config
@@ -144,6 +139,10 @@ where
 
         let fee_asset_item: u32 = input.read::<U256>()?.low_u32();
 
+        log::trace!(target: "xcm-precompile::asset_withdraw", "Raw arguments: assets: {:?}, asset_amount: {:?} \
+         beneficiart: {:?}, destination: {:?}, fee_index: {}",
+        assets, amounts_raw, beneficiary, dest, fee_asset_item);
+
         if fee_asset_item as usize > assets.len() {
             return Err(revert("Bad fee index."));
         }
@@ -178,10 +177,6 @@ where
         let mut input = handle.read_input()?;
         input.expect_arguments(6)?;
 
-        // Raw call arguments
-        // let para_id: u32 = input.read::<U256>()?.low_u32();
-        // let is_relay = input.read::<bool>()?;
-
         let dest: MultiLocation = input.read::<MultiLocation>()?;
         let fee_asset_addr = input.read::<Address>()?;
         let fee_amount = input.read::<U256>()?;
@@ -190,16 +185,9 @@ where
         let transact_weight = input.read::<u64>()?;
         let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
 
-        // log::trace!(target: "xcm-precompile:remote_transact", "Raw arguments: para_id: {}, is_relay: {}, fee_asset_addr: {:?}, \
-        //  fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
-        // para_id, is_relay, fee_asset_addr, fee_amount, remote_call, transact_weight);
-
-        // Process arguments
-        // let dest = if is_relay {
-        //     MultiLocation::parent()
-        // } else {
-        //     X1(Junction::Parachain(para_id)).into_exterior(1)
-        // };
+        log::trace!(target: "xcm-precompile::remote_transact", "Raw arguments: dest: {:?}, fee_asset_addr: {:?} \
+         fee_amount: {:?}, remote_call: {:?}, transact_weight: {}",
+        dest, fee_asset_addr, fee_amount, remote_call, transact_weight);
 
         let fee_asset = {
             let address: H160 = fee_asset_addr.into();
@@ -321,13 +309,6 @@ where
             return Err(revert("Bad fee index."));
         }
 
-        // // Prepare pallet-xcm call arguments
-        // let dest = if is_relay {
-        //     MultiLocation::parent()
-        // } else {
-        //     X1(Junction::Parachain(parachain_id)).into_exterior(1)
-        // };
-
         let assets: MultiAssets = assets
             .iter()
             .cloned()
@@ -360,21 +341,15 @@ where
 
         // Raw call arguments
         let dest: MultiLocation = input.read::<MultiLocation>()?;
-        let xcm_call: Vec<u8> = input.read::<Bytes>()?.into();
+        let xcm_call: Vec<u8> = input.read::<BoundedBytes<GetXcmSizeLimit>>()?.into();
 
-        // log::trace!(target:"xcm-precompile", "Raw arguments: xcm_call: {:?}, is_relay: {}, destination_parachain_id: {:?}", xcm_call, is_relay,dest_para_id);
+        log::trace!(target:"xcm-precompile::send_xcm", "Raw arguments: dest: {:?}, xcm_call: {:?}", dest, xcm_call);
 
         let xcm = xcm::VersionedXcm::<()>::decode_all_with_depth_limit(
             xcm::MAX_XCM_DECODE_DEPTH,
             &mut xcm_call.as_slice(),
         )
         .map_err(|_| revert("Failed to decode xcm instructions"))?;
-
-        // let dest = if is_relay {
-        //     MultiLocation::parent()
-        // } else {
-        //     X1(Junction::Parachain(dest_para_id)).into_exterior(1)
-        // };
 
         // Build call with origin.
         let origin = Some(Runtime::AddressMapping::into_account_id(
