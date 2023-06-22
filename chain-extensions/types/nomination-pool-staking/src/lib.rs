@@ -52,16 +52,16 @@ impl From<NPSError> for u32 {
 //     }
 // }
 
-impl ink_env::chain_extension::FromStatusCode for NPSError {
-    fn from_status_code(status_code: u32) -> Result<(), Self> {
-        match status_code {
-            0 => Ok(()),
-            1 => Err(NPSError::NotEnoughBalance),
-            99 => Err(NPSError::UnknownError),
-            _ => Err(NPSError::UnknownError),
-        }
-    }
-}
+// impl ink_env::chain_extension::FromStatusCode for NPSError {
+//     fn from_status_code(status_code: u32) -> Result<(), Self> {
+//         match status_code {
+//             0 => Ok(()),
+//             1 => Err(NPSError::NotEnoughBalance),
+//             99 => Err(NPSError::UnknownError),
+//             _ => Err(NPSError::UnknownError),
+//         }
+//     }
+// }
 
 impl TryFrom<DispatchError> for NPSError {
     type Error = DispatchError;
