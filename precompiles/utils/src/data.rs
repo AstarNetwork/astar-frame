@@ -87,7 +87,7 @@ impl From<Bytes> for Vec<u8> {
 /// Provide functions to parse common types.
 #[derive(Clone, Copy, Debug)]
 pub struct EvmDataReader<'a> {
-    input: &'a [u8],
+    pub(crate) input: &'a [u8],
     cursor: usize,
 }
 
@@ -173,9 +173,6 @@ impl<'a> EvmDataReader<'a> {
             input: &self.input[offset..],
             cursor: 0,
         })
-    }
-    pub fn input(&mut self) -> &[u8] {
-        self.input
     }
 
     /// Read remaining bytes

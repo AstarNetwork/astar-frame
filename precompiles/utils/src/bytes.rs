@@ -107,7 +107,7 @@ impl<K: Kind, S: Get<u32>> EvmData for BoundedBytesString<K, S> {
         let range = inner_reader.move_cursor(array_size)?;
 
         let data = inner_reader
-            .input()
+            .input
             .get(range)
             .ok_or_else(|| revert(K::signature()))?;
 
@@ -147,9 +147,6 @@ impl<K: Kind, S: Get<u32>> EvmData for BoundedBytesString<K, S> {
         false
     }
 
-    // fn signature() -> String {
-    // 	K::signature()
-    // }
 }
 
 // BytesString <=> Vec/&[u8]
