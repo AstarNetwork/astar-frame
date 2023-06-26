@@ -20,9 +20,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Utils.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::bytes::UnboundedBytes;
+
 use super::*;
 use hex_literal::hex;
 use sp_core::{H256, U256};
+use {
+    crate::xcm::{network_id_from_bytes, network_id_to_bytes},
+    ::xcm::latest::{Junction, Junctions, NetworkId},
+};
 
 fn u256_repeat_byte(byte: u8) -> U256 {
     let value = H256::repeat_byte(byte);
@@ -505,13 +511,50 @@ fn read_bytes() {
 
     assert_eq!(data, parsed.as_bytes());
 }
+#[test]
+fn read_unbounded_bytes() {
+    let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
+	tempor incididunt ut labore et dolore magna aliqua.";
+    let writer_output = EvmDataWriter::new()
+        .write(UnboundedBytes::from(&data[..]))
+        .build();
 
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: UnboundedBytes = reader.read().expect("to correctly parse Bytes");
+
+    assert_eq!(data, parsed.as_bytes());
+}
 #[test]
 fn write_bytes() {
     let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
 	tempor incididunt ut labore et dolore magna aliqua.";
 
     let writer_output = EvmDataWriter::new().write(Bytes::from(&data[..])).build();
+
+    // We can read this "manualy" using simpler functions.
+    let mut reader = EvmDataReader::new(&writer_output);
+
+    // We pad data to a multiple of 32 bytes.
+    let mut padded = data.to_vec();
+    assert!(data.len() < 0x80);
+    padded.resize(0x80, 0);
+
+    assert_eq!(reader.read::<U256>().expect("read offset"), 32.into());
+    assert_eq!(reader.read::<U256>().expect("read size"), data.len().into());
+    let mut read = |e| reader.read::<H256>().expect(e); // shorthand
+    assert_eq!(read("read part 1"), H256::from_slice(&padded[0x00..0x20]));
+    assert_eq!(read("read part 2"), H256::from_slice(&padded[0x20..0x40]));
+    assert_eq!(read("read part 3"), H256::from_slice(&padded[0x40..0x60]));
+    assert_eq!(read("read part 4"), H256::from_slice(&padded[0x60..0x80]));
+}
+#[test]
+fn write_unbounded_bytes() {
+    let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
+	tempor incididunt ut labore et dolore magna aliqua.";
+
+    let writer_output = EvmDataWriter::new()
+        .write(UnboundedBytes::from(&data[..]))
+        .build();
 
     // We can read this "manualy" using simpler functions.
     let mut reader = EvmDataReader::new(&writer_output);
@@ -618,7 +661,61 @@ fn write_vec_bytes() {
     assert_eq!(read("read part 3"), H256::from_slice(&padded[0x40..0x60]));
     assert_eq!(read("read part 4"), H256::from_slice(&padded[0x60..0x80]));
 }
+#[test]
+fn write_vec_unbounded_bytes() {
+    let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
+	tempor incididunt ut labore et dolore magna aliqua.";
 
+    let writer_output = EvmDataWriter::new()
+        .write(vec![
+            UnboundedBytes::from(&data[..]),
+            UnboundedBytes::from(&data[..]),
+        ])
+        .build();
+
+    writer_output
+        .chunks_exact(32)
+        .map(|chunk| H256::from_slice(chunk))
+        .for_each(|hash| println!("{:?}", hash));
+
+    // We pad data to a multiple of 32 bytes.
+    let mut padded = data.to_vec();
+    assert!(data.len() < 0x80);
+    padded.resize(0x80, 0);
+
+    let mut reader = EvmDataReader::new(&writer_output);
+
+    // Offset of vec
+    assert_eq!(reader.read::<U256>().expect("read offset"), 32.into());
+
+    // Length of vec
+    assert_eq!(reader.read::<U256>().expect("read offset"), 2.into());
+
+    // Relative offset of first bytgmes object
+    assert_eq!(reader.read::<U256>().expect("read offset"), 0x40.into());
+    // Relative offset of second bytes object
+    assert_eq!(reader.read::<U256>().expect("read offset"), 0xe0.into());
+
+    // Length of first bytes object
+    assert_eq!(reader.read::<U256>().expect("read size"), data.len().into());
+
+    // First byte objects data
+    let mut read = |e| reader.read::<H256>().expect(e); // shorthand
+    assert_eq!(read("read part 1"), H256::from_slice(&padded[0x00..0x20]));
+    assert_eq!(read("read part 2"), H256::from_slice(&padded[0x20..0x40]));
+    assert_eq!(read("read part 3"), H256::from_slice(&padded[0x40..0x60]));
+    assert_eq!(read("read part 4"), H256::from_slice(&padded[0x60..0x80]));
+
+    // Length of second bytes object
+    assert_eq!(reader.read::<U256>().expect("read size"), data.len().into());
+
+    // Second byte objects data
+    let mut read = |e| reader.read::<H256>().expect(e); // shorthand
+    assert_eq!(read("read part 1"), H256::from_slice(&padded[0x00..0x20]));
+    assert_eq!(read("read part 2"), H256::from_slice(&padded[0x20..0x40]));
+    assert_eq!(read("read part 3"), H256::from_slice(&padded[0x40..0x60]));
+    assert_eq!(read("read part 4"), H256::from_slice(&padded[0x60..0x80]));
+}
 #[test]
 fn read_vec_of_bytes() {
     let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
@@ -743,4 +840,168 @@ fn read_complex_solidity_function() {
 
     // weight
     assert_eq!(reader.read::<U256>().unwrap(), 100u32.into());
+}
+
+#[test]
+fn read_dynamic_size_tuple() {
+    // (uint8, bytes[]) encoded by web3
+    let data = hex!(
+        "0000000000000000000000000000000000000000000000000000000000000020
+		0000000000000000000000000000000000000000000000000000000000000001
+		0000000000000000000000000000000000000000000000000000000000000040
+		0000000000000000000000000000000000000000000000000000000000000001
+		0000000000000000000000000000000000000000000000000000000000000020
+		0000000000000000000000000000000000000000000000000000000000000001
+		0100000000000000000000000000000000000000000000000000000000000000"
+    );
+
+    let mut reader = EvmDataReader::new(&data);
+
+    assert_eq!(
+        reader.read::<(u8, Vec<UnboundedBytes>)>().unwrap(),
+        (1, vec![UnboundedBytes::from(vec![0x01])])
+    );
+}
+#[test]
+fn junctions_decoder_works() {
+    let writer_output = EvmDataWriter::new()
+        .write(Junctions::X1(Junction::OnlyChild))
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junctions = reader
+        .read::<Junctions>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(parsed, Junctions::X1(Junction::OnlyChild));
+
+    let writer_output = EvmDataWriter::new()
+        .write(Junctions::X2(Junction::OnlyChild, Junction::OnlyChild))
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junctions = reader
+        .read::<Junctions>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(
+        parsed,
+        Junctions::X2(Junction::OnlyChild, Junction::OnlyChild)
+    );
+
+    let writer_output = EvmDataWriter::new()
+        .write(Junctions::X3(
+            Junction::OnlyChild,
+            Junction::OnlyChild,
+            Junction::OnlyChild,
+        ))
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junctions = reader
+        .read::<Junctions>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(
+        parsed,
+        Junctions::X3(
+            Junction::OnlyChild,
+            Junction::OnlyChild,
+            Junction::OnlyChild
+        ),
+    );
+}
+
+#[test]
+fn junction_decoder_works() {
+    let writer_output = EvmDataWriter::new().write(Junction::Parachain(0)).build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junction = reader
+        .read::<Junction>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(parsed, Junction::Parachain(0));
+
+    let writer_output = EvmDataWriter::new()
+        .write(Junction::AccountId32 {
+            network: None,
+            id: [1u8; 32],
+        })
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junction = reader
+        .read::<Junction>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(
+        parsed,
+        Junction::AccountId32 {
+            network: None,
+            id: [1u8; 32],
+        }
+    );
+
+    let writer_output = EvmDataWriter::new()
+        .write(Junction::AccountIndex64 {
+            network: None,
+            index: u64::from_be_bytes([1u8; 8]),
+        })
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junction = reader
+        .read::<Junction>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(
+        parsed,
+        Junction::AccountIndex64 {
+            network: None,
+            index: u64::from_be_bytes([1u8; 8]),
+        }
+    );
+
+    let writer_output = EvmDataWriter::new()
+        .write(Junction::AccountKey20 {
+            network: None,
+            key: H160::repeat_byte(0xAA).as_bytes().try_into().unwrap(),
+        })
+        .build();
+
+    let mut reader = EvmDataReader::new(&writer_output);
+    let parsed: Junction = reader
+        .read::<Junction>()
+        .expect("to correctly parse Junctions");
+
+    assert_eq!(
+        parsed,
+        Junction::AccountKey20 {
+            network: None,
+            key: H160::repeat_byte(0xAA).as_bytes().try_into().unwrap(),
+        }
+    );
+}
+
+#[test]
+fn network_id_decoder_works() {
+    assert_eq!(network_id_from_bytes(network_id_to_bytes(None)), Ok(None));
+
+    let mut name = [0u8; 32];
+    name[0..6].copy_from_slice(b"myname");
+    assert_eq!(
+        network_id_from_bytes(network_id_to_bytes(Some(NetworkId::ByGenesis(name)))),
+        Ok(Some(NetworkId::ByGenesis(name)))
+    );
+
+    assert_eq!(
+        network_id_from_bytes(network_id_to_bytes(Some(NetworkId::Kusama))),
+        Ok(Some(NetworkId::Kusama))
+    );
+
+    assert_eq!(
+        network_id_from_bytes(network_id_to_bytes(Some(NetworkId::Polkadot))),
+        Ok(Some(NetworkId::Polkadot))
+    );
 }
