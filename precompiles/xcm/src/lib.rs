@@ -225,21 +225,6 @@ where
                 fees: fee_multilocation.clone().into(),
                 weight_limit: WeightLimit::Unlimited,
             },
-            SetAppendix(Xcm(vec![DepositAsset {
-                assets: All.into(),
-                beneficiary: MultiLocation {
-                    parents: 1,
-                    interior: X2(
-                        // last() returns the last Juction Enum in Junctions
-                        // for Univeral Location it is the Parachain() variant
-                        *context.last().unwrap(),
-                        AccountId32 {
-                            network: None,
-                            id: origin.into(),
-                        },
-                    ),
-                },
-            }])),
             Transact {
                 origin_kind: OriginKind::SovereignAccount,
                 require_weight_at_most: Weight::from_ref_time(transact_weight),
