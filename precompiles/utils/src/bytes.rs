@@ -146,7 +146,6 @@ impl<K: Kind, S: Get<u32>> EvmData for BoundedBytesString<K, S> {
     fn has_static_size() -> bool {
         false
     }
-
 }
 
 // BytesString <=> Vec/&[u8]
