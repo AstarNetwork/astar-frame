@@ -107,8 +107,7 @@ impl<K: Kind, S: Get<u32>> EvmData for BoundedBytesString<K, S> {
         let range = inner_reader.move_cursor(array_size)?;
 
         let data = inner_reader
-            .input
-            .get(range)
+            .get_input_from_range(range)
             .ok_or_else(|| revert(K::signature()))?;
 
         let bytes = Self {

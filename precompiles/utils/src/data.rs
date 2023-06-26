@@ -87,7 +87,7 @@ impl From<Bytes> for Vec<u8> {
 /// Provide functions to parse common types.
 #[derive(Clone, Copy, Debug)]
 pub struct EvmDataReader<'a> {
-    pub(crate) input: &'a [u8],
+    input: &'a [u8],
     cursor: usize,
 }
 
@@ -173,6 +173,11 @@ impl<'a> EvmDataReader<'a> {
             input: &self.input[offset..],
             cursor: 0,
         })
+    }
+
+    /// Return Option<&[u8]> from a given range for EvmDataReader
+    pub fn get_input_from_range(&self, range: Range<usize>) -> Option<&[u8]> {
+        self.input.get(range)
     }
 
     /// Read remaining bytes
