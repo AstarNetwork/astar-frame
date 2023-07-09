@@ -511,6 +511,7 @@ fn read_bytes() {
 
     assert_eq!(data, parsed.as_bytes());
 }
+
 #[test]
 fn read_unbounded_bytes() {
     let data = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\
