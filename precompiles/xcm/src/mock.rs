@@ -46,6 +46,9 @@ use xcm_builder::{
     AllowTopLevelPaidExecutionFrom, FixedWeightBounds, SignedToAccountId32, TakeWeightCredit,
 };
 use xcm_executor::XcmExecutor;
+// orml imports
+use orml_traits::location::{RelativeReserveProvider, Reserve};
+use orml_xcm_support::DisabledParachainFee;
 
 pub type AccountId = TestAccount;
 pub type AssetId = u128;
@@ -53,6 +56,22 @@ pub type Balance = u128;
 pub type BlockNumber = u64;
 pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 pub type Block = frame_system::mocking::MockBlock<Runtime>;
+pub type CurrencyId = u128;
+
+/// Multilocations for assetId
+const PARENT: MultiLocation = MultiLocation::parent();
+const PARACHAIN: MultiLocation = MultiLocation {
+    parents: 1,
+    interior: Junctions::X1(Parachain(10)),
+};
+const GENERAL_INDEX: MultiLocation = MultiLocation {
+    parents: 1,
+    interior: Junctions::X2(Parachain(10), GeneralIndex(20)),
+};
+const LOCAL_ASSET: MultiLocation = MultiLocation {
+    parents: 0,
+    interior: Junctions::X1(GeneralIndex(20)),
+};
 
 pub const PRECOMPILE_ADDRESS: H160 = H160::repeat_byte(0x7B);
 pub const ASSET_PRECOMPILE_ADDRESS_PREFIX: &[u8] = &[255u8; 4];
@@ -144,6 +163,49 @@ impl AddressToAssetId<AssetId> for Runtime {
         data[0..4].copy_from_slice(ASSET_PRECOMPILE_ADDRESS_PREFIX);
         data[4..20].copy_from_slice(&asset_id.to_be_bytes());
         H160::from(data)
+    }
+}
+
+pub struct CurrencyIdToMultiLocation;
+
+impl sp_runtime::traits::Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdToMultiLocation {
+    fn convert(currency: CurrencyId) -> Option<MultiLocation> {
+        match currency {
+            a if a == 1u128 => Some(PARENT),
+            a if a == 2u128 => Some(PARACHAIN),
+            a if a == 3u128 => Some(GENERAL_INDEX),
+            a if a == 4u128 => Some(LOCAL_ASSET),
+            _ => None,
+        }
+    }
+}
+
+/// Convert `AccountId` to `MultiLocation`.
+pub struct AccountIdToMultiLocation;
+impl sp_runtime::traits::Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+    fn convert(account: AccountId) -> MultiLocation {
+        X1(AccountId32 {
+            network: None,
+            id: account.into(),
+        })
+        .into()
+    }
+}
+
+/// `MultiAsset` reserve location provider. It's based on `RelativeReserveProvider` and in
+/// addition will convert self absolute location to relative location.
+pub struct AbsoluteAndRelativeReserveProvider<AbsoluteLocation>(PhantomData<AbsoluteLocation>);
+impl<AbsoluteLocation: Get<MultiLocation>> Reserve
+    for AbsoluteAndRelativeReserveProvider<AbsoluteLocation>
+{
+    fn reserve(asset: &MultiAsset) -> Option<MultiLocation> {
+        RelativeReserveProvider::reserve(asset).map(|reserve_location| {
+            if reserve_location == AbsoluteLocation::get() {
+                MultiLocation::here()
+            } else {
+                reserve_location
+            }
+        })
     }
 }
 
@@ -376,6 +438,14 @@ impl xcm_executor::Config for XcmConfig {
 
 parameter_types! {
     pub static AdvertisedXcmVersion: XcmVersion = 3;
+    pub const MaxAssetsForTransfer: usize = 2;
+    pub const SelfLocation: MultiLocation = Here.into_location();
+    pub SelfLocationAbsolute: MultiLocation = MultiLocation {
+        parents: 1,
+        interior: X1(
+            Parachain(123)
+        )
+    };
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, AnyNetwork>;
@@ -448,6 +518,24 @@ impl pallet_xcm::Config for Runtime {
     type ReachableDest = ReachableDest;
 }
 
+impl orml_xtokens::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Balance = Balance;
+    type CurrencyId = AssetId;
+    type CurrencyIdConvert = CurrencyIdToMultiLocation;
+    type AccountIdToMultiLocation = AccountIdToMultiLocation;
+    type SelfLocation = SelfLocation;
+    type XcmExecutor = XcmExecutor<XcmConfig>;
+    type Weigher = FixedWeightBounds<BaseXcmWeight, RuntimeCall, MaxInstructions>;
+    type BaseXcmWeight = UnitWeightCost;
+    type UniversalLocation = UniversalLocation;
+    type MaxAssetsForTransfer = MaxAssetsForTransfer;
+    // Default impl. Refer to `orml-xtokens` docs for more details.
+    type MinXcmFee = DisabledParachainFee;
+    type MultiLocationsFilter = Everything;
+    type ReserveProvider = AbsoluteAndRelativeReserveProvider<SelfLocationAbsolute>;
+}
+
 // Configure a mock runtime to test the pallet.
 construct_runtime!(
     pub enum Runtime where
@@ -461,6 +549,7 @@ construct_runtime!(
         Evm: pallet_evm,
         Timestamp: pallet_timestamp,
         XcmPallet: pallet_xcm,
+        Xtokens: orml_xtokens,
     }
 );
 
@@ -477,4 +566,10 @@ impl ExtBuilder {
         ext.execute_with(|| System::set_block_number(1));
         ext
     }
+}
+pub(crate) fn events() -> Vec<RuntimeEvent> {
+    System::events()
+        .into_iter()
+        .map(|r| r.event)
+        .collect::<Vec<_>>()
 }

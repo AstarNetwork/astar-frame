@@ -636,3 +636,64 @@ mod xcm_new_interface_test {
         })
     }
 }
+
+mod xtokens_interface_test {
+    use super::*;
+    #[test]
+    fn xtokens_transfer_works() {
+        ExtBuilder::default().build().execute_with(|| {
+            let parent_destination = MultiLocation {
+                parents: 1,
+                interior: Junctions::X1(Junction::AccountId32 {
+                    network: None,
+                    id: [1u8; 32],
+                }),
+            };
+
+            let sibling_parachain_location = MultiLocation {
+                parents: 1,
+                interior: Junctions::X2(
+                    Junction::Parachain(10),
+                    Junction::AccountId32 {
+                        network: None,
+                        id: [1u8; 32],
+                    },
+                ),
+            };
+
+            // sending relay token back to relay chain
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransfer)
+                        .write(Address::from(Runtime::asset_id_to_address(1u128))) // zero address by convention
+                        .write(U256::from(42000u64))
+                        .write(parent_destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_returns(EvmDataWriter::new().write(true).build());
+
+            println!("{:?}", events());
+
+            // sending parachain token back to parachain
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransfer)
+                        .write(Address::from(Runtime::asset_id_to_address(2u128))) // zero address by convention
+                        .write(U256::from(42000u64))
+                        .write(sibling_parachain_location)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_returns(EvmDataWriter::new().write(true).build());
+
+            println!("{:?}", events());
+        });
+    }
+}
