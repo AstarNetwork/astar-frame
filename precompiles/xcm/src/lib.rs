@@ -34,7 +34,7 @@ use sp_core::{H160, H256, U256};
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
-use xcm::{latest::prelude::*, VersionedMultiLocation};
+use xcm::{latest::prelude::*, VersionedMultiAsset, VersionedMultiLocation};
 use xcm_executor::traits::Convert;
 
 use pallet_evm_precompile_assets_erc20::AddressToAssetId;
@@ -63,8 +63,9 @@ pub enum Action {
         "assets_reserve_transfer(address[],uint256[],(uint8,bytes[]),(uint8,bytes[]),uint256)",
     SendXCM = "send_xcm((uint8,bytes[]),bytes)",
     XtokensTransfer = "transfer(address,uint256,(uint8,bytes[]),uint64)",
-    //     XtokensTransferWithFee = "transfer_with_fee(address,uint256,uint256,(uint8,bytes[]),uint64)",
-    //     XtokensTransferMultiasset = "transfer_multiasset((uint8,bytes[]),uint256,(uint8,bytes[]),uint64)",
+    XtokensTransferWithFee = "transfer_with_fee(address,uint256,uint256,(uint8,bytes[]),uint64)",
+    XtokensTransferMultiasset =
+        "transfer_multiasset((uint8,bytes[]),uint256,(uint8,bytes[]),uint64)",
     //     XtokensTransferMultiassetWithFee = "transfer_multiasset_with_fee((uint8,bytes[]),uint256,uint256,(uint8,bytes[]),uint64)",
     //     XtokensTransferMulticurrencies = "transfer_multi_currencies((address,uint256)[],uint32,(uint8,bytes[]),uint64)",
     //     XtokensTransferMultiassets = "transfet_multi_assets(((uint8,bytes[]),uint256)[],uint32,(uint8,bytes[]),uint64)",
@@ -125,6 +126,8 @@ where
             Action::AssetsReserveTransfer => Self::assets_reserve_transfer(handle),
             Action::SendXCM => Self::send_xcm(handle),
             Action::XtokensTransfer => Self::transfer(handle),
+            Action::XtokensTransferWithFee => Self::transfer_with_fee(handle),
+            Action::XtokensTransferMultiasset => Self::transfer_multiasset(handle),
         }
     }
 }
@@ -694,6 +697,90 @@ where
         let call = orml_xtokens::Call::<Runtime>::transfer {
             currency_id: asset_id.into(),
             amount: amount_of_tokens,
+            dest: Box::new(VersionedMultiLocation::V3(destination)),
+            dest_weight_limit,
+        };
+
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+
+        // Dispatch a call.
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn transfer_with_fee(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(6)?;
+
+        // Read call arguments
+        let currency_address = input.read::<Address>()?;
+        let amount_of_tokens = input
+            .read::<U256>()?
+            .try_into()
+            .map_err(|_| revert("error converting amount_of_tokens, maybe value too large"))?;
+        let fee = input
+            .read::<U256>()?
+            .try_into()
+            .map_err(|_| revert("can't convert fee"))?;
+
+        let destination = input.read::<MultiLocation>()?;
+        let weight = input.read::<u64>()?;
+
+        let asset_id = Runtime::address_to_asset_id(currency_address.into())
+            .ok_or(revert("Failed to resolve fee asset id from address"))?;
+        let dest_weight_limit = if weight == u64::MAX {
+            WeightLimit::Unlimited
+        } else {
+            WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE))
+        };
+
+        let call = orml_xtokens::Call::<Runtime>::transfer_with_fee {
+            currency_id: asset_id.into(),
+            amount: amount_of_tokens,
+            fee,
+            dest: Box::new(VersionedMultiLocation::V3(destination)),
+            dest_weight_limit,
+        };
+
+        let origin = Some(Runtime::AddressMapping::into_account_id(
+            handle.context().caller,
+        ))
+        .into();
+
+        // Dispatch a call.
+        RuntimeHelper::<Runtime>::try_dispatch(handle, origin, call)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn transfer_multiasset(handle: &mut impl PrecompileHandle) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(5)?;
+
+        // Read call arguments
+        let asset_location = input.read::<MultiLocation>()?;
+        let amount_of_tokens = input
+            .read::<U256>()?
+            .try_into()
+            .map_err(|_| revert("error converting amount_of_tokens, maybe value too large"))?;
+        let destination = input.read::<MultiLocation>()?;
+        let weight = input.read::<u64>()?;
+
+        let dest_weight_limit = if weight == u64::MAX {
+            WeightLimit::Unlimited
+        } else {
+            WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE))
+        };
+
+        let call = orml_xtokens::Call::<Runtime>::transfer_multiasset {
+            asset: Box::new(VersionedMultiAsset::V3(MultiAsset {
+                id: AssetId::Concrete(asset_location),
+                fun: Fungibility::Fungible(amount_of_tokens),
+            })),
             dest: Box::new(VersionedMultiLocation::V3(destination)),
             dest_weight_limit,
         };
