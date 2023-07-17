@@ -22,6 +22,8 @@
 
 //! Encoding of XCM types for solidity
 
+use crate::Address;
+use sp_core::U256;
 use {
     crate::{bytes::*, revert, EvmData, EvmDataReader, EvmDataWriter, EvmResult},
     frame_support::{ensure, traits::ConstU32},
@@ -29,7 +31,6 @@ use {
     sp_std::vec::Vec,
     xcm::latest::{Junction, Junctions, MultiLocation, NetworkId},
 };
-
 pub const JUNCTION_SIZE_LIMIT: u32 = 2u32.pow(16);
 
 // Function to convert network id to bytes
@@ -350,5 +351,78 @@ impl EvmData for MultiLocation {
 
     fn has_static_size() -> bool {
         <(u8, Junctions)>::has_static_size()
+    }
+}
+
+pub struct EvmMultiAsset {
+    location: MultiLocation,
+    amount: U256,
+}
+
+impl EvmMultiAsset {
+    pub fn get_location(&self) -> MultiLocation {
+        self.location
+    }
+    pub fn get_amount(&self) -> U256 {
+        self.amount
+    }
+}
+impl From<(MultiLocation, U256)> for EvmMultiAsset {
+    fn from(tuple: (MultiLocation, U256)) -> Self {
+        EvmMultiAsset {
+            location: tuple.0,
+            amount: tuple.1,
+        }
+    }
+}
+impl EvmData for EvmMultiAsset {
+    fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
+        let (location, amount) = reader.read()?;
+        Ok(EvmMultiAsset { location, amount })
+    }
+
+    fn write(writer: &mut EvmDataWriter, value: Self) {
+        EvmData::write(writer, (value.location, value.amount));
+    }
+
+    fn has_static_size() -> bool {
+        <(MultiLocation, U256)>::has_static_size()
+    }
+}
+
+pub struct Currency {
+    address: Address,
+    amount: U256,
+}
+
+impl Currency {
+    pub fn get_address(&self) -> Address {
+        self.address
+    }
+    pub fn get_amount(&self) -> U256 {
+        self.amount
+    }
+}
+impl From<(Address, U256)> for Currency {
+    fn from(tuple: (Address, U256)) -> Self {
+        Currency {
+            address: tuple.0,
+            amount: tuple.1,
+        }
+    }
+}
+
+impl EvmData for Currency {
+    fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
+        let (address, amount) = reader.read()?;
+        Ok(Currency { address, amount })
+    }
+
+    fn write(writer: &mut EvmDataWriter, value: Self) {
+        EvmData::write(writer, (value.address, value.amount));
+    }
+
+    fn has_static_size() -> bool {
+        <(Address, U256)>::has_static_size()
     }
 }
