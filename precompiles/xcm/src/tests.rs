@@ -29,6 +29,7 @@ use parity_scale_codec::Encode;
 use precompile_utils::testing::*;
 use precompile_utils::EvmDataWriter;
 use sp_core::{H160, H256};
+use sp_runtime::traits::Convert;
 use xcm::VersionedXcm;
 
 fn precompiles() -> TestPrecompileSet<Runtime> {
@@ -787,6 +788,66 @@ mod xtokens_interface_test {
                 .into();
 
             // Assert that the events vector contains the one expected
+            assert!(events().contains(&expected));
+        });
+    }
+
+    #[test]
+    fn transfer_multi_currencies_works() {
+        let destination = MultiLocation::new(
+            1,
+            Junctions::X1(Junction::AccountId32 {
+                network: None,
+                id: [1u8; 32],
+            }),
+        );
+        //  NOTE: Currently only support `ToReserve` with relay-chain asset as fee. other case
+        // like `NonReserve` or `SelfReserve` with relay-chain fee is not support.
+        let currencies: Vec<Currency> = vec![
+            (
+                Address::from(Runtime::asset_id_to_address(2u128)),
+                U256::from(500),
+            )
+                .into(),
+            (
+                Address::from(Runtime::asset_id_to_address(3u128)),
+                U256::from(500),
+            )
+                .into(),
+        ];
+
+        ExtBuilder::default().build().execute_with(|| {
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransferMulticurrencies)
+                        .write(currencies) // zero address by convention
+                        .write(U256::from(0))
+                        .write(destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_returns(EvmDataWriter::new().write(true).build());
+
+            let expected_asset_1: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(2u128).unwrap()),
+                fun: Fungibility::Fungible(500),
+            };
+            let expected_asset_2: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(3u128).unwrap()),
+                fun: Fungibility::Fungible(500),
+            };
+
+            let expected: crate::mock::RuntimeEvent =
+                mock::RuntimeEvent::Xtokens(XtokensEvent::TransferredMultiAssets {
+                    sender: TestAccount::Alice.into(),
+                    assets: vec![expected_asset_1.clone(), expected_asset_2].into(),
+                    fee: expected_asset_1,
+                    dest: destination,
+                })
+                .into();
             assert!(events().contains(&expected));
         });
     }
