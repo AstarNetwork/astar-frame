@@ -681,7 +681,20 @@ mod xtokens_interface_test {
                 .expect_no_logs()
                 .execute_returns(EvmDataWriter::new().write(true).build());
 
-            println!("{:?}", events());
+            let expected_asset: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(1).unwrap()),
+                fun: Fungibility::Fungible(42000),
+            };
+
+            let expected: crate::mock::RuntimeEvent =
+                mock::RuntimeEvent::Xtokens(XtokensEvent::TransferredMultiAssets {
+                    sender: TestAccount::Alice.into(),
+                    assets: vec![expected_asset.clone()].into(),
+                    fee: expected_asset,
+                    dest: parent_destination,
+                })
+                .into();
+            assert!(events().contains(&expected));
 
             // sending parachain token back to parachain
             precompiles()
@@ -698,7 +711,68 @@ mod xtokens_interface_test {
                 .expect_no_logs()
                 .execute_returns(EvmDataWriter::new().write(true).build());
 
-            println!("{:?}", events());
+            let expected_asset: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(2).unwrap()),
+                fun: Fungibility::Fungible(42000),
+            };
+
+            let expected: crate::mock::RuntimeEvent =
+                mock::RuntimeEvent::Xtokens(XtokensEvent::TransferredMultiAssets {
+                    sender: TestAccount::Alice.into(),
+                    assets: vec![expected_asset.clone()].into(),
+                    fee: expected_asset,
+                    dest: sibling_parachain_location,
+                })
+                .into();
+            assert!(events().contains(&expected));
+        });
+    }
+
+    #[test]
+    fn xtokens_transfer_with_fee_works() {
+        ExtBuilder::default().build().execute_with(|| {
+            let parent_destination = MultiLocation {
+                parents: 1,
+                interior: Junctions::X1(Junction::AccountId32 {
+                    network: None,
+                    id: [1u8; 32],
+                }),
+            };
+
+            // sending relay token back to relay chain
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransferWithFee)
+                        .write(Address::from(Runtime::asset_id_to_address(1u128))) // zero address by convention
+                        .write(U256::from(42000u64))
+                        .write(U256::from(50))
+                        .write(parent_destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_returns(EvmDataWriter::new().write(true).build());
+
+            let expected_asset: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(1).unwrap()),
+                fun: Fungibility::Fungible(42000),
+            };
+            let expected_fee: MultiAsset = MultiAsset {
+                id: AssetId::Concrete(CurrencyIdToMultiLocation::convert(1).unwrap()),
+                fun: Fungibility::Fungible(50),
+            };
+
+            let expected: crate::mock::RuntimeEvent =
+                mock::RuntimeEvent::Xtokens(XtokensEvent::TransferredMultiAssets {
+                    sender: TestAccount::Alice.into(),
+                    assets: vec![expected_asset.clone(), expected_fee.clone()].into(),
+                    fee: expected_fee,
+                    dest: parent_destination,
+                })
+                .into();
+            assert!(events().contains(&expected));
         });
     }
 
@@ -852,7 +926,6 @@ mod xtokens_interface_test {
         });
     }
 
-
     #[test]
     fn transfer_multi_currencies_cannot_insert_more_than_max() {
         let destination = MultiLocation::new(
@@ -894,7 +967,9 @@ mod xtokens_interface_test {
                         .build(),
                 )
                 .expect_no_logs()
-                .execute_reverts(|output| output == b"value too large : length of array for than max allowed");
+                .execute_reverts(|output| {
+                    output == b"value too large : Array has more than max items allowed"
+                });
         });
     }
 
@@ -985,14 +1060,12 @@ mod xtokens_interface_test {
             1,
             Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(3u128)),
         );
-        
 
         let assets: Vec<EvmMultiAsset> = vec![
             (asset_1_location.clone(), U256::from(500)).into(),
             (asset_2_location.clone(), U256::from(500)).into(),
             (asset_3_location.clone(), U256::from(500)).into(),
         ];
-
 
         ExtBuilder::default().build().execute_with(|| {
             precompiles()
@@ -1007,8 +1080,9 @@ mod xtokens_interface_test {
                         .build(),
                 )
                 .expect_no_logs()
-                .execute_reverts(|output| output == b"value too large : length of array for than max allowed");
+                .execute_reverts(|output| {
+                    output == b"value too large : Array has more than max items allowed"
+                });
         });
     }
-
 }

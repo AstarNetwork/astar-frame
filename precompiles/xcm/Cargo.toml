@@ -68,4 +68,6 @@ std = [
 	"orml-xcm-support/std",
 	"orml-traits/std",
 ]
-runtime-benchmarks = []
+runtime-benchmarks = [
+	"orml-xtokens/runtime-benchmarks",
+]
