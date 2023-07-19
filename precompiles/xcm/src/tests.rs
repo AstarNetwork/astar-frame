@@ -852,6 +852,52 @@ mod xtokens_interface_test {
         });
     }
 
+
+    #[test]
+    fn transfer_multi_currencies_cannot_insert_more_than_max() {
+        let destination = MultiLocation::new(
+            1,
+            Junctions::X1(Junction::AccountId32 {
+                network: None,
+                id: [1u8; 32],
+            }),
+        );
+        // we only allow upto 2 currencies to be transfered
+        let currencies: Vec<Currency> = vec![
+            (
+                Address::from(Runtime::asset_id_to_address(2u128)),
+                U256::from(500),
+            )
+                .into(),
+            (
+                Address::from(Runtime::asset_id_to_address(3u128)),
+                U256::from(500),
+            )
+                .into(),
+            (
+                Address::from(Runtime::asset_id_to_address(4u128)),
+                U256::from(500),
+            )
+                .into(),
+        ];
+
+        ExtBuilder::default().build().execute_with(|| {
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransferMulticurrencies)
+                        .write(currencies) // zero address by convention
+                        .write(U256::from(0))
+                        .write(destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_reverts(|output| output == b"value too large : length of array for than max allowed");
+        });
+    }
+
     #[test]
     fn transfer_multiassets_works() {
         let destination = MultiLocation::new(
