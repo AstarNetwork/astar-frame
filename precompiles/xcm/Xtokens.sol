@@ -91,8 +91,6 @@ interface Xtokens {
     /// @param feeItem Which of the currencies to be used as fee
     /// @param destination The Multilocation to which we want to send the tokens
     /// @param weight The weight we want to buy in the destination chain 
-    /// (uint64::MAX means Unlimited weight)
-    /// @custom:selector ab946323
     function transfer_multi_currencies(
         Currency[] memory currencies,
         uint32 feeItem,

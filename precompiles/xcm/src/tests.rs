@@ -851,4 +851,64 @@ mod xtokens_interface_test {
             assert!(events().contains(&expected));
         });
     }
+
+    #[test]
+    fn transfer_multiassets_works() {
+        let destination = MultiLocation::new(
+            1,
+            Junctions::X2(
+                Junction::Parachain(2),
+                Junction::AccountId32 {
+                    network: None,
+                    id: [1u8; 32],
+                },
+            ),
+        );
+
+        let asset_1_location = MultiLocation::new(
+            1,
+            Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(0u128)),
+        );
+        let asset_2_location = MultiLocation::new(
+            1,
+            Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(1u128)),
+        );
+
+        let assets: Vec<EvmMultiAsset> = vec![
+            (asset_1_location.clone(), U256::from(500)).into(),
+            (asset_2_location.clone(), U256::from(500)).into(),
+        ];
+
+        let multiassets = MultiAssets::from_sorted_and_deduplicated(vec![
+            (asset_1_location.clone(), 500).into(),
+            (asset_2_location, 500).into(),
+        ])
+        .unwrap();
+
+        ExtBuilder::default().build().execute_with(|| {
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransferMultiassets)
+                        .write(assets) // zero address by convention
+                        .write(U256::from(0))
+                        .write(destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_returns(EvmDataWriter::new().write(true).build());
+
+            let expected: crate::mock::RuntimeEvent =
+                mock::RuntimeEvent::Xtokens(XtokensEvent::TransferredMultiAssets {
+                    sender: TestAccount::Alice.into(),
+                    assets: multiassets,
+                    fee: (asset_1_location, 500).into(),
+                    dest: destination,
+                })
+                .into();
+            assert!(events().contains(&expected));
+        });
+    }
 }
