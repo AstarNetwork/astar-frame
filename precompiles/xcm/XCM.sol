@@ -1,5 +1,5 @@
  /**
- * DISCLAIMER: Please note that this file ise deprecated and users are advised to use the XCM_v2.sol file instead.
+ * DISCLAIMER: Please note that this file is deprecated and users are advised to use the XCM_v2.sol file instead.
  */
 
 pragma solidity ^0.8.0;
