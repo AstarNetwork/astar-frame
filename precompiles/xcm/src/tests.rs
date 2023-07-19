@@ -911,4 +911,58 @@ mod xtokens_interface_test {
             assert!(events().contains(&expected));
         });
     }
+
+    #[test]
+    fn transfer_multiassets_cannot_insert_more_than_max() {
+        // We have definaed MaxAssetsForTransfer = 2,
+        // so any number greater than MaxAssetsForTransfer will result in error
+        let destination = MultiLocation::new(
+            1,
+            Junctions::X2(
+                Junction::Parachain(2),
+                Junction::AccountId32 {
+                    network: None,
+                    id: [1u8; 32],
+                },
+            ),
+        );
+
+        let asset_1_location = MultiLocation::new(
+            1,
+            Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(0u128)),
+        );
+        let asset_2_location = MultiLocation::new(
+            1,
+            Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(1u128)),
+        );
+        let asset_3_location = MultiLocation::new(
+            1,
+            Junctions::X2(Junction::Parachain(2), Junction::GeneralIndex(3u128)),
+        );
+        
+
+        let assets: Vec<EvmMultiAsset> = vec![
+            (asset_1_location.clone(), U256::from(500)).into(),
+            (asset_2_location.clone(), U256::from(500)).into(),
+            (asset_3_location.clone(), U256::from(500)).into(),
+        ];
+
+
+        ExtBuilder::default().build().execute_with(|| {
+            precompiles()
+                .prepare_test(
+                    TestAccount::Alice,
+                    PRECOMPILE_ADDRESS,
+                    EvmDataWriter::new_with_selector(Action::XtokensTransferMultiassets)
+                        .write(assets) // zero address by convention
+                        .write(U256::from(0))
+                        .write(destination)
+                        .write(U256::from(3_000_000_000u64))
+                        .build(),
+                )
+                .expect_no_logs()
+                .execute_reverts(|output| output == b"value too large : length of array for than max allowed");
+        });
+    }
+
 }

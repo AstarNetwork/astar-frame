@@ -624,10 +624,10 @@ impl<T: EvmData, S: Get<u32>> EvmData for BoundedVec<T, S> {
             .read::<U256>()
             .map_err(|_| revert("out of bounds: length of array"))?
             .try_into()
-            .map_err(|_| revert("value too large : length"))?;
+            .map_err(|_| revert("value too large : length of array for than max allowed"))?;
 
         if array_size > S::get() as usize {
-            return Err(revert("value too large : length").into());
+            return Err(revert("value too large : length of array for than max allowed").into());
         }
 
         let mut array = vec![];
