@@ -649,6 +649,8 @@ where
             handle.context().caller,
         ))
         .into();
+        log::trace!(target: "xcm-precompile:assets_reserve_transfer", "Processed arguments: dest {:?}, beneficiary: {:?}, assets: {:?}, asset_item {:?}", dest, beneficiary, assets, fee_asset_item);
+
         let call = pallet_xcm::Call::<Runtime>::reserve_transfer_assets {
             dest: Box::new(dest.into()),
             beneficiary: Box::new(beneficiary.into()),
