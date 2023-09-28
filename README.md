@@ -1,3 +1,13 @@
+**UPDATE**
+
+In order to streamline our dev process, the `astar-frame` repository has been merged into the main repository [`astar`](https://github.com/AstarNetwork/Astar).
+
+For future issues and pull requests, please kindly submit in the [`astar`](https://github.com/AstarNetwork/Astar) repo instead.
+
+We appreciate your understanding and support to Astar Network.
+
+-----
+
 ![astar-cover](https://user-images.githubusercontent.com/40356749/135799652-175e0d24-1255-4c26-87e8-447b192fd4b2.gif)
 
 <div align="center">
