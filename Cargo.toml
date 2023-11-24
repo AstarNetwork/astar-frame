@@ -12,6 +12,11 @@ members = [
 	"frame/pallet-xvm",
 	"frame/xc-asset-config",
 	"frame/contracts-migration",
+	"frame/pallet-xcm-transactor",
+	"frame/pallet-xcm-transactor/primitives",
+	"frame/pallet-xcm-transactor/xcm-simulator",
+	"frame/pallet-xcm-transactor/ink-sdk",
+    # "frame/pallet-xcm-transactor/contract-examples/basic-flip",
 	"primitives/xcm",
 	"precompiles/assets-erc20",
 	"precompiles/dapps-staking",
@@ -120,12 +125,17 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
+pallet-insecure-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 
 # Polkadot
 # (wasm)
+cumulus-pallet-xcm = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.39", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
+xcm-simulator = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
+polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.39", default-features = false }
 
 # (native)
