@@ -3,6 +3,7 @@ members = [
 	"chain-extensions/dapps-staking",
 	"chain-extensions/pallet-assets",
 	"chain-extensions/xvm",
+	"chain-extensions/pallet-scheduler",
 	"chain-extensions/types/*",
 	"frame/block-reward",
 	"frame/collator-selection",
@@ -97,6 +98,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
+sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 
 # (native)
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39" }
@@ -120,6 +122,8 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
+pallet-preimage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.39", default-features = false }
 
 # Polkadot
 # (wasm)
@@ -154,6 +158,7 @@ pallet-xc-asset-config = { path = "./frame/xc-asset-config", default-features = 
 dapps-staking-chain-extension-types = { path = "./chain-extensions/types/dapps-staking", default-features = false }
 xvm-chain-extension-types = { path = "./chain-extensions/types/xvm", default-features = false }
 assets-chain-extension-types = { path = "./chain-extensions/types/assets", default-features = false }
+scheduler-chain-extension-types = { path = "./chain-extensions/types/scheduler", default-features = false }
 
 pallet-evm-precompile-assets-erc20 = { path = "./precompiles/assets-erc20", default-features = false }
 precompile-utils = { path = "./precompiles/utils", default-features = false }
